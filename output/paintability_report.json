@@ -1,0 +1,21 @@
+{
+  "width": 1200,
+  "height": 799,
+  "colors": 48,
+  "regions_total": 1268,
+  "regions_numbered": 467,
+  "regions_too_small_for_label": 801,
+  "min_label_area": 260,
+  "smallest_region": 9,
+  "largest_region": 48980,
+  "median_region_area": 102.0,
+  "smallest_numbered_region": 260,
+  "largest_unnumbered_region": 258,
+  "small_area_merging": true,
+  "small_region_merge_area": 260,
+  "colored_edges_written": false,
+  "auto_color_count": false,
+  "exact_main_colors_detected": 48,
+  "exact_cleanup_unique_colors": 48,
+  "exact_cleanup_matches_detected_main_colors": true
+}

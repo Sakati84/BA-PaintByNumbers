@@ -1,0 +1,870 @@
+{
+  "source": "house.png",
+  "width": 1200,
+  "height": 799,
+  "settings": {
+    "color_count_mode": "manual_fixed_k",
+    "color_count_used": 48,
+    "auto_detected_color_count": 48,
+    "requested_color_count": 48,
+    "max_colors": 48,
+    "min_label_area": 260,
+    "cleanup_step": "bilateral_filter_lab_minibatch_kmeans_hard_lab_remap_small_region_merge",
+    "cleanup_bilateral_d": 9,
+    "cleanup_bilateral_sigma_color": 50.0,
+    "cleanup_bilateral_sigma_space": 50.0,
+    "kmeans_batch_size": 4096,
+    "kmeans_random_state": 0,
+    "segmentation_strategy": "cleaned_color_connected_components_only",
+    "small_area_merging": true,
+    "small_region_merge_area": 260,
+    "line_art_barrier_detection": false,
+    "guide_detail_detection": false,
+    "main_color_detection": "manual_fixed_k",
+    "exact_cleanup_unique_colors": 48,
+    "exact_cleanup_matches_detected_main_colors": true,
+    "paint_palette_is_normalized": true,
+    "number_mode": "numbers",
+    "template_modes_written": [
+      "numbers",
+      "color-circles",
+      "circles-only",
+      "bright-color-circles"
+    ],
+    "performance_notes": {
+      "template_png_removed": true,
+      "colored_edges_default": false,
+      "region_rasterization": "palette_lookup_from_label_map",
+      "label_placements_precomputed": true
+    }
+  },
+  "colors": [
+    {
+      "number": 1,
+      "hex": "#96A72B",
+      "rgb": [
+        150,
+        167,
+        43
+      ],
+      "paint_hex": "#96A72B",
+      "paint_rgb": [
+        150,
+        167,
+        43
+      ],
+      "pixel_count": 112344,
+      "area_percent": 11.717
+    },
+    {
+      "number": 2,
+      "hex": "#5D7C14",
+      "rgb": [
+        93,
+        124,
+        20
+      ],
+      "paint_hex": "#5D7C14",
+      "paint_rgb": [
+        93,
+        124,
+        20
+      ],
+      "pixel_count": 64632,
+      "area_percent": 6.741
+    },
+    {
+      "number": 3,
+      "hex": "#E4D09B",
+      "rgb": [
+        228,
+        208,
+        155
+      ],
+      "paint_hex": "#E4D09B",
+      "paint_rgb": [
+        228,
+        208,
+        155
+      ],
+      "pixel_count": 52172,
+      "area_percent": 5.441
+    },
+    {
+      "number": 4,
+      "hex": "#FBF9E9",
+      "rgb": [
+        251,
+        249,
+        233
+      ],
+      "paint_hex": "#EEE8DA",
+      "paint_rgb": [
+        238,
+        232,
+        218
+      ],
+      "pixel_count": 50980,
+      "area_percent": 5.317
+    },
+    {
+      "number": 5,
+      "hex": "#355318",
+      "rgb": [
+        53,
+        83,
+        24
+      ],
+      "paint_hex": "#355318",
+      "paint_rgb": [
+        53,
+        83,
+        24
+      ],
+      "pixel_count": 50678,
+      "area_percent": 5.286
+    },
+    {
+      "number": 6,
+      "hex": "#A6B13F",
+      "rgb": [
+        166,
+        177,
+        63
+      ],
+      "paint_hex": "#A6B13F",
+      "paint_rgb": [
+        166,
+        177,
+        63
+      ],
+      "pixel_count": 50402,
+      "area_percent": 5.257
+    },
+    {
+      "number": 7,
+      "hex": "#446A20",
+      "rgb": [
+        68,
+        106,
+        32
+      ],
+      "paint_hex": "#446A20",
+      "paint_rgb": [
+        68,
+        106,
+        32
+      ],
+      "pixel_count": 49067,
+      "area_percent": 5.118
+    },
+    {
+      "number": 8,
+      "hex": "#B7A781",
+      "rgb": [
+        183,
+        167,
+        129
+      ],
+      "paint_hex": "#B7A781",
+      "paint_rgb": [
+        183,
+        167,
+        129
+      ],
+      "pixel_count": 44660,
+      "area_percent": 4.658
+    },
+    {
+      "number": 9,
+      "hex": "#2B3034",
+      "rgb": [
+        43,
+        48,
+        52
+      ],
+      "paint_hex": "#2B3034",
+      "paint_rgb": [
+        43,
+        48,
+        52
+      ],
+      "pixel_count": 37191,
+      "area_percent": 3.879
+    },
+    {
+      "number": 10,
+      "hex": "#64645F",
+      "rgb": [
+        100,
+        100,
+        95
+      ],
+      "paint_hex": "#64645F",
+      "paint_rgb": [
+        100,
+        100,
+        95
+      ],
+      "pixel_count": 35080,
+      "area_percent": 3.659
+    },
+    {
+      "number": 11,
+      "hex": "#3C2A18",
+      "rgb": [
+        60,
+        42,
+        24
+      ],
+      "paint_hex": "#3C2A18",
+      "paint_rgb": [
+        60,
+        42,
+        24
+      ],
+      "pixel_count": 25750,
+      "area_percent": 2.686
+    },
+    {
+      "number": 12,
+      "hex": "#89774E",
+      "rgb": [
+        137,
+        119,
+        78
+      ],
+      "paint_hex": "#89774E",
+      "paint_rgb": [
+        137,
+        119,
+        78
+      ],
+      "pixel_count": 24652,
+      "area_percent": 2.571
+    },
+    {
+      "number": 13,
+      "hex": "#D5CFB0",
+      "rgb": [
+        213,
+        207,
+        176
+      ],
+      "paint_hex": "#D5CFB0",
+      "paint_rgb": [
+        213,
+        207,
+        176
+      ],
+      "pixel_count": 23456,
+      "area_percent": 2.446
+    },
+    {
+      "number": 14,
+      "hex": "#2F4B15",
+      "rgb": [
+        47,
+        75,
+        21
+      ],
+      "paint_hex": "#2F4B15",
+      "paint_rgb": [
+        47,
+        75,
+        21
+      ],
+      "pixel_count": 21871,
+      "area_percent": 2.281
+    },
+    {
+      "number": 15,
+      "hex": "#1F3F0E",
+      "rgb": [
+        31,
+        63,
+        14
+      ],
+      "paint_hex": "#1F3F0E",
+      "paint_rgb": [
+        31,
+        63,
+        14
+      ],
+      "pixel_count": 19934,
+      "area_percent": 2.079
+    },
+    {
+      "number": 16,
+      "hex": "#E1DAC0",
+      "rgb": [
+        225,
+        218,
+        192
+      ],
+      "paint_hex": "#E1DAC0",
+      "paint_rgb": [
+        225,
+        218,
+        192
+      ],
+      "pixel_count": 19444,
+      "area_percent": 2.028
+    },
+    {
+      "number": 17,
+      "hex": "#56771D",
+      "rgb": [
+        86,
+        119,
+        29
+      ],
+      "paint_hex": "#56771D",
+      "paint_rgb": [
+        86,
+        119,
+        29
+      ],
+      "pixel_count": 18831,
+      "area_percent": 1.964
+    },
+    {
+      "number": 18,
+      "hex": "#678213",
+      "rgb": [
+        103,
+        130,
+        19
+      ],
+      "paint_hex": "#678213",
+      "paint_rgb": [
+        103,
+        130,
+        19
+      ],
+      "pixel_count": 17941,
+      "area_percent": 1.871
+    },
+    {
+      "number": 19,
+      "hex": "#3B5B17",
+      "rgb": [
+        59,
+        91,
+        23
+      ],
+      "paint_hex": "#3B5B17",
+      "paint_rgb": [
+        59,
+        91,
+        23
+      ],
+      "pixel_count": 17486,
+      "area_percent": 1.824
+    },
+    {
+      "number": 20,
+      "hex": "#4E5254",
+      "rgb": [
+        78,
+        82,
+        84
+      ],
+      "paint_hex": "#4E5254",
+      "paint_rgb": [
+        78,
+        82,
+        84
+      ],
+      "pixel_count": 17098,
+      "area_percent": 1.783
+    },
+    {
+      "number": 21,
+      "hex": "#958A6F",
+      "rgb": [
+        149,
+        138,
+        111
+      ],
+      "paint_hex": "#958A6F",
+      "paint_rgb": [
+        149,
+        138,
+        111
+      ],
+      "pixel_count": 15690,
+      "area_percent": 1.636
+    },
+    {
+      "number": 22,
+      "hex": "#DDD7E1",
+      "rgb": [
+        221,
+        215,
+        225
+      ],
+      "paint_hex": "#DDD7E1",
+      "paint_rgb": [
+        221,
+        215,
+        225
+      ],
+      "pixel_count": 13904,
+      "area_percent": 1.45
+    },
+    {
+      "number": 23,
+      "hex": "#4D6F19",
+      "rgb": [
+        77,
+        111,
+        25
+      ],
+      "paint_hex": "#4D6F19",
+      "paint_rgb": [
+        77,
+        111,
+        25
+      ],
+      "pixel_count": 12770,
+      "area_percent": 1.332
+    },
+    {
+      "number": 24,
+      "hex": "#94C4E4",
+      "rgb": [
+        148,
+        196,
+        228
+      ],
+      "paint_hex": "#94C4E4",
+      "paint_rgb": [
+        148,
+        196,
+        228
+      ],
+      "pixel_count": 11955,
+      "area_percent": 1.247
+    },
+    {
+      "number": 25,
+      "hex": "#373C41",
+      "rgb": [
+        55,
+        60,
+        65
+      ],
+      "paint_hex": "#373C41",
+      "paint_rgb": [
+        55,
+        60,
+        65
+      ],
+      "pixel_count": 11266,
+      "area_percent": 1.175
+    },
+    {
+      "number": 26,
+      "hex": "#B9B492",
+      "rgb": [
+        185,
+        180,
+        146
+      ],
+      "paint_hex": "#B9B492",
+      "paint_rgb": [
+        185,
+        180,
+        146
+      ],
+      "pixel_count": 10773,
+      "area_percent": 1.124
+    },
+    {
+      "number": 27,
+      "hex": "#A5B216",
+      "rgb": [
+        165,
+        178,
+        22
+      ],
+      "paint_hex": "#A5B216",
+      "paint_rgb": [
+        165,
+        178,
+        22
+      ],
+      "pixel_count": 10686,
+      "area_percent": 1.115
+    },
+    {
+      "number": 28,
+      "hex": "#CBC1A0",
+      "rgb": [
+        203,
+        193,
+        160
+      ],
+      "paint_hex": "#CBC1A0",
+      "paint_rgb": [
+        203,
+        193,
+        160
+      ],
+      "pixel_count": 10529,
+      "area_percent": 1.098
+    },
+    {
+      "number": 29,
+      "hex": "#EFEAD5",
+      "rgb": [
+        239,
+        234,
+        213
+      ],
+      "paint_hex": "#EFEAD5",
+      "paint_rgb": [
+        239,
+        234,
+        213
+      ],
+      "pixel_count": 8984,
+      "area_percent": 0.937
+    },
+    {
+      "number": 30,
+      "hex": "#D74F66",
+      "rgb": [
+        215,
+        79,
+        102
+      ],
+      "paint_hex": "#D74F66",
+      "paint_rgb": [
+        215,
+        79,
+        102
+      ],
+      "pixel_count": 8983,
+      "area_percent": 0.937
+    },
+    {
+      "number": 31,
+      "hex": "#E77980",
+      "rgb": [
+        231,
+        121,
+        128
+      ],
+      "paint_hex": "#E77980",
+      "paint_rgb": [
+        231,
+        121,
+        128
+      ],
+      "pixel_count": 7647,
+      "area_percent": 0.798
+    },
+    {
+      "number": 32,
+      "hex": "#F2EBCA",
+      "rgb": [
+        242,
+        235,
+        202
+      ],
+      "paint_hex": "#F2EBCA",
+      "paint_rgb": [
+        242,
+        235,
+        202
+      ],
+      "pixel_count": 7511,
+      "area_percent": 0.783
+    },
+    {
+      "number": 33,
+      "hex": "#B09952",
+      "rgb": [
+        176,
+        153,
+        82
+      ],
+      "paint_hex": "#B09952",
+      "paint_rgb": [
+        176,
+        153,
+        82
+      ],
+      "pixel_count": 7224,
+      "area_percent": 0.753
+    },
+    {
+      "number": 34,
+      "hex": "#4D3B21",
+      "rgb": [
+        77,
+        59,
+        33
+      ],
+      "paint_hex": "#4D3B21",
+      "paint_rgb": [
+        77,
+        59,
+        33
+      ],
+      "pixel_count": 7170,
+      "area_percent": 0.748
+    },
+    {
+      "number": 35,
+      "hex": "#496516",
+      "rgb": [
+        73,
+        101,
+        22
+      ],
+      "paint_hex": "#496516",
+      "paint_rgb": [
+        73,
+        101,
+        22
+      ],
+      "pixel_count": 7041,
+      "area_percent": 0.734
+    },
+    {
+      "number": 36,
+      "hex": "#2F321B",
+      "rgb": [
+        47,
+        50,
+        27
+      ],
+      "paint_hex": "#2F321B",
+      "paint_rgb": [
+        47,
+        50,
+        27
+      ],
+      "pixel_count": 6775,
+      "area_percent": 0.707
+    },
+    {
+      "number": 37,
+      "hex": "#584525",
+      "rgb": [
+        88,
+        69,
+        37
+      ],
+      "paint_hex": "#584525",
+      "paint_rgb": [
+        88,
+        69,
+        37
+      ],
+      "pixel_count": 5825,
+      "area_percent": 0.608
+    },
+    {
+      "number": 38,
+      "hex": "#CEBC7C",
+      "rgb": [
+        206,
+        188,
+        124
+      ],
+      "paint_hex": "#CEBC7C",
+      "paint_rgb": [
+        206,
+        188,
+        124
+      ],
+      "pixel_count": 5677,
+      "area_percent": 0.592
+    },
+    {
+      "number": 39,
+      "hex": "#8D9B99",
+      "rgb": [
+        141,
+        155,
+        153
+      ],
+      "paint_hex": "#8D9B99",
+      "paint_rgb": [
+        141,
+        155,
+        153
+      ],
+      "pixel_count": 5419,
+      "area_percent": 0.565
+    },
+    {
+      "number": 40,
+      "hex": "#C24553",
+      "rgb": [
+        194,
+        69,
+        83
+      ],
+      "paint_hex": "#C24553",
+      "paint_rgb": [
+        194,
+        69,
+        83
+      ],
+      "pixel_count": 4644,
+      "area_percent": 0.484
+    },
+    {
+      "number": 41,
+      "hex": "#BAA865",
+      "rgb": [
+        186,
+        168,
+        101
+      ],
+      "paint_hex": "#BAA865",
+      "paint_rgb": [
+        186,
+        168,
+        101
+      ],
+      "pixel_count": 4622,
+      "area_percent": 0.482
+    },
+    {
+      "number": 42,
+      "hex": "#747651",
+      "rgb": [
+        116,
+        118,
+        81
+      ],
+      "paint_hex": "#747651",
+      "paint_rgb": [
+        116,
+        118,
+        81
+      ],
+      "pixel_count": 4073,
+      "area_percent": 0.425
+    },
+    {
+      "number": 43,
+      "hex": "#819822",
+      "rgb": [
+        129,
+        152,
+        34
+      ],
+      "paint_hex": "#819822",
+      "paint_rgb": [
+        129,
+        152,
+        34
+      ],
+      "pixel_count": 3882,
+      "area_percent": 0.405
+    },
+    {
+      "number": 44,
+      "hex": "#D35A67",
+      "rgb": [
+        211,
+        90,
+        103
+      ],
+      "paint_hex": "#D35A67",
+      "paint_rgb": [
+        211,
+        90,
+        103
+      ],
+      "pixel_count": 3369,
+      "area_percent": 0.351
+    },
+    {
+      "number": 45,
+      "hex": "#98373A",
+      "rgb": [
+        152,
+        55,
+        58
+      ],
+      "paint_hex": "#98373A",
+      "paint_rgb": [
+        152,
+        55,
+        58
+      ],
+      "pixel_count": 2786,
+      "area_percent": 0.291
+    },
+    {
+      "number": 46,
+      "hex": "#682B27",
+      "rgb": [
+        104,
+        43,
+        39
+      ],
+      "paint_hex": "#682B27",
+      "paint_rgb": [
+        104,
+        43,
+        39
+      ],
+      "pixel_count": 2396,
+      "area_percent": 0.25
+    },
+    {
+      "number": 47,
+      "hex": "#51602D",
+      "rgb": [
+        81,
+        96,
+        45
+      ],
+      "paint_hex": "#51602D",
+      "paint_rgb": [
+        81,
+        96,
+        45
+      ],
+      "pixel_count": 1948,
+      "area_percent": 0.203
+    },
+    {
+      "number": 48,
+      "hex": "#3B4624",
+      "rgb": [
+        59,
+        70,
+        36
+      ],
+      "paint_hex": "#3B4624",
+      "paint_rgb": [
+        59,
+        70,
+        36
+      ],
+      "pixel_count": 1582,
+      "area_percent": 0.165
+    }
+  ],
+  "outputs": {
+    "template_classic": "output\\template_classic.png",
+    "template_numbers": "output\\template_numbers.png",
+    "template_color_circles": "output\\template_color_circles.png",
+    "template_circles_only": "output\\template_circles_only.png",
+    "template_bright_color_circles": "output\\template_bright_color_circles.png",
+    "cleanup": "output\\cleanup.png",
+    "palette": "output\\palette.png",
+    "palette_json": "output\\palette.json",
+    "paintability_report": "output\\paintability_report.json"
+  }
+}
