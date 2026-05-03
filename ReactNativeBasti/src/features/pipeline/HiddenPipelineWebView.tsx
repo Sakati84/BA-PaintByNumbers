@@ -71,7 +71,7 @@ export const HiddenPipelineWebView = forwardRef<HiddenPipelineWebViewHandle, Hid
     }
 
     function initializeBridge(): void {
-      onEvent({ type: "STATUS", message: "Local WebView file loaded, initializing OpenCV" });
+      onEvent({ type: "STATUS", message: "Local compute page loaded" });
       setTimeout(() => {
         post({ type: "INIT", requestId: "webview-load" });
       }, 100);

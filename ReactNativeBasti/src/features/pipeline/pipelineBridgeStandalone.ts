@@ -127,70 +127,89 @@ function imageDataToPngDataUrl(imageData: ImageData): string {
   return canvas.toDataURL("image/png");
 }
 
-async function waitForCv(): Promise<any> {
+function waitForCv(): any {
+  if (cvReady && cvInstance) {
+    return cvInstance;
+  }
+  throw new Error("OpenCV runtime is not ready yet.");
+}
+
+async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return await new Promise<T>((resolve, reject) => {
+    const timeout = window.setTimeout(() => {
+      reject(new Error(`${label} timeout.`));
+    }, ms);
+    promise.then(
+      (value) => {
+        window.clearTimeout(timeout);
+        resolve(value);
+      },
+      (error) => {
+        window.clearTimeout(timeout);
+        reject(error);
+      },
+    );
+  });
+}
+
+async function resolveOpenCvCandidate(candidate: any): Promise<any> {
+  if (!candidate) {
+    throw new Error("OpenCV script did not expose window.cv.");
+  }
+
+  const resolvedCandidate = typeof candidate === "function" ? candidate() : candidate;
+  if (resolvedCandidate?.Mat) {
+    return resolvedCandidate;
+  }
+
+  if (resolvedCandidate && typeof resolvedCandidate.then === "function") {
+    const resolved = await withTimeout(Promise.resolve(resolvedCandidate), 45000, "OpenCV runtime initialization");
+    if (resolved?.Mat) {
+      return resolved;
+    }
+  }
+
+  if (resolvedCandidate && typeof resolvedCandidate === "object") {
+    return await withTimeout(
+      new Promise((resolve, reject) => {
+        const existingRuntimeInitialized = resolvedCandidate.onRuntimeInitialized;
+        resolvedCandidate.onRuntimeInitialized = function onRuntimeInitialized() {
+          try {
+            if (typeof existingRuntimeInitialized === "function") {
+              existingRuntimeInitialized.call(resolvedCandidate);
+            }
+            if (resolvedCandidate.Mat) {
+              resolve(resolvedCandidate);
+            } else {
+              reject(new Error("OpenCV runtime initialized without cv.Mat."));
+            }
+          } catch (error) {
+            reject(error);
+          }
+        };
+      }),
+      45000,
+      "OpenCV onRuntimeInitialized",
+    );
+  }
+
+  throw new Error("Unsupported OpenCV runtime shape.");
+}
+
+async function initializeOpenCv(candidate: any = (window as any).cv): Promise<any> {
   if (cvReady && cvInstance) {
     return cvInstance;
   }
 
-  postStatus("Waiting for OpenCV runtime");
-
-  const withTimeout = async <T,>(promise: Promise<T>, ms: number): Promise<T> =>
-    await new Promise<T>((resolve, reject) => {
-      const timeout = window.setTimeout(() => {
-        reject(new Error("OpenCV initialization timeout."));
-      }, ms);
-      promise.then(
-        (value) => {
-          window.clearTimeout(timeout);
-          resolve(value);
-        },
-        (error) => {
-          window.clearTimeout(timeout);
-          reject(error);
-        },
-      );
-    });
-
-  const handleReady = async (candidate: any): Promise<any> => {
-    const resolved =
-      candidate && typeof candidate.then === "function" ? await withTimeout(candidate, 35000) : candidate;
-    if (resolved && resolved.Mat) {
-      cvInstance = resolved;
-      (window as any).cv = resolved;
-      cvReady = true;
-      postToNative({ type: "READY" });
-      return resolved;
-    }
-    return null;
-  };
-
-  const globalCv = (window as any).cv;
-  const immediate = typeof globalCv === "function" ? globalCv() : globalCv;
-  const ready = await handleReady(immediate);
-  if (ready) {
-    return ready;
-  }
-
-  return new Promise((resolve, reject) => {
-    const startedAt = Date.now();
-    const interval = window.setInterval(() => {
-      const currentGlobalCv = (window as any).cv;
-      const candidate = typeof currentGlobalCv === "function" ? currentGlobalCv() : currentGlobalCv;
-      if (candidate && candidate.Mat) {
-        window.clearInterval(interval);
-        void handleReady(candidate).then(resolve);
-      } else if (candidate && typeof candidate.then === "function") {
-        window.clearInterval(interval);
-        void handleReady(candidate).then(resolve, reject);
-      } else if (Date.now() - startedAt > 35000) {
-        window.clearInterval(interval);
-        reject(new Error("OpenCV initialization timeout."));
-      }
-    }, 50);
-  });
+  postStatus("OpenCV script loaded, waiting for runtime");
+  const resolved = await resolveOpenCvCandidate(candidate);
+  cvInstance = resolved;
+  (window as any).cv = resolved;
+  cvReady = true;
+  postStatus("OpenCV runtime ready");
+  postToNative({ type: "READY" });
+  return resolved;
 }
-
-postStatus("Pipeline bridge loaded");
 
 async function imageCommandToImageData(image: Extract<BridgeCommand, { type: "LOAD_IMAGE" }>["image"]): Promise<ImageData> {
   const imageUrl = `data:${image.mimeType || "image/png"};base64,${image.base64}`;
@@ -232,7 +251,7 @@ function stepOptions(stepId: PipelineStepId, options: PipelineOptions): Pipeline
 }
 
 async function handleLoadImage(command: Extract<BridgeCommand, { type: "LOAD_IMAGE" }>): Promise<void> {
-  await waitForCv();
+  waitForCv();
   postToNative({
     type: "PROGRESS",
     requestId: command.requestId,
@@ -264,7 +283,7 @@ async function runStep(stepId: PipelineStepId, options: PipelineOptions): Promis
     throw new Error("No image loaded.");
   }
 
-  const cv = await waitForCv();
+  const cv = waitForCv();
   const nextOptions = stepOptions(stepId, options);
 
   if (stepId === "normalize") {
@@ -451,7 +470,7 @@ async function handleRunAll(command: Extract<BridgeCommand, { type: "RUN_ALL" }>
 async function handleCommand(command: BridgeCommand): Promise<void> {
   try {
     if (command.type === "INIT") {
-      await waitForCv();
+      await initializeOpenCv();
       postToNative({ type: "READY", requestId: command.requestId });
     } else if (command.type === "LOAD_IMAGE") {
       await handleLoadImage(command);
@@ -490,4 +509,10 @@ document.addEventListener("message", ((event: Event) => {
   }
 }) as EventListener);
 
-void waitForCv().catch((error) => postError(undefined, error));
+(window as any).PaintPipelineBridge = {
+  initializeOpenCv(candidate?: any) {
+    void initializeOpenCv(candidate).catch((error) => postError(undefined, error));
+  },
+};
+
+postStatus("Pipeline bridge loaded");

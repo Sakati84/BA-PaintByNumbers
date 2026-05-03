@@ -30,7 +30,7 @@ import type {
   PipelineStepResult,
 } from "../features/pipeline/PipelineTypes";
 import { EAGLE_BASE64 } from "../features/pipeline/generated/eagleBase64";
-import { PIPELINE_HTML } from "../features/pipeline/generated/pipelineHtml";
+import { COMPUTE_HTML, OPENCV_JS, PIPELINE_BRIDGE_JS } from "../features/pipeline/generated/pipelineAssets";
 
 const EAGLE_SOURCE = require("../../assets/eagle.png");
 
@@ -76,11 +76,23 @@ export default function App() {
 
     async function preparePipelineFile(): Promise<void> {
       try {
-        const pipelineFile = new FileSystem.File(FileSystem.Paths.cache, "paint-pipeline.html");
-        pipelineFile.create({ overwrite: true, intermediates: true });
-        pipelineFile.write(PIPELINE_HTML);
+        const pipelineDirectory = new FileSystem.Directory(FileSystem.Paths.cache, "paint-pipeline");
+        pipelineDirectory.create({ idempotent: true, intermediates: true });
+
+        const htmlFile = new FileSystem.File(pipelineDirectory, "compute.html");
+        htmlFile.create({ overwrite: true });
+        htmlFile.write(COMPUTE_HTML);
+
+        const opencvFile = new FileSystem.File(pipelineDirectory, "opencv.js");
+        opencvFile.create({ overwrite: true });
+        opencvFile.write(OPENCV_JS);
+
+        const bridgeFile = new FileSystem.File(pipelineDirectory, "pipelineBridge.js");
+        bridgeFile.create({ overwrite: true });
+        bridgeFile.write(PIPELINE_BRIDGE_JS);
+
         if (!cancelled) {
-          setPipelineUri(pipelineFile.uri);
+          setPipelineUri(htmlFile.uri);
           setBridgeStatus("Opening local WebView file");
         }
       } catch (error) {
