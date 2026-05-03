@@ -52,6 +52,10 @@ const html = `<!doctype html>
           } catch (error) {}
         }
 
+        function status(message) {
+          post({ type: "STATUS", message: message });
+        }
+
         window.addEventListener("error", function (event) {
           post({
             type: "ERROR",
@@ -79,12 +83,59 @@ const html = `<!doctype html>
             return canvas;
           };
         }
+
+        window.__paintOpenCvRuntime = {
+          ready: false,
+          cv: null,
+          callbacks: [],
+          onReady: function (callback) {
+            if (this.ready) {
+              callback(this.cv);
+              return;
+            }
+            this.callbacks.push(callback);
+          },
+          resolve: function (cvInstance) {
+            this.ready = true;
+            this.cv = cvInstance;
+            status("OpenCV runtime ready");
+            while (this.callbacks.length > 0) {
+              this.callbacks.shift()(cvInstance);
+            }
+          },
+        };
+
+        var Module = {
+          print: function (message) {
+            status("OpenCV: " + message);
+          },
+          printErr: function (message) {
+            status("OpenCV warning: " + message);
+          },
+          monitorRunDependencies: function (left) {
+            status(left > 0 ? "OpenCV loading dependencies: " + left : "OpenCV dependencies loaded");
+          },
+          onAbort: function (reason) {
+            post({ type: "ERROR", message: "OpenCV abort: " + String(reason || "unknown") });
+          },
+          onRuntimeInitialized: function () {
+            var cvInstance = this;
+            setTimeout(function () {
+              window.__paintOpenCvRuntime.resolve(cvInstance);
+            }, 0);
+          },
+        };
+
+        window.Module = Module;
+        status("Loading OpenCV script");
       })();
     </script>
     <script src="./opencv.js"></script>
     <script src="./pipelineBridge.js"></script>
     <script>
-      window.PaintPipelineBridge.initializeOpenCv(window.cv);
+      window.__paintOpenCvRuntime.onReady(function (cvInstance) {
+        window.PaintPipelineBridge.initializeOpenCv(cvInstance);
+      });
     </script>
   </body>
 </html>`;
