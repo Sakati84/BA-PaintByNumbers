@@ -210,7 +210,7 @@ self.onmessage = async (e: MessageEvent) => {
             return;
           }
           clearFrom('region-merge');
-          const result = applyRegionMerging(protrusionResult, cv, options?.minRegionSize, options?.protectHighContrast, options?.highContrastMinPx);
+          const result = applyRegionMerging(protrusionResult, cv, options?.minRegionSize, options?.protectHighContrast, options?.highContrastMinPx, options?.maxRegions);
           regionMergeResult = result;
           resultImageData = canvasToImageData(result.canvas);
           resultWidth = result.width;

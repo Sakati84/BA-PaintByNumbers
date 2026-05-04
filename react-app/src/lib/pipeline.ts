@@ -845,14 +845,15 @@ function facetReduce(
 }
 
 function applyRegionMergingVoronoi(
-  protrusionPrune: ProtrusionPruneResult, cv: any, minRegionSize?: number, protectHighContrast = false, highContrastMinPx?: number,
+  protrusionPrune: ProtrusionPruneResult, cv: any, minRegionSize?: number, protectHighContrast = false, highContrastMinPx?: number, maxRegions?: number,
 ): RegionMergeResult {
   const threshold = minRegionSize != null && minRegionSize >= 1 ? minRegionSize : FACET_SMALL_THRESHOLD;
   const effectiveMergeArea = threshold;
   const hcFloor = highContrastMinPx != null && highContrastMinPx >= 1 ? highContrastMinPx : FACET_FORCE_MERGE_BELOW;
+  const maxFacets = maxRegions != null && maxRegions >= 1 ? Math.trunc(maxRegions) : FACET_MAX_COUNT;
   const colorIndices = new Int32Array(protrusionPrune.labelMap);
   const fr = facetGetAll(colorIndices, protrusionPrune.width, protrusionPrune.height);
-  facetReduce(effectiveMergeArea, FACET_REMOVE_LARGE_TO_SMALL, FACET_MAX_COUNT, protrusionPrune.paletteRgb, fr, colorIndices, protectHighContrast, hcFloor);
+  facetReduce(effectiveMergeArea, FACET_REMOVE_LARGE_TO_SMALL, maxFacets, protrusionPrune.paletteRgb, fr, colorIndices, protectHighContrast, hcFloor);
   const compacted = compactLabelsByPalette(
     new Int32Array(colorIndices), protrusionPrune.paletteRgb,
     protrusionPrune.width, protrusionPrune.height, cv,
@@ -862,7 +863,7 @@ function applyRegionMergingVoronoi(
   // Run CCA + reduce again to clean those up unconditionally.
   const colorIndices2 = new Int32Array(compacted.labelMap);
   const fr2 = facetGetAll(colorIndices2, protrusionPrune.width, protrusionPrune.height);
-  facetReduce(effectiveMergeArea, FACET_REMOVE_LARGE_TO_SMALL, FACET_MAX_COUNT, compacted.paletteRgb, fr2, colorIndices2, protectHighContrast, hcFloor);
+  facetReduce(effectiveMergeArea, FACET_REMOVE_LARGE_TO_SMALL, maxFacets, compacted.paletteRgb, fr2, colorIndices2, protectHighContrast, hcFloor);
   const compacted2 = compactLabelsByPalette(
     new Int32Array(colorIndices2), compacted.paletteRgb,
     protrusionPrune.width, protrusionPrune.height, cv,
@@ -884,8 +885,9 @@ export function applyRegionMerging(
   minRegionSize?: number,
   protectHighContrast = false,
   highContrastMinPx?: number,
+  maxRegions?: number,
 ): RegionMergeResult {
-  return applyRegionMergingVoronoi(protrusionPrune, cv, minRegionSize, protectHighContrast, highContrastMinPx);
+  return applyRegionMergingVoronoi(protrusionPrune, cv, minRegionSize, protectHighContrast, highContrastMinPx, maxRegions);
 }
 
 // ══════════════════════════════════════════════════════════════════════════

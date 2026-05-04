@@ -16,6 +16,7 @@ type PipelineOptions = {
   resizeMax?: number;
   colorCount?: number;
   minRegionSize?: number;
+  maxRegions?: number;
   protectHighContrast?: boolean;
   highContrastMinPx?: number;
   pruneRadius?: number;
@@ -201,6 +202,7 @@ function stepOptions(stepId: PipelineStepId, options: PipelineOptions): Pipeline
   if (stepId === "region-merge") {
     return {
       minRegionSize: options.minRegionSize,
+      maxRegions: options.maxRegions,
       protectHighContrast: options.protectHighContrast,
       highContrastMinPx: options.highContrastMinPx,
     };
@@ -308,6 +310,7 @@ async function runStep(stepId: PipelineStepId, options: PipelineOptions): Promis
       nextOptions.minRegionSize,
       nextOptions.protectHighContrast,
       nextOptions.highContrastMinPx,
+      nextOptions.maxRegions,
     );
     regionMergeResult = result;
     return {

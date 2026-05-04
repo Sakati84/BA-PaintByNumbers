@@ -40,6 +40,7 @@ export default function App() {
   const [targetColorCount, setTargetColorCount] = useState(24);
   const [resizeMax, setResizeMax] = useState(1200);
   const [minRegionSize, setMinRegionSize] = useState(200);
+  const [maxRegions, setMaxRegions] = useState(0);
   const [protectHighContrast, setProtectHighContrast] = useState(false);
   const [highContrastMinPx, setHighContrastMinPx] = useState(20);
   const [pruneRadius, setPruneRadius] = useState(1);
@@ -184,7 +185,7 @@ export default function App() {
       if (step.id === 'normalize') options.resizeMax = resizeMax;
       if (step.id === 'quantize') options.colorCount = targetColorCount;
       if (step.id === 'protrusions') options.pruneRadius = pruneRadius;
-      if (step.id === 'region-merge') { options.minRegionSize = minRegionSize; options.protectHighContrast = protectHighContrast; options.highContrastMinPx = highContrastMinPx; }
+      if (step.id === 'region-merge') { options.minRegionSize = minRegionSize; options.maxRegions = maxRegions > 0 ? maxRegions : undefined; options.protectHighContrast = protectHighContrast; options.highContrastMinPx = highContrastMinPx; }
 
       const result = await sendWorkerMessage('RUN_STEP', {
         stepId: step.id,
@@ -333,6 +334,17 @@ export default function App() {
             onChange={(e) => setMinRegionSize(Math.max(1, Number(e.target.value) || 200))}
             style={{ marginTop: 4, minHeight: 44, borderRadius: 14, border: "1px solid rgba(120, 98, 70, 0.22)", padding: "0 14px", fontSize: "1rem", width: "100%" }}
           />
+          <label className="meta-label" htmlFor="max-regions" style={{ marginTop: 14, display: 'block' }}>Max regions</label>
+          <input
+            id="max-regions"
+            type="number"
+            min={0}
+            step={10}
+            value={maxRegions}
+            onChange={(e) => setMaxRegions(Math.max(0, Number(e.target.value) || 0))}
+            style={{ marginTop: 4, minHeight: 44, borderRadius: 14, border: "1px solid rgba(120, 98, 70, 0.22)", padding: "0 14px", fontSize: "1rem", width: "100%" }}
+          />
+          <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#888' }}>0 = unlimited, otherwise merge until at most this many regions remain</p>
           <label style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
             <input type="checkbox" checked={protectHighContrast} onChange={(e) => setProtectHighContrast(e.target.checked)} />
             Protect high-contrast small regions
