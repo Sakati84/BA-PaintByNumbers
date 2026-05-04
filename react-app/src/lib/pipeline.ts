@@ -144,13 +144,13 @@ interface FacetResult {
 }
 
 export async function runCurrentStage(
-  file: File,
+  sourceImageData: ImageData,
   options: PipelineOptions,
   onProgress?: (update: PipelineProgressUpdate) => void,
 ): Promise<PipelineStageResult> {
   reportProgress(onProgress, "normalize", "Loading source image", 5);
   await yieldToUi();
-  const loaded = await loadAndNormalizeImage(file, options.resizeMax);
+  const loaded = await loadAndNormalizeImage(sourceImageData, options.resizeMax);
 
   reportProgress(onProgress, "opencv", "OpenCV should be pre-loaded from worker", 12);
   await yieldToUi();

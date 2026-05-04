@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:webview-local": "tsc -b && vite build --mode webview-local",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"
   },

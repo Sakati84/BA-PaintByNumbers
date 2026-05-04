@@ -74,7 +74,7 @@ function ensureWorker(): Worker {
     return worker;
   }
 
-  worker = new Worker(new URL("./lib/worker.ts", import.meta.url), { type: "module" });
+  worker = new Worker(new URL("./lib/worker.ts", import.meta.url));
   worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
     const { type, id, payload, error } = event.data;
     if (type === "READY") {

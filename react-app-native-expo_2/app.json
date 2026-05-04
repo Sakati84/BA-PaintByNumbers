@@ -17,6 +17,7 @@
       "bundleIdentifier": "com.anonymous.react-app-native-expo-2"
     },
     "android": {
+      "package": "com.anonymous.reactappnativeexpo2",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -26,6 +27,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "8e6e0262-d779-471f-9d47-f1810254b6b6"
+      }
+    },
+    "owner": "sakati"
   }
 }

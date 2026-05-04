@@ -9,7 +9,7 @@ const PIPELINE_STEPS = [
   { id: 'render', label: 'Final Render', description: 'Generates 5 template styles (color circles, numbers, classic, etc.) with label placements' },
 ] as const;
 
-const EXAMPLE_IMAGE_URL = "/eagle.png";
+const EXAMPLE_IMAGE_URL = "./eagle.png";
 const EXAMPLE_IMAGE_NAME = "eagle.png";
 
 type StepId = (typeof PIPELINE_STEPS)[number]['id'];
@@ -49,7 +49,7 @@ export default function App() {
 
   // ── Worker init ──
   useEffect(() => {
-    const worker = new Worker(new URL('./lib/worker.ts', import.meta.url), { type: 'module' });
+    const worker = new Worker(new URL('./lib/worker.ts', import.meta.url));
     workerRef.current = worker;
     const startedAt = performance.now();
 

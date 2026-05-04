@@ -2,6 +2,8 @@
 
 declare var self: DedicatedWorkerGlobalScope;
 
+import opencvScriptUrl from "@techstark/opencv-js/dist/opencv.js?url";
+
 import {
   loadAndNormalizeImage,
   applyBilateralSmoothing,
@@ -50,13 +52,8 @@ self.onmessage = async (e: MessageEvent) => {
     }
 
     try {
-      console.log('Worker: loading OpenCV from CDN...');
-      const response = await fetch(
-        'https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js',
-      );
-      const scriptText = await response.text();
-      // eval in worker global scope (importScripts doesn't work in module workers)
-      (0, eval)(scriptText);
+      console.log('Worker: loading local OpenCV runtime...');
+      self.importScripts(opencvScriptUrl);
 
       let cvObj = (self as any).cv;
 

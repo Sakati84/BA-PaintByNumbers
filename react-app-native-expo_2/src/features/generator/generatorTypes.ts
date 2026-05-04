@@ -49,6 +49,15 @@ export type PreparedImage = {
   mimeType?: string | null;
 };
 
+export type PreparedGeneratorImage = {
+  preparedImage: PreparedImage;
+  imageData: {
+    width: number;
+    height: number;
+    data: Uint8ClampedArray;
+  };
+};
+
 export type GeneratorResult = {
   svg: string;
   svgWidth: number;

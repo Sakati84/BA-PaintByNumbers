@@ -1,7 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import * as ImagePicker from 'expo-image-picker';
-import { getExpoGoProjectConfig } from 'expo/src/environment/ExpoGo';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -23,9 +22,9 @@ import type {
   GeneratorSettings,
   GeneratorStage,
 } from './src/features/generator/generatorTypes';
+import { ensureLocalWebViewBundle } from './src/features/generator/localWebViewLoader';
 
 const NativeWebView = Platform.OS === 'web' ? null : require('react-native-webview').WebView;
-const DEFAULT_WEB_SERVER_URL = 'http://192.168.178.186:5175/';
 
 type NumericSettingKey = Exclude<keyof GeneratorSettings, 'removeFacetsFromLargeToSmall'>;
 
@@ -133,46 +132,45 @@ function formatPercentage(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
 }
 
-function getDefaultGeneratorWebUrl(): string {
-  const hostUri = getExpoGoProjectConfig()?.debuggerHost ?? null;
-  if (hostUri == null || hostUri.length === 0) {
-    return DEFAULT_WEB_SERVER_URL;
-  }
-
-  const normalized = hostUri.replace(/^https?:\/\//, '');
-  const slashIndex = normalized.indexOf('/');
-  const withoutPath = slashIndex >= 0 ? normalized.slice(0, slashIndex) : normalized;
-  const colonIndex = withoutPath.lastIndexOf(':');
-  const host = colonIndex >= 0 ? withoutPath.slice(0, colonIndex) : withoutPath;
-  return `http://${host}:5175/`;
-}
-
 function MobileWebViewShell() {
   const webViewRef = useRef<any>(null);
-  const [webUrl, setWebUrl] = useState(() => getDefaultGeneratorWebUrl());
-  const [draftUrl, setDraftUrl] = useState(() => getDefaultGeneratorWebUrl());
-  const [isUrlBarExpanded, setIsUrlBarExpanded] = useState(true);
-  const [statusMessage, setStatusMessage] = useState('Loading WebView...');
+  const [bundleUri, setBundleUri] = useState<string | null>(null);
+  const [readAccessUri, setReadAccessUri] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState('Preparing local WebView bundle...');
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  function normalizeUrl(value: string): string {
-    const trimmed = value.trim();
-    if (trimmed.length === 0) {
-      return webUrl;
-    }
-    return /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
-  }
+  useEffect(() => {
+    let isActive = true;
 
-  function handleLoadUrl(): void {
-    const nextUrl = normalizeUrl(draftUrl);
-    setWebUrl(nextUrl);
-    setDraftUrl(nextUrl);
-    setIsUrlBarExpanded(true);
-    setStatusMessage('Loading WebView...');
-  }
+    void (async () => {
+      try {
+        setStatusMessage('Preparing local WebView bundle...');
+        setLoadError(null);
+        const localBundle = await ensureLocalWebViewBundle();
+        if (!isActive) {
+          return;
+        }
+
+        setBundleUri(localBundle.indexUri);
+        setReadAccessUri(localBundle.rootUri);
+        setStatusMessage('Loading local WebView...');
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+
+        setLoadError(error instanceof Error ? error.message : 'Failed to prepare local WebView bundle.');
+        setStatusMessage('Local WebView failed to prepare.');
+      }
+    })();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   function handleReload(): void {
-    setIsUrlBarExpanded(true);
-    setStatusMessage('Loading WebView...');
+    setStatusMessage('Reloading local WebView...');
     webViewRef.current?.reload();
   }
 
@@ -180,69 +178,57 @@ function MobileWebViewShell() {
     <SafeAreaView style={styles.appShell}>
       <StatusBar style="dark" />
       <View style={styles.nativeShell}>
-        <View style={isUrlBarExpanded ? styles.webviewToolbarExpanded : styles.webviewToolbarCollapsed}>
-          {isUrlBarExpanded ? (
-            <>
-              <Text style={styles.toolbarLabel}>{statusMessage}</Text>
-              <View style={styles.toolbarControls}>
-                <TextInput
-                  value={draftUrl}
-                  onChangeText={setDraftUrl}
-                  style={styles.toolbarInput}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  keyboardType="url"
-                  returnKeyType="go"
-                  onSubmitEditing={handleLoadUrl}
-                />
-                <Pressable onPress={handleLoadUrl} style={styles.toolbarButton}>
-                  <Text style={styles.toolbarButtonText}>Go</Text>
-                </Pressable>
-              </View>
-            </>
-          ) : (
-            <View style={styles.collapsedToolbarRow}>
-              <Text numberOfLines={1} style={styles.collapsedUrl}>{webUrl}</Text>
-              <Pressable onPress={() => setIsUrlBarExpanded(true)} style={styles.toolbarButton}>
-                <Text style={styles.toolbarButtonText}>Edit</Text>
-              </Pressable>
-              <Pressable onPress={handleReload} style={styles.toolbarButton}>
-                <Text style={styles.toolbarButtonText}>Reload</Text>
-              </Pressable>
-            </View>
-          )}
+        <View style={styles.localShellHeader}>
+          <View style={styles.localShellCopy}>
+            <Text style={styles.localShellLabel}>Local WebView Bundle</Text>
+            <Text style={styles.localShellStatus}>{statusMessage}</Text>
+            {bundleUri != null ? (
+              <Text numberOfLines={1} style={styles.localShellPath}>
+                {bundleUri}
+              </Text>
+            ) : null}
+            {loadError != null ? <Text style={styles.localShellError}>{loadError}</Text> : null}
+          </View>
+          <Pressable onPress={handleReload} style={styles.toolbarButton} disabled={bundleUri == null}>
+            <Text style={styles.toolbarButtonText}>Reload</Text>
+          </Pressable>
         </View>
         <View style={styles.webviewCard}>
-          {NativeWebView == null ? null : (
+          {NativeWebView == null || bundleUri == null ? (
+            <View style={styles.webviewLoading}>
+              <ActivityIndicator color="#135c44" />
+              <Text style={styles.settingHint}>{loadError ?? 'Preparing browser generator...'}</Text>
+            </View>
+          ) : (
             <NativeWebView
               ref={webViewRef}
-              source={{ uri: webUrl }}
+              source={{ uri: bundleUri }}
               originWhitelist={['*']}
               allowFileAccess
-              allowingReadAccessToURL={webUrl}
+              allowFileAccessFromFileURLs
+              allowUniversalAccessFromFileURLs
+              allowingReadAccessToURL={readAccessUri ?? bundleUri}
               javaScriptEnabled
               domStorageEnabled
               startInLoadingState
               onLoadStart={() => {
-                setIsUrlBarExpanded(true);
-                setStatusMessage('Loading WebView...');
+                setStatusMessage('Loading local WebView...');
               }}
               onLoadEnd={() => {
-                setStatusMessage('Loaded');
-                setIsUrlBarExpanded(false);
+                setStatusMessage('Local WebView loaded.');
               }}
               onHttpError={(event: any) => {
                 setStatusMessage(`HTTP ${event.nativeEvent.statusCode}`);
-                setIsUrlBarExpanded(true);
               }}
               onError={(event: any) => {
-                setStatusMessage(event.nativeEvent.description ?? 'Failed to load WebView');
-                setIsUrlBarExpanded(true);
+                const message = event.nativeEvent.description ?? 'Failed to load local WebView';
+                setLoadError(message);
+                setStatusMessage(message);
               }}
               renderLoading={() => (
                 <View style={styles.webviewLoading}>
                   <ActivityIndicator color="#135c44" />
-                  <Text style={styles.settingHint}>Loading browser generator...</Text>
+                  <Text style={styles.settingHint}>Loading local browser generator...</Text>
                 </View>
               )}
               style={styles.webview}
@@ -384,7 +370,7 @@ function WebGeneratorApp() {
                 <Text style={styles.settingLabel}>{field.label}</Text>
                 <TextInput
                   value={settingsDraft[field.key]}
-                  onChangeText={(value) => handleNumericSettingChange(field.key, value)}
+                  onChangeText={(value: string) => handleNumericSettingChange(field.key, value)}
                   style={styles.input}
                   keyboardType={field.keyboardType ?? 'default'}
                   autoCapitalize="none"
@@ -500,42 +486,42 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 0,
   },
-  webviewToolbarExpanded: {
-    gap: 8,
-    paddingHorizontal: 10,
-    paddingTop: 8,
-    paddingBottom: 10,
+  localShellHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 12,
     backgroundColor: '#f3efe5',
     borderBottomWidth: 1,
     borderBottomColor: '#d9cfbc',
   },
-  webviewToolbarCollapsed: {
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    backgroundColor: '#f3efe5',
-    borderBottomWidth: 1,
-    borderBottomColor: '#d9cfbc',
+  localShellCopy: {
+    flex: 1,
+    gap: 4,
   },
-  toolbarLabel: {
+  localShellLabel: {
     color: '#605e55',
     fontSize: 12,
     fontWeight: '700',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
   },
-  toolbarControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  localShellStatus: {
+    color: '#1f1f1c',
+    fontSize: 15,
+    fontWeight: '700',
   },
-  toolbarInput: {
-    flex: 1,
-    height: 40,
-    borderWidth: 1,
-    borderColor: '#d9cfbc',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    color: '#24211d',
-    fontSize: 14,
+  localShellPath: {
+    color: '#5d6057',
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  localShellError: {
+    color: '#8b2f25',
+    fontSize: 13,
+    lineHeight: 18,
   },
   toolbarButton: {
     minWidth: 48,
@@ -550,17 +536,6 @@ const styles = StyleSheet.create({
     color: '#0f3d2e',
     fontSize: 13,
     fontWeight: '800',
-  },
-  collapsedToolbarRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  collapsedUrl: {
-    flex: 1,
-    color: '#35332d',
-    fontSize: 13,
-    fontWeight: '600',
   },
   heroCard: {
     backgroundColor: '#0f3d2e',
