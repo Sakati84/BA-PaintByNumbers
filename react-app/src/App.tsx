@@ -9,6 +9,9 @@ const PIPELINE_STEPS = [
   { id: 'render', label: 'Final Render', description: 'Generates 5 template styles (color circles, numbers, classic, etc.) with label placements' },
 ] as const;
 
+const EXAMPLE_IMAGE_URL = "/eagle.png";
+const EXAMPLE_IMAGE_NAME = "eagle.png";
+
 type StepId = (typeof PIPELINE_STEPS)[number]['id'];
 
 type StepResult = {
@@ -98,9 +101,7 @@ export default function App() {
     [],
   );
 
-  // ── File selected → load into worker ──
-  async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const nextFile = event.target.files?.[0] ?? null;
+  async function loadImageFile(nextFile: File | null) {
     setErrorMessage(null);
     setSelectedFile(nextFile);
     setImageLoaded(false);
@@ -113,7 +114,7 @@ export default function App() {
     setStepTimings(new Map());
     templateUrls.forEach((t) => URL.revokeObjectURL(t.url));
     setTemplateUrls([]);
-        setRenderStats(null);
+    setRenderStats(null);
 
     if (!nextFile) {
       setSourcePreviewUrl(null);
@@ -141,6 +142,25 @@ export default function App() {
       setImageLoaded(true);
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : "Failed to load image into worker.");
+    }
+  }
+
+  // ── File selected → load into worker ──
+  async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    await loadImageFile(event.target.files?.[0] ?? null);
+  }
+
+  async function handleUseExampleImage() {
+    try {
+      const response = await fetch(EXAMPLE_IMAGE_URL);
+      if (!response.ok) {
+        throw new Error(`Failed to load ${EXAMPLE_IMAGE_NAME}: HTTP ${response.status}`);
+      }
+      const blob = await response.blob();
+      const file = new File([blob], EXAMPLE_IMAGE_NAME, { type: blob.type || "image/png" });
+      await loadImageFile(file);
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : "Failed to load eagle example.");
     }
   }
 
@@ -265,6 +285,9 @@ export default function App() {
           <div className="actions">
             <button type="button" className="primary-btn" onClick={() => fileInputRef.current?.click()}>
               {selectedFile ? "Choose another image" : "Upload image"}
+            </button>
+            <button type="button" className="secondary-btn" onClick={handleUseExampleImage}>
+              Use eagle example
             </button>
             <input ref={fileInputRef} className="file-input" type="file" accept="image/*" onChange={handleFileChange} />
           </div>

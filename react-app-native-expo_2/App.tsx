@@ -1,7 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import * as ImagePicker from 'expo-image-picker';
 import { getExpoGoProjectConfig } from 'expo/src/environment/ExpoGo';
-import { useMemo, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -17,7 +17,6 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import type { WebViewMessageEvent } from 'react-native-webview';
 import type {
   GeneratorProgress,
   GeneratorResult,
@@ -26,6 +25,7 @@ import type {
 } from './src/features/generator/generatorTypes';
 
 const NativeWebView = Platform.OS === 'web' ? null : require('react-native-webview').WebView;
+const DEFAULT_WEB_SERVER_URL = 'http://192.168.178.186:5175/';
 
 type NumericSettingKey = Exclude<keyof GeneratorSettings, 'removeFacetsFromLargeToSmall'>;
 
@@ -136,7 +136,7 @@ function formatPercentage(value: number): string {
 function getDefaultGeneratorWebUrl(): string {
   const hostUri = getExpoGoProjectConfig()?.debuggerHost ?? null;
   if (hostUri == null || hostUri.length === 0) {
-    return 'http://127.0.0.1:8083';
+    return DEFAULT_WEB_SERVER_URL;
   }
 
   const normalized = hostUri.replace(/^https?:\/\//, '');
@@ -144,75 +144,74 @@ function getDefaultGeneratorWebUrl(): string {
   const withoutPath = slashIndex >= 0 ? normalized.slice(0, slashIndex) : normalized;
   const colonIndex = withoutPath.lastIndexOf(':');
   const host = colonIndex >= 0 ? withoutPath.slice(0, colonIndex) : withoutPath;
-  return `http://${host}:8083`;
+  return `http://${host}:5175/`;
 }
 
 function MobileWebViewShell() {
   const webViewRef = useRef<any>(null);
   const [webUrl, setWebUrl] = useState(() => getDefaultGeneratorWebUrl());
   const [draftUrl, setDraftUrl] = useState(() => getDefaultGeneratorWebUrl());
-  const [statusMessage, setStatusMessage] = useState('Open the browser generator inside a WebView.');
+  const [isUrlBarExpanded, setIsUrlBarExpanded] = useState(true);
+  const [statusMessage, setStatusMessage] = useState('Loading WebView...');
 
-  const normalizedUrl = useMemo(() => {
-    const trimmed = draftUrl.trim();
+  function normalizeUrl(value: string): string {
+    const trimmed = value.trim();
     if (trimmed.length === 0) {
       return webUrl;
     }
-    if (/^https?:\/\//i.test(trimmed)) {
-      return trimmed;
-    }
-    return `http://${trimmed}`;
-  }, [draftUrl, webUrl]);
-
-  function handleLoadGenerator(): void {
-    setWebUrl(normalizedUrl);
-    setStatusMessage(`Loading ${normalizedUrl}`);
+    return /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
   }
 
-  function handleWebMessage(event: WebViewMessageEvent): void {
-    setStatusMessage(event.nativeEvent.data);
+  function handleLoadUrl(): void {
+    const nextUrl = normalizeUrl(draftUrl);
+    setWebUrl(nextUrl);
+    setDraftUrl(nextUrl);
+    setIsUrlBarExpanded(true);
+    setStatusMessage('Loading WebView...');
+  }
+
+  function handleReload(): void {
+    setIsUrlBarExpanded(true);
+    setStatusMessage('Loading WebView...');
+    webViewRef.current?.reload();
   }
 
   return (
     <SafeAreaView style={styles.appShell}>
       <StatusBar style="dark" />
       <View style={styles.nativeShell}>
-        <View style={styles.heroCard}>
-          <Text style={styles.eyebrow}>Android WebView</Text>
-          <Text style={styles.title}>Browser Runtime Generator</Text>
-          <Text style={styles.subtitle}>
-            This shell loads the web generator in Android WebView so the heavy paint-by-numbers code runs in a browser-like engine instead of the React Native JS runtime.
-          </Text>
-          <Text style={styles.settingHint}>Expected local web server: `npm run web` on port `8083`.</Text>
+        <View style={isUrlBarExpanded ? styles.webviewToolbarExpanded : styles.webviewToolbarCollapsed}>
+          {isUrlBarExpanded ? (
+            <>
+              <Text style={styles.toolbarLabel}>{statusMessage}</Text>
+              <View style={styles.toolbarControls}>
+                <TextInput
+                  value={draftUrl}
+                  onChangeText={setDraftUrl}
+                  style={styles.toolbarInput}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="url"
+                  returnKeyType="go"
+                  onSubmitEditing={handleLoadUrl}
+                />
+                <Pressable onPress={handleLoadUrl} style={styles.toolbarButton}>
+                  <Text style={styles.toolbarButtonText}>Go</Text>
+                </Pressable>
+              </View>
+            </>
+          ) : (
+            <View style={styles.collapsedToolbarRow}>
+              <Text numberOfLines={1} style={styles.collapsedUrl}>{webUrl}</Text>
+              <Pressable onPress={() => setIsUrlBarExpanded(true)} style={styles.toolbarButton}>
+                <Text style={styles.toolbarButtonText}>Edit</Text>
+              </Pressable>
+              <Pressable onPress={handleReload} style={styles.toolbarButton}>
+                <Text style={styles.toolbarButtonText}>Reload</Text>
+              </Pressable>
+            </View>
+          )}
         </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Web Generator URL</Text>
-          <Text style={styles.sectionHint}>
-            The default URL is derived from the Expo Go LAN host and points to the web build running on your computer.
-          </Text>
-          <TextInput
-            value={draftUrl}
-            onChangeText={setDraftUrl}
-            style={styles.input}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="url"
-          />
-          <View style={styles.heroActions}>
-            <Pressable onPress={handleLoadGenerator} style={styles.primaryButton}>
-              <Text style={styles.primaryButtonText}>Load in WebView</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => webViewRef.current?.reload()}
-              style={styles.secondaryButton}
-            >
-              <Text style={styles.secondaryButtonText}>Reload</Text>
-            </Pressable>
-          </View>
-          <Text style={styles.settingHint}>{statusMessage}</Text>
-        </View>
-
         <View style={styles.webviewCard}>
           {NativeWebView == null ? null : (
             <NativeWebView
@@ -224,15 +223,22 @@ function MobileWebViewShell() {
               javaScriptEnabled
               domStorageEnabled
               startInLoadingState
-              onLoadStart={() => setStatusMessage(`Loading ${webUrl}`)}
-              onLoadEnd={() => setStatusMessage(`Loaded ${webUrl}`)}
-              onHttpError={(event: any) =>
-                setStatusMessage(`HTTP ${event.nativeEvent.statusCode} while loading ${webUrl}`)
-              }
-              onError={(event: any) =>
-                setStatusMessage(event.nativeEvent.description ?? `Failed to load ${webUrl}`)
-              }
-              onMessage={handleWebMessage}
+              onLoadStart={() => {
+                setIsUrlBarExpanded(true);
+                setStatusMessage('Loading WebView...');
+              }}
+              onLoadEnd={() => {
+                setStatusMessage('Loaded');
+                setIsUrlBarExpanded(false);
+              }}
+              onHttpError={(event: any) => {
+                setStatusMessage(`HTTP ${event.nativeEvent.statusCode}`);
+                setIsUrlBarExpanded(true);
+              }}
+              onError={(event: any) => {
+                setStatusMessage(event.nativeEvent.description ?? 'Failed to load WebView');
+                setIsUrlBarExpanded(true);
+              }}
               renderLoading={() => (
                 <View style={styles.webviewLoading}>
                   <ActivityIndicator color="#135c44" />
@@ -492,10 +498,69 @@ const styles = StyleSheet.create({
   },
   nativeShell: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 24,
-    paddingBottom: 16,
-    gap: 16,
+    padding: 0,
+  },
+  webviewToolbarExpanded: {
+    gap: 8,
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    paddingBottom: 10,
+    backgroundColor: '#f3efe5',
+    borderBottomWidth: 1,
+    borderBottomColor: '#d9cfbc',
+  },
+  webviewToolbarCollapsed: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    backgroundColor: '#f3efe5',
+    borderBottomWidth: 1,
+    borderBottomColor: '#d9cfbc',
+  },
+  toolbarLabel: {
+    color: '#605e55',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  toolbarControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  toolbarInput: {
+    flex: 1,
+    height: 40,
+    borderWidth: 1,
+    borderColor: '#d9cfbc',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    color: '#24211d',
+    fontSize: 14,
+  },
+  toolbarButton: {
+    minWidth: 48,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    backgroundColor: '#d1f1ae',
+    paddingHorizontal: 10,
+  },
+  toolbarButtonText: {
+    color: '#0f3d2e',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  collapsedToolbarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  collapsedUrl: {
+    flex: 1,
+    color: '#35332d',
+    fontSize: 13,
+    fontWeight: '600',
   },
   heroCard: {
     backgroundColor: '#0f3d2e',
@@ -505,12 +570,8 @@ const styles = StyleSheet.create({
   },
   webviewCard: {
     flex: 1,
-    minHeight: 420,
     overflow: 'hidden',
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: '#e7decd',
-    backgroundColor: '#fffaf2',
+    backgroundColor: '#ffffff',
   },
   webview: {
     flex: 1,
