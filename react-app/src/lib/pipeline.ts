@@ -733,6 +733,7 @@ function facetRebuildChangedNeighbours(
       }
     }
   }
+
   // Mark dirty for deferred rebuild
   for (const neighbourIdx of changedNeighbours) {
     const f = fr.facets[neighbourIdx];
