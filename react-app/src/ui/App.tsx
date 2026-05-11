@@ -111,7 +111,6 @@ function AppTopBar() {
         <div className="topbar__dot" />
         <div className="topbar__title">{UI_TEXT.appName}</div>
       </div>
-      <div className="topbar__pill">WebView Studio</div>
     </header>
   );
 }

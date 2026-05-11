@@ -1,5 +1,5 @@
 import { createRequire } from 'node:module';
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -13,8 +13,16 @@ const distDirectory = path.join(reactAppRoot, 'dist');
 const requireFromApp = createRequire(path.join(appNodeModules, 'package.json'));
 const esbuild = requireFromApp('esbuild');
 
-await rm(distDirectory, { recursive: true, force: true });
 await mkdir(distDirectory, { recursive: true });
+for (const entry of await readdir(distDirectory, { withFileTypes: true })) {
+  const entryPath = path.join(distDirectory, entry.name);
+  await rm(entryPath, { recursive: true, force: true }).catch((error) => {
+    if (error != null && typeof error === 'object' && 'code' in error && error.code === 'EBUSY') {
+      return;
+    }
+    throw error;
+  });
+}
 
 await esbuild.build({
   absWorkingDir: reactAppRoot,

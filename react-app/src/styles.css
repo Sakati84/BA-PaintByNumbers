@@ -38,7 +38,8 @@ body,
 }
 
 body {
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 button,
@@ -55,7 +56,8 @@ button {
 .app-shell {
   min-height: 100vh;
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: visible;
   background:
     radial-gradient(circle at top left, rgba(167, 232, 208, 0.9), transparent 38%),
     radial-gradient(circle at top right, rgba(177, 220, 255, 0.9), transparent 34%),
@@ -87,7 +89,7 @@ button {
 .topbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   padding: 6px 0 18px;
 }
 
@@ -110,14 +112,6 @@ button {
   font-family: 'Spline Sans', sans-serif;
   font-size: 1.2rem;
   font-weight: 700;
-}
-
-.topbar__pill {
-  padding: 10px 14px;
-  border-radius: 999px;
-  color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.76);
-  border: 1px solid rgba(205, 217, 219, 0.78);
 }
 
 .hero {
