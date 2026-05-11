@@ -1,0 +1,10 @@
+{
+  "name": "paintbynumbers-webview-app",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:webview-local": "node ./scripts/build-webview-local.mjs",
+    "typecheck": "node ../App/node_modules/typescript/bin/tsc --noEmit -p ./tsconfig.json"
+  }
+}

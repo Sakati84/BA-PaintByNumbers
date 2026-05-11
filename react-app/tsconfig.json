@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["DOM", "DOM.Iterable", "ES2020"],
+    "allowJs": false,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "typeRoots": ["../App/node_modules/@types"],
+    "paths": {
+      "react": ["../App/node_modules/react"],
+      "react/jsx-runtime": ["../App/node_modules/react/jsx-runtime"],
+      "react-dom/client": ["../App/node_modules/react-dom/client"]
+    }
+  },
+  "include": ["src"]
+}
