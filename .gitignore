@@ -1,25 +1,59 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Python
 .venv/
 __pycache__/
-*.pyc
+*.py[cod]
+*.pyo
+*.pyd
 
-.vscode/
-.idea/
-
-node_modules/
-.expo/
-.vite/
-dist/
-build/
-*.tsbuildinfo
-
+# Logs / temp
 *.log
+*.out
+*.err
 *.tmp
+*.temp
 *.cache
 run.exit.txt
 
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# JavaScript / TypeScript
+node_modules/
+dist/
+build/
+coverage/
+.vite/
+*.tsbuildinfo
+
+# Expo / React Native
+.expo/
+.expo-shared/
+expo-env.d.ts
+web-build/
+.metro-health-check*
+.gradle/
+.kotlin/
+android/.gradle/
+android/app/build/
+android/build/
+ios/build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+*.pem
+
+# Project-specific generated files
 react-app-native-expo/expo-*.log
 react-app-native-expo_2/expo-*.log
-
-react-app-native-expo/android/.gradle/
-react-app-native-expo/android/app/build/
-react-app-native-expo/android/build/
