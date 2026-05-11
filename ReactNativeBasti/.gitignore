@@ -1,6 +1,0 @@
-node_modules/
-.expo/
-.pipeline-html-build/
-ios/build/
-ios/Pods/
-*.log

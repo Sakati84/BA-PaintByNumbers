@@ -1,8 +1,0 @@
-{
-  "extends": "expo/tsconfig.base",
-  "compilerOptions": {
-    "strict": true,
-    "lib": ["ESNext", "DOM"]
-  },
-  "exclude": ["src/features/pipeline/pipelineBridgeStandalone.ts"]
-}
