@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Coloring Hub</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700&amp;family=Spline+Sans:wght@700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-primary": "#93d3bc",
+                        "secondary-container": "#b1dcff",
+                        "on-surface-variant": "#404945",
+                        "on-secondary-fixed": "#001e2f",
+                        "on-primary-container": "#2a6a57",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-fixed": "#201c00",
+                        "primary-container": "#a7e8d0",
+                        "secondary": "#386380",
+                        "on-primary-fixed-variant": "#06513f",
+                        "surface-variant": "#dde4e6",
+                        "error-container": "#ffdad6",
+                        "background": "#f4fafd",
+                        "tertiary-container": "#e7dba4",
+                        "surface-container": "#e8eff1",
+                        "surface-container-high": "#e2e9ec",
+                        "on-secondary-container": "#36627f",
+                        "surface-container-low": "#eef5f7",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-fixed": "#002118",
+                        "primary": "#296956",
+                        "on-surface": "#161d1f",
+                        "on-error-container": "#93000a",
+                        "inverse-on-surface": "#ebf2f4",
+                        "on-tertiary-container": "#686033",
+                        "secondary-fixed": "#c9e6ff",
+                        "error": "#ba1a1a",
+                        "on-tertiary-fixed-variant": "#4e471d",
+                        "outline-variant": "#bfc9c3",
+                        "tertiary-fixed": "#efe3ab",
+                        "surface": "#f4fafd",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "surface-dim": "#d4dbdd",
+                        "primary-fixed-dim": "#93d3bc",
+                        "secondary-fixed-dim": "#a1cced",
+                        "tertiary-fixed-dim": "#d2c791",
+                        "surface-container-highest": "#dde4e6",
+                        "inverse-surface": "#2b3234",
+                        "primary-fixed": "#aff0d8",
+                        "outline": "#707974",
+                        "on-background": "#161d1f",
+                        "on-secondary-fixed-variant": "#1c4b67",
+                        "on-error": "#ffffff",
+                        "surface-bright": "#f4fafd",
+                        "surface-tint": "#296956",
+                        "tertiary": "#675f32"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xs": "4px",
+                        "xl": "64px",
+                        "base": "8px",
+                        "sm": "12px",
+                        "md": "24px",
+                        "lg": "48px",
+                        "canvas-margin": "32px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "headline-md": ["Spline Sans"],
+                        "body-md": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Spline Sans"],
+                        "label-bold": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "500" }],
+                        "headline-md": ["28px", { "lineHeight": "1.3", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "headline-lg": ["40px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-bold": ["14px", { "lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style type="text/tailwindcss">
+        @layer utilities {
+            .tactile-button {
+                @apply transition-all duration-150 active:translate-y-[4px] active:border-b-[0px] active:mt-[4px] min-h-[56px];
+            }
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-surface-bright text-on-surface font-body-md text-body-md min-h-screen flex flex-col antialiased">
+<!-- TopAppBar from JSON -->
+<header class="flex justify-between items-center px-6 h-16 w-full sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 border-b-2 border-slate-100 dark:border-slate-800 backdrop-blur-sm md:flex">
+<div class="flex items-center gap-sm cursor-pointer hover:bg-emerald-50 dark:hover:bg-slate-800 transition-colors p-2 rounded-lg">
+<span class="material-symbols-outlined text-emerald-500 dark:text-emerald-400">menu</span>
+<span class="font-['Spline_Sans'] font-bold text-lg text-emerald-600 dark:text-emerald-400 tracking-tight">Coloring Canvas</span>
+</div>
+<div>
+<img alt="user_profile_picture" class="w-10 h-10 rounded-full border border-surface-variant" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqs-Uc_guKxDIVgXOwbHg8FCzOxA8jHMBjjJLto5OJEsiZPznKrVshIRYvTAhw_pp9qyf_f8tzjpg7Kv9kLxDoqAzzJuq5CzllvbETreGa-cZfidMnEd1bS33SFPCGq5mBFZKnGb6IiNh9OCqLEGJzWAvEcI_cbK7jleHd-RsKqiRmSiZjZwZA--hraZ2zqW7ZWapfzXcgZvIZDNij_w0rgU6rPaCrR1Aq8BcK8qJ27F_No8NiZ62REIoU2C6pchv1bmH7ADSSZdQT"/>
+</div>
+</header>
+<!-- Main Canvas Area -->
+<main class="flex-grow p-canvas-margin md:pb-canvas-margin max-w-7xl mx-auto w-full pb-md">
+<header class="mb-lg mt-md">
+<h1 class="font-headline-lg text-headline-lg text-on-surface">What will you color today?</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant mt-sm max-w-2xl">
+                Choose a fresh sheet or bring your own ideas to life. The canvas is yours.
+            </p>
+</header>
+<!-- Bento Grid for Actions -->
+<div class="grid md:grid-cols-2 gap-md grid-cols-2">
+<!-- Card 1: Create from Scratch -->
+<button class="tactile-button bg-primary-container text-on-primary-container rounded-xl p-md flex flex-col justify-between items-start text-left border-b-[4px] border-primary hover:bg-primary-fixed transition-colors group w-full relative overflow-hidden gap-md" style="border-color: #2D6A4F;">
+<div class="absolute top-0 right-0 p-lg opacity-10 group-hover:opacity-20 transition-opacity">
+<span class="material-symbols-outlined text-[120px] leading-none">auto_awesome</span>
+</div>
+<div class="bg-surface-lowest p-sm rounded-full bg-white shadow-sm inline-flex items-center justify-center relative z-10 text-[#2D6A4F]">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+</div>
+<div class="relative z-10 w-full">
+<h2 class="font-headline-md mb-xs text-[18px] leading-tight">Create from Scratch</h2>
+</div>
+</button>
+<!-- Card 2: Upload an Image -->
+<button class="tactile-button bg-secondary-container text-on-secondary-container rounded-xl p-md flex flex-col justify-between items-start text-left border-b-[4px] border-secondary hover:bg-secondary-fixed transition-colors group w-full relative overflow-hidden gap-md" style="border-color: #2D6A4F;">
+<div class="absolute top-0 right-0 p-lg opacity-10 group-hover:opacity-20 transition-opacity">
+<span class="material-symbols-outlined text-[120px] leading-none">photo_library</span>
+</div>
+<div class="bg-surface-lowest p-sm rounded-full bg-white shadow-sm inline-flex items-center justify-center relative z-10 text-[#2D6A4F]">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">photo_library</span>
+</div>
+<div class="relative z-10 w-full">
+<h2 class="font-headline-md mb-xs text-[18px] leading-tight">Upload an Image</h2>
+</div>
+</button>
+</div><section class="mt-xl">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-md">Recent Creations</h3>
+<div class="grid grid-cols-3 gap-2">
+<div class="aspect-square bg-surface-container rounded-lg overflow-hidden relative group cursor-pointer">
+<img alt="Recent creation" class="w-full h-full object-cover grayscale-[20%] group-hover:grayscale-0 transition-all" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD6_KH9dnxpcQpurLaEAjYxn1SGBosWXW4zXpD6y7-HfOI4KconxQKre6fkM6pNg3voTNa2zoZbrFO7-VHea0VgcNohk1m4JbJnLyl_bVIpDQTHn9K_lDXM7HCZ-nk_8NSkGbXM53u1yURlCBr-7G5MYxnhJuTq9o69h_n6AHERDB1SPlB7sbLS4gyi4hxD8cCItvyvV3xwDax5EPkeqEE-FtZfMIlsMv9q5duyI8yie_2_F8W6cvazxw6mhwnn2OGsSUpZd_Yiuyzb"/>
+</div>
+<div class="aspect-square bg-surface-container rounded-lg overflow-hidden relative group cursor-pointer">
+<img alt="Recent creation" class="w-full h-full object-cover grayscale-[20%] group-hover:grayscale-0 transition-all" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBI4DLullnikLGyZue51azVmwAK0ugGUMyBQCPPmxYLsZx3bplHtd5TFFI7PMCVTGkXYXbc3qSY4EobIrcm7Y_Jb-mTk8ygs6lp-pVkAdICcCeDZ6X3uZ9PTLZkvCFOeVT1BsO20kQZBuE0TcFdMVS4wouxy_8MpZ8clUjsEtNjgfPgahvqFrD8TFGhLC1PCgIcfuVrkjRsh5RoMH8jIaM0D0YHFLjuXV9sey5tmF_9KtD9mWgkESQmzl9wEoRNXPEeaSs12LmLTcRQ"/>
+</div>
+<div class="aspect-square bg-surface-container rounded-lg overflow-hidden relative group cursor-pointer">
+<img alt="Recent creation" class="w-full h-full object-cover grayscale-[20%] group-hover:grayscale-0 transition-all" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB_Cgu7IgDdfXaylhE7qZyKGTml9Paenwbfx-bAQ9N6TTZkDFjDNnOqiRm-_hfsbqVWI57Ef-zo8DHVp4Ng6u866-uI8yLfuzt26gy9kOwNO0Q6MM5yNGwdrKYsPU1v-7mY-ujAWzBJCIRT0CnLuIdpcp-6PfhEg2ZTDl6kOqa0yi7mRnqWP-o4J0psecQXZdElTIFfSwiS_CI1ueGGuYZdg7gcfM-_YKDQYccee3huPe-Cth-bv6J-6yOezrsuICuJoez-FFUWdWem"/>
+</div>
+<div class="aspect-square bg-surface-container rounded-lg overflow-hidden relative group cursor-pointer">
+<img alt="Recent creation" class="w-full h-full object-cover grayscale-[20%] group-hover:grayscale-0 transition-all" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAsmrpew_dEvySAl5eFes8uC2nqOJZHjbIVTsiGAi3krf1zr2efeS8UKPW80Yc-vIzLceRDd2zbcjr1Z-1N810d5g7Jc14d_E43fYJWRdfpLyarX71ky7kKidkBig5ockQ81BiMDQawljJHQVMybu6zQzz7f76pToI4PQtfpuFX3i_yf-FOSFj4mV0dcHVhJpwZS-xkTic4izlTfvtC9CGfqPWnUiQt_FNk4PoTAecLtWTJoQeH1hOU74H1Sh-W1OpKfBcH5JXBGn9Y"/>
+</div>
+<div class="aspect-square bg-surface-container rounded-lg overflow-hidden relative group cursor-pointer">
+<img alt="Recent creation" class="w-full h-full object-cover grayscale-[20%] group-hover:grayscale-0 transition-all" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDxRZfrxoKEr5t9SDsOPuy90Ab89hAHBHwqWv977vivxkhlHrurEIHiv0cpbWUCU5sIDa4YQrWZyHzF4uZ4Zb_LKQC8--bwTQOxCOR79Ij_Np2L_OyZgrVSmtgHP-VyURU9wLdtc099dMDKVlDGgn5zHq2t_JEH3Of7dCR_C-rVybset9PGASPMxbQFvr4Pl1jqweptikR0AVx0r8GY0iNfYNdnS4JoB3HdwU6v0c5RX2WvgcsricN1bEjHlZENJ461-fKpAue_-e1U"/>
+</div>
+<div class="aspect-square bg-surface-container rounded-lg overflow-hidden relative group cursor-pointer">
+<img alt="Recent creation" class="w-full h-full object-cover grayscale-[20%] group-hover:grayscale-0 transition-all" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAtEMpomOhJtyYXMasWN_VHrw8ebZerXMtS--l02h5D28VQfi_oOdiVCxN2T4tb44daXaSkKc9yJ5AgXSgpapqLjMHKKHbQBNCP6a9saWI7DeoY2XAvDxTLHfXD9y0wTjccLIeHZoJUhf8Dd3ohBO3uAZIg0LNJfWfUEspueXG3mL_woY9kG8ZjJLOTUJtRqaS2Mjtxp_VTXY1b_a3Cr6onneBtiOC_N1jK9gwaA3crukliku--uFU3bgtRMkYbFR7WhJHL9FdO2loB"/>
+</div>
+</div>
+</section>
+<!-- Recent/Quick Start Section (Contextual filler to make it a full hub) -->
+</main>
+<!-- BottomNavBar from JSON (Mobile Only) -->
+</body></html>

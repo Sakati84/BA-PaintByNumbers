@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Creation Flow - Happy Lines</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700&amp;family=Spline+Sans:wght@700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "inverse-on-surface": "#ebf2f4",
+                "tertiary": "#675f32",
+                "on-secondary-container": "#36627f",
+                "inverse-primary": "#93d3bc",
+                "on-tertiary-fixed-variant": "#4e471d",
+                "on-error-container": "#93000a",
+                "on-tertiary": "#ffffff",
+                "secondary-container": "#b1dcff",
+                "on-error": "#ffffff",
+                "surface-variant": "#dde4e6",
+                "secondary": "#386380",
+                "on-secondary-fixed-variant": "#1c4b67",
+                "on-primary-container": "#2a6a57",
+                "on-tertiary-fixed": "#201c00",
+                "error-container": "#ffdad6",
+                "outline": "#707974",
+                "inverse-surface": "#2b3234",
+                "background": "#f4fafd",
+                "tertiary-container": "#e7dba4",
+                "on-background": "#161d1f",
+                "primary-fixed": "#aff0d8",
+                "on-primary-fixed": "#002118",
+                "on-surface": "#161d1f",
+                "error": "#ba1a1a",
+                "on-primary": "#ffffff",
+                "on-secondary-fixed": "#001e2f",
+                "surface-container-lowest": "#ffffff",
+                "surface": "#f4fafd",
+                "secondary-fixed-dim": "#a1cced",
+                "surface-container-highest": "#dde4e6",
+                "surface-container-low": "#eef5f7",
+                "surface-container-high": "#e2e9ec",
+                "surface-tint": "#296956",
+                "surface-container": "#e8eff1",
+                "on-tertiary-container": "#686033",
+                "primary-fixed-dim": "#93d3bc",
+                "primary": "#296956",
+                "on-surface-variant": "#404945",
+                "surface-dim": "#d4dbdd",
+                "secondary-fixed": "#c9e6ff",
+                "outline-variant": "#bfc9c3",
+                "tertiary-fixed": "#efe3ab",
+                "surface-bright": "#f4fafd",
+                "on-primary-fixed-variant": "#06513f",
+                "tertiary-fixed-dim": "#d2c791",
+                "primary-container": "#a7e8d0",
+                "on-secondary": "#ffffff"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "xl": "64px",
+                "md": "24px",
+                "sm": "12px",
+                "xs": "4px",
+                "lg": "48px",
+                "base": "8px",
+                "canvas-margin": "32px"
+        },
+        "fontFamily": {
+                "headline-lg": [
+                        "Spline Sans"
+                ],
+                "body-md": [
+                        "Plus Jakarta Sans"
+                ],
+                "body-lg": [
+                        "Plus Jakarta Sans"
+                ],
+                "label-bold": [
+                        "Plus Jakarta Sans"
+                ],
+                "headline-md": [
+                        "Spline Sans"
+                ]
+        },
+        "fontSize": {
+                "headline-lg": [
+                        "40px",
+                        {
+                                "lineHeight": "1.2",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "body-md": [
+                        "16px",
+                        {
+                                "lineHeight": "1.6",
+                                "fontWeight": "400"
+                        }
+                ],
+                "body-lg": [
+                        "18px",
+                        {
+                                "lineHeight": "1.6",
+                                "fontWeight": "500"
+                        }
+                ],
+                "label-bold": [
+                        "14px",
+                        {
+                                "lineHeight": "1.2",
+                                "letterSpacing": "0.05em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "headline-md": [
+                        "28px",
+                        {
+                                "lineHeight": "1.3",
+                                "fontWeight": "700"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+<style>
+        /* Custom styles for tactile UI */
+        .tactile-btn {
+            box-shadow: 0 4px 0 theme('colors.primary-fixed-dim');
+            transition: all 0.1s ease-in-out;
+        }
+        .tactile-btn:active {
+            box-shadow: 0 0 0 transparent;
+            transform: translateY(4px);
+        }
+        .tactile-btn-secondary {
+            box-shadow: 0 4px 0 theme('colors.secondary-fixed-dim');
+            transition: all 0.1s ease-in-out;
+        }
+        .tactile-btn-secondary:active {
+            box-shadow: 0 0 0 transparent;
+            transform: translateY(4px);
+        }
+        .tactile-card {
+            border: 1px solid theme('colors.surface-variant');
+        }
+        .tactile-card-selected {
+            border: 2px solid theme('colors.primary');
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex flex-col md:pb-0">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center px-6 h-14 w-full sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 border-b-2 border-slate-100 dark:border-slate-800 backdrop-blur-sm">
+<button aria-label="Menu" class="flex items-center justify-center p-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined text-emerald-500 dark:text-emerald-400">menu</span>
+</button>
+<h1 class="font-['Spline_Sans'] font-bold text-lg text-emerald-600 dark:text-emerald-400 tracking-tight">Happy Lines</h1>
+<div class="w-8 h-8 rounded-full border border-surface-variant overflow-hidden">
+<img alt="user_profile_picture" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqs-Uc_guKxDIVgXOwbHg8FCzOxA8jHMBjjJLto5OJEsiZPznKrVshIRYvTAhw_pp9qyf_f8tzjpg7Kv9kLxDoqAzzJuq5CzllvbETreGa-cZfidMnEd1bS33SFPCGq5mBFZKnGb6IiNh9OCqLEGJzWAvEcI_cbK7jleHd-RsKqiRmSiZjZwZA--hraZ2zqW7ZWapfzXcgZvIZDNij_w0rgU6rPaCrR1Aq8BcK8qJ27F_No8NiZ62REIoU2C6pchv1bmH7ADSSZdQT"/>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow px-4 py-6 w-full max-w-4xl mx-auto flex flex-col gap-6 pb-24">
+<!-- Header Section -->
+<div class="text-center">
+<h2 class="font-headline-lg text-3xl text-on-background mb-1">New Creation</h2>
+<p class="font-body-lg text-base text-on-surface-variant">Configure your next masterpiece</p>
+</div>
+<!-- 2. Coloring Mode -->
+<section class="flex flex-col gap-2">
+<h3 class="font-headline-md text-xl text-on-surface">Coloring Mode</h3>
+<div class="grid grid-cols-2 gap-3 mt-1">
+<button class="tactile-card tactile-card-selected rounded-xl bg-secondary-container flex flex-col items-center justify-center text-on-secondary-container font-label-bold text-xs relative w-full overflow-hidden" onclick="selectCard(this, 'mode')">
+<img alt="Classic Mode Preview" class="w-full h-20 object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC_GIH3BOjvC9UIieANZsLq3pyz_aRldjLexMY9jARNSZCc2zdtzBUR5iJ_mhKzKpL6qOvmIIRj7eA0PfawWqE2RnN7X4K_DxEFsF2KYjqC6w2SgMfulnIOcVTgFEATkbMTbn-rBiBRCQdP9Xn4YKEz6P4tFjQrUYw7etnyI9JVxgBpWIk1yWgnJ9ImP3Yen3NBCHGzDW-4O06sTstY97w3pxrS8wSSlFrzFdNxDo6hhO6cPhI_-NQOGBKHNGMKUHikrEy-cptI0Yt0"/>
+<div class="p-2 w-full text-center bg-secondary-container border-t border-primary">
+                        Classic
+                    </div>
+<div class="absolute top-1.5 right-1.5 bg-primary text-on-primary rounded-full p-0.5 flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-[14px]" style='font-variation-settings: "FILL" 1;'>check</span>
+</div>
+</button>
+<button class="tactile-card rounded-xl bg-surface-container hover:bg-surface-container-high transition-colors flex flex-col items-center justify-center text-on-surface-variant font-label-bold text-xs relative w-full overflow-hidden" onclick="selectCard(this, 'mode')">
+<img alt="Paint by Numbers Preview" class="w-full h-20 object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCObuQ4CKIAJ1KyAVX2_RF49j4W9SEcDJqt-hwNdqIoO-gX8fFn8xysQ0ti0NDOyNermAsLJdyXOEU_B3c5GfyfpGNXEcao4XvaxI1HXMGCkGBhyFs0OtOdALOEacevLQWkMK5ZDE1qrJlG2zLrUQbXBfmKhCL4-mczpt8c2LL0rbffpWcYgnwJAaDcaZZm76Pw0vrrPEjqYlYcEQgfwpyCj94hM-FMMwGFcPBgW3hc-Rk1SgXLs6Hl_xujf4FqC3GL-0KZery2ESHw"/>
+<div class="p-2 w-full text-center bg-surface-container border-t border-outline-variant">
+                        Paint by Numbers
+                    </div>
+</button>
+</div>
+</section>
+<!-- 3. Detail Level -->
+<section class="flex flex-col gap-2">
+<h3 class="font-headline-md text-xl text-on-surface">Detail Level</h3>
+<p class="font-body-md text-sm text-on-surface-variant mb-1">How intricate should the drawing be?</p>
+<div class="grid grid-cols-3 gap-3 mt-1">
+<button class="tactile-card rounded-xl bg-surface-container hover:bg-surface-container-high transition-colors flex flex-col items-center justify-center text-on-surface-variant font-label-bold text-xs relative w-full overflow-hidden" onclick="selectCard(this, 'detail')">
+<img alt="Low Detail Preview" class="w-full h-20 object-cover" src="https://lh3.googleusercontent.com/aida/ADBb0uiEg2nYVd3R-eFvPJj7WHy0QNm1nuruuHBPj-I8xEwkMAr1_GxMxZiQ27b-f9btYN958gcxR9AGCQVDn3AcTSjlhprlmHhOF_7yqMF9E7K6RYLameI3xQJGAHz3UmjdWOraPb2Xt-36g4fEA-8n4MDNlhZHG7EfcjaIGFMMmro_23vnSWtSrIfXIIwVAmEP_SM0dvITDqefdji6iD_NEvqpV6YblHfbCa2fBEwZ3HnjFYmlapHy4BIz-9MYD7DHJNaYb8q2APVgtd0"/>
+<div class="p-2 w-full text-center bg-surface-container border-t border-outline-variant">
+                        Low
+                    </div>
+</button>
+<button class="tactile-card tactile-card-selected rounded-xl bg-secondary-container flex flex-col items-center justify-center text-on-secondary-container font-label-bold text-xs relative w-full overflow-hidden" onclick="selectCard(this, 'detail')">
+<img alt="Medium Detail Preview" class="w-full h-20 object-cover" src="https://lh3.googleusercontent.com/aida/ADBb0uhdrTI4y4hsl7ZF_BmYxZg1X__2-MG08MHSMnLAvy0L3ba0COsPmSojrkeLvy1KJQtaAKeK3xwjf644hYPghRTCTWhPczwiV7M3Dx4JiyTQFjutATzO2U4jYX-BT8Qxk-e1r2t9wDiXfQe0rKR42LxbfhPhAhJPh8-X2p3yCWpx6A1hCb32WWZwkxrKsfEaANydLbKWzzUPjDkraKkyotetxtMNREtnJRUswF8DVFZHG2HrBT-i0LHEHj3xmFfejYiE8sbVK5grfw"/>
+<div class="p-2 w-full text-center bg-secondary-container border-t border-primary">
+                        Medium
+                    </div>
+<div class="absolute top-1.5 right-1.5 bg-primary text-on-primary rounded-full p-0.5 flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-[14px]" style='font-variation-settings: "FILL" 1;'>check</span>
+</div>
+</button>
+<button class="tactile-card rounded-xl bg-surface-container hover:bg-surface-container-high transition-colors flex flex-col items-center justify-center text-on-surface-variant font-label-bold text-xs relative w-full overflow-hidden" onclick="selectCard(this, 'detail')">
+<img alt="Hard Detail Preview" class="w-full h-20 object-cover" src="https://lh3.googleusercontent.com/aida/ADBb0uhOtJagn8nGfqIi1unCpBP8fRnJ0uCJKF_jPFb6m5BbDTA2aIMuCg8FDPwC2bstMLd26L0J4E8bZlM6o4YxTO6YvCti043uetnKD7zWiDaqw2WngKbS8aeu-3xtSyVzHt3JkfHtfpkAH52yVb935p_Zjkk6OcXhpWK_Zvtt_TgifagDmMjlsLR6anLtksZFEQC6I53KUKx_8Ya3xDBBAP5Os9nMPRszo2KgIGuMS3_J1fgngAAmrJxYB7kNBjD78rOsOhiYUUD2vKM"/>
+<div class="p-2 w-full text-center bg-surface-container border-t border-outline-variant">
+                        Hard
+                    </div>
+</button>
+</div>
+</section>
+<!-- Generation Action -->
+<div class="fixed bottom-0 left-0 right-0 z-40 bg-background/80 backdrop-blur-md border-t border-outline-variant p-4">
+<div class="max-w-4xl mx-auto flex justify-center">
+<button class="w-full h-16 rounded-2xl bg-[#2D6A4F] text-white font-bold text-xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-lg">
+<span class="material-symbols-outlined text-[24px]" style='font-variation-settings: "FILL" 1;'>draw</span>
+            Generate
+        </button>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<script>
+    function selectCard(clickedCard, groupName) {
+        // Find all cards in the same group
+        const groupContainer = clickedCard.parentElement;
+        const allCards = groupContainer.querySelectorAll('.tactile-card');
+
+        // Reset all cards in the group
+        allCards.forEach(card => {
+            card.classList.remove('tactile-card-selected', 'bg-secondary-container', 'text-on-secondary-container');
+            card.classList.add('bg-surface-container', 'text-on-surface-variant');
+            
+            // Remove checkmark if it exists
+            const checkmark = card.querySelector('.absolute.top-1\\.5.right-1\\.5');
+            if (checkmark) {
+                checkmark.remove();
+            }
+
+            // Reset bottom bar for the card
+            const bottomBar = card.querySelector('div.p-2');
+            if(bottomBar) {
+                bottomBar.classList.remove('bg-secondary-container', 'border-primary');
+                bottomBar.classList.add('bg-surface-container', 'border-outline-variant');
+            }
+        });
+
+        // Set the clicked card to selected
+        clickedCard.classList.add('tactile-card-selected', 'bg-secondary-container', 'text-on-secondary-container');
+        clickedCard.classList.remove('bg-surface-container', 'text-on-surface-variant');
+
+        // Add checkmark
+        const checkmarkHtml = `
+            <div class="absolute top-1.5 right-1.5 bg-primary text-on-primary rounded-full p-0.5 flex items-center justify-center shadow-sm">
+                <span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">check</span>
+            </div>
+        `;
+        clickedCard.insertAdjacentHTML('beforeend', checkmarkHtml);
+
+        // Update bottom bar for the selected card
+        const bottomBar = clickedCard.querySelector('div.p-2');
+        if(bottomBar) {
+            bottomBar.classList.add('bg-secondary-container', 'border-primary');
+            bottomBar.classList.remove('bg-surface-container', 'border-outline-variant');
+        }
+    }
+</script>
+</body></html>
