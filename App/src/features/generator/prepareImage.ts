@@ -1,7 +1,8 @@
 import { File } from 'expo-file-system';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import type { ImagePickerAsset } from 'expo-image-picker';
-import { decode } from 'fast-png';
+import './textDecoderCompatibility';
+import { decode, type DecodedPng } from 'fast-png';
 import { Platform } from 'react-native';
 
 import type { SimpleImageData } from '../../types/imageData';
@@ -26,7 +27,7 @@ function normalizeChannel(value: number, depth: number): number {
   return Math.round((value / ((1 << depth) - 1)) * 255);
 }
 
-function flattenDecodedPngToImageData(decoded: ReturnType<typeof decode>): SimpleImageData {
+function flattenDecodedPngToImageData(decoded: DecodedPng): SimpleImageData {
   const data = new Uint8ClampedArray(decoded.width * decoded.height * 4);
   const channels = decoded.channels;
   const depth = decoded.depth;
