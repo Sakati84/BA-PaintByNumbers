@@ -2,12 +2,14 @@ import { Directory, File, Paths } from 'expo-file-system';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import type { ImagePickerAsset } from 'expo-image-picker';
 
-type IdeaGenerationRequest = {
+type PosterizeImageRequest = {
+  asset: ImagePickerAsset;
   prompt: string;
-  label: string;
+  colorCount: number;
+  complexity: string;
 };
 
-export type GeneratedIdeaImage = {
+export type PosterizedImage = {
   asset: ImagePickerAsset;
   previewDataUrl: string;
   label: string;
@@ -19,8 +21,14 @@ type InlineImagePart = {
   data: string;
 };
 
-function getGeminiModel(): string {
-  return process.env.EXPO_PUBLIC_GEMINI_IMAGE_MODEL?.trim() || 'gemini-2.5-flash-image';
+const MODEL_INPUT_MAX_EDGE = 1200;
+
+function getNanoBananaModel(): string {
+  return (
+    process.env.EXPO_PUBLIC_NANO_BANANA_MODEL?.trim() ||
+    process.env.EXPO_PUBLIC_GEMINI_IMAGE_MODEL?.trim() ||
+    'gemini-2.5-flash-image'
+  );
 }
 
 function resizeToFit(width: number, height: number, maxEdge: number): { width: number; height: number } {
@@ -35,12 +43,18 @@ function resizeToFit(width: number, height: number, maxEdge: number): { width: n
   };
 }
 
-function sanitizeLabel(value: string): string {
-  const trimmed = value.trim();
-  if (trimmed.length === 0) {
-    return 'Ideenbild';
+function stripDataUrlPrefix(value: string): string {
+  const marker = ';base64,';
+  const markerIndex = value.indexOf(marker);
+  if (markerIndex < 0) {
+    return value;
   }
-  return trimmed.slice(0, 80);
+  return value.slice(markerIndex + marker.length);
+}
+
+function sanitizeLabel(asset: ImagePickerAsset, colorCount: number): string {
+  const baseName = asset.fileName?.replace(/\.[^.]+$/, '').trim() || 'Hochgeladenes Bild';
+  return `${baseName} (${colorCount} Farben)`;
 }
 
 function extractProxyImage(payload: unknown): InlineImagePart | null {
@@ -54,7 +68,7 @@ function extractProxyImage(payload: unknown): InlineImagePart | null {
   if (directBase64 != null) {
     return {
       mimeType: directMime,
-      data: directBase64,
+      data: stripDataUrlPrefix(directBase64),
     };
   }
 
@@ -64,7 +78,7 @@ function extractProxyImage(payload: unknown): InlineImagePart | null {
     if (typeof imageRecord.base64 === 'string') {
       return {
         mimeType: typeof imageRecord.mimeType === 'string' ? imageRecord.mimeType : 'image/png',
-        data: imageRecord.base64,
+        data: stripDataUrlPrefix(imageRecord.base64),
       };
     }
   }
@@ -107,7 +121,12 @@ function extractGeminiImage(payload: unknown): InlineImagePart | null {
       const imageRecord = inlineData as Record<string, unknown>;
       if (typeof imageRecord.data === 'string') {
         return {
-          mimeType: typeof imageRecord.mimeType === 'string' ? imageRecord.mimeType : 'image/png',
+          mimeType:
+            typeof imageRecord.mimeType === 'string'
+              ? imageRecord.mimeType
+              : typeof imageRecord.mime_type === 'string'
+                ? imageRecord.mime_type
+                : 'image/png',
           data: imageRecord.data,
         };
       }
@@ -117,12 +136,39 @@ function extractGeminiImage(payload: unknown): InlineImagePart | null {
   return null;
 }
 
-async function requestViaProxy(prompt: string): Promise<InlineImagePart> {
-  const endpoint = process.env.EXPO_PUBLIC_IDEA_GENERATOR_ENDPOINT?.trim();
+async function prepareInputImage(asset: ImagePickerAsset): Promise<{
+  base64: string;
+  mimeType: string;
+  width: number;
+  height: number;
+}> {
+  const target = resizeToFit(asset.width, asset.height, MODEL_INPUT_MAX_EDGE);
+  const prepared = await manipulateAsync(
+    asset.uri,
+    target.width === asset.width && target.height === asset.height ? [] : [{ resize: target }],
+    {
+      base64: true,
+      compress: 0.92,
+      format: SaveFormat.JPEG,
+    },
+  );
+
+  if (prepared.base64 == null) {
+    throw new Error('Konnte das Upload-Bild nicht für den KI-Call vorbereiten.');
+  }
+
+  return {
+    base64: prepared.base64,
+    mimeType: 'image/jpeg',
+    width: prepared.width,
+    height: prepared.height,
+  };
+}
+
+async function requestViaProxy(request: PosterizeImageRequest, image: Awaited<ReturnType<typeof prepareInputImage>>): Promise<InlineImagePart> {
+  const endpoint = process.env.EXPO_PUBLIC_IMAGE_POSTERIZE_ENDPOINT?.trim();
   if (endpoint == null || endpoint.length === 0) {
-    throw new Error(
-      'Es ist kein Ideenbild-Endpunkt konfiguriert. Setze EXPO_PUBLIC_IDEA_GENERATOR_ENDPOINT oder hinterlege einen Gemini-Key.',
-    );
+    throw new Error('Es ist kein Posterize-Endpunkt konfiguriert. Setze EXPO_PUBLIC_IMAGE_POSTERIZE_ENDPOINT oder einen Nano-Banana-Key.');
   }
 
   const response = await fetch(endpoint, {
@@ -131,31 +177,38 @@ async function requestViaProxy(prompt: string): Promise<InlineImagePart> {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      prompt,
-      model: getGeminiModel(),
-      aspectRatio: '3:4',
+      prompt: request.prompt,
+      model: getNanoBananaModel(),
+      colorCount: request.colorCount,
+      complexity: request.complexity,
+      image: {
+        mimeType: image.mimeType,
+        base64: image.base64,
+        width: image.width,
+        height: image.height,
+      },
     }),
   });
 
   if (!response.ok) {
-    throw new Error(`Der Ideenbild-Endpunkt antwortete mit HTTP ${response.status}.`);
+    throw new Error(`Der Posterize-Endpunkt antwortete mit HTTP ${response.status}.`);
   }
 
   const data = (await response.json()) as unknown;
-  const image = extractProxyImage(data);
-  if (image == null) {
-    throw new Error('Der Ideenbild-Endpunkt hat kein Bild im erwarteten Format geliefert.');
+  const output = extractProxyImage(data);
+  if (output == null) {
+    throw new Error('Der Posterize-Endpunkt hat kein Bild im erwarteten Format geliefert.');
   }
-  return image;
+  return output;
 }
 
-async function requestViaGemini(prompt: string): Promise<InlineImagePart> {
-  const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY?.trim();
+async function requestViaGemini(request: PosterizeImageRequest, image: Awaited<ReturnType<typeof prepareInputImage>>): Promise<InlineImagePart> {
+  const apiKey = process.env.EXPO_PUBLIC_NANO_BANANA_API_KEY?.trim() || process.env.EXPO_PUBLIC_GEMINI_API_KEY?.trim();
   if (apiKey == null || apiKey.length === 0) {
-    return requestViaProxy(prompt);
+    return requestViaProxy(request, image);
   }
 
-  const model = getGeminiModel();
+  const model = getNanoBananaModel();
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
     {
@@ -167,16 +220,20 @@ async function requestViaGemini(prompt: string): Promise<InlineImagePart> {
       body: JSON.stringify({
         contents: [
           {
-            parts: [{ text: prompt }],
+            parts: [
+              { text: request.prompt },
+              {
+                inline_data: {
+                  mime_type: image.mimeType,
+                  data: image.base64,
+                },
+              },
+            ],
           },
         ],
         generationConfig: {
           responseModalities: ['IMAGE'],
-          responseFormat: {
-            image: {
-              aspectRatio: '3:4',
-            },
-          },
+          temperature: 0.2,
         },
       }),
     },
@@ -184,26 +241,25 @@ async function requestViaGemini(prompt: string): Promise<InlineImagePart> {
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Gemini antwortete mit HTTP ${response.status}: ${errorText}`);
+    throw new Error(`Nano Banana antwortete mit HTTP ${response.status}: ${errorText}`);
   }
 
   const data = (await response.json()) as unknown;
-  const image = extractGeminiImage(data);
-  if (image == null) {
-    throw new Error('Gemini hat kein Bild in der Antwort geliefert.');
+  const output = extractGeminiImage(data);
+  if (output == null) {
+    throw new Error('Nano Banana hat kein Bild in der Antwort geliefert.');
   }
-
-  return image;
+  return output;
 }
 
-async function writeGeneratedImageFile(image: InlineImagePart): Promise<{ uri: string; width: number; height: number; mimeType: string }> {
-  const outputDirectory = new Directory(Paths.cache, 'idea-images');
+async function writeOutputImageFile(image: InlineImagePart): Promise<{ uri: string; width: number; height: number; mimeType: string }> {
+  const outputDirectory = new Directory(Paths.cache, 'posterized-images');
   outputDirectory.create({ idempotent: true, intermediates: true });
 
   const extension = image.mimeType === 'image/jpeg' ? 'jpg' : 'png';
-  const outputFile = new File(outputDirectory, `idea-${Date.now()}.${extension}`);
+  const outputFile = new File(outputDirectory, `posterized-${Date.now()}.${extension}`);
   outputFile.create({ overwrite: true, intermediates: true });
-  outputFile.write(image.data, { encoding: 'base64' });
+  outputFile.write(stripDataUrlPrefix(image.data), { encoding: 'base64' });
 
   const normalized = await manipulateAsync(outputFile.uri, [], {
     compress: 1,
@@ -219,7 +275,7 @@ async function writeGeneratedImageFile(image: InlineImagePart): Promise<{ uri: s
 }
 
 async function buildPreviewDataUrl(uri: string, width: number, height: number): Promise<string> {
-  const previewSize = resizeToFit(width, height, 1200);
+  const previewSize = resizeToFit(width, height, MODEL_INPUT_MAX_EDGE);
   const preview = await manipulateAsync(
     uri,
     previewSize.width === width && previewSize.height === height ? [] : [{ resize: previewSize }],
@@ -231,31 +287,31 @@ async function buildPreviewDataUrl(uri: string, width: number, height: number): 
   );
 
   if (preview.base64 == null) {
-    throw new Error('Konnte keine Vorschau für das Ideenbild erzeugen.');
+    throw new Error('Konnte keine Vorschau für das posterisierte Bild erzeugen.');
   }
 
   return `data:image/jpeg;base64,${preview.base64}`;
 }
 
-export async function generateIdeaImage(request: IdeaGenerationRequest): Promise<GeneratedIdeaImage> {
-  const generatedImage = await requestViaGemini(request.prompt);
-  const normalized = await writeGeneratedImageFile(generatedImage);
+export async function posterizeImageWithNanoBanana(request: PosterizeImageRequest): Promise<PosterizedImage> {
+  const inputImage = await prepareInputImage(request.asset);
+  const posterizedImage = await requestViaGemini(request, inputImage);
+  const normalized = await writeOutputImageFile(posterizedImage);
   const previewDataUrl = await buildPreviewDataUrl(normalized.uri, normalized.width, normalized.height);
-
-  const fileName = `idea-${Date.now()}.${generatedImage.mimeType === 'image/jpeg' ? 'jpg' : 'png'}`;
+  const fileName = `posterized-${Date.now()}.${posterizedImage.mimeType === 'image/jpeg' ? 'jpg' : 'png'}`;
 
   return {
     asset: {
       assetId: null,
       fileName,
       height: normalized.height,
-      mimeType: generatedImage.mimeType,
+      mimeType: normalized.mimeType,
       type: 'image',
       uri: normalized.uri,
       width: normalized.width,
     },
     previewDataUrl,
-    label: sanitizeLabel(request.label),
+    label: sanitizeLabel(request.asset, request.colorCount),
     promptText: request.prompt,
   };
 }

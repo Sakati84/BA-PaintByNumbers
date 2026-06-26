@@ -1,4 +1,5 @@
 import type {
+  GeneratorOutputVariant,
   GeneratorProgress,
   GeneratorResult,
   GeneratorSettings,
@@ -8,6 +9,7 @@ import type {
 } from '../generator/generatorTypes';
 
 export type {
+  GeneratorOutputVariant,
   GeneratorProgress,
   GeneratorResult,
   GeneratorSettings,
@@ -18,7 +20,7 @@ export type {
 
 export type WebImageSource = {
   sourceToken: string;
-  kind: 'uploaded' | 'generated';
+  kind: 'uploaded' | 'posterized';
   label: string;
   width: number;
   height: number;
@@ -33,16 +35,25 @@ export type WebViewAppRequest =
       payload?: null;
     }
   | {
+      type: 'webRuntimeError';
+      requestId: string;
+      payload: {
+        message: string;
+      };
+    }
+  | {
       type: 'pickImage';
       requestId: string;
       payload?: null;
     }
   | {
-      type: 'generateIdeaImage';
+      type: 'posterizeUploadedImage';
       requestId: string;
       payload: {
+        sourceToken: string;
+        complexity: 'simple' | 'medium' | 'detailed';
+        colorCount: number;
         prompt: string;
-        label: string;
       };
     }
   | {
@@ -51,6 +62,34 @@ export type WebViewAppRequest =
       payload: {
         sourceToken: string;
         settings: GeneratorSettings;
+      };
+    }
+  | {
+      type: 'shareResultSvg';
+      requestId: string;
+      payload: {
+        svgUri: string;
+        fileName?: string;
+      };
+    }
+  | {
+      type: 'shareResultFile';
+      requestId: string;
+      payload: {
+        uri: string;
+        fileName?: string;
+        mimeType?: string;
+        uti?: string;
+      };
+    }
+  | {
+      type: 'shareResultSvgFromPng';
+      requestId: string;
+      payload: {
+        pngUri: string;
+        fileName?: string;
+        width: number;
+        height: number;
       };
     };
 
@@ -71,7 +110,7 @@ export type WebViewHostEvent =
       type: 'processingProgress';
       requestId: string;
       payload: {
-        phase: 'ideaImage' | 'paintByNumbers';
+        phase: 'posterizeImage' | 'paintByNumbers';
         progress: number | null;
         message: string;
       };
@@ -85,10 +124,17 @@ export type WebViewHostEvent =
       };
     }
   | {
+      type: 'shareCompleted';
+      requestId: string;
+      payload: {
+        message: string;
+      };
+    }
+  | {
       type: 'error';
       requestId: string;
       error: {
-        stage: 'bridge' | 'pickImage' | 'ideaImage' | 'paintByNumbers';
+        stage: 'bridge' | 'pickImage' | 'posterizeImage' | 'paintByNumbers' | 'shareResult';
         message: string;
       };
     };

@@ -2,15 +2,15 @@ import { ClusteringColorSpace, Settings } from '../../vendor/paintbynumbersgener
 import type { GeneratorSettings } from './generatorTypes';
 
 export const DEFAULT_GENERATOR_SETTINGS: GeneratorSettings = {
-  kMeansNrOfClusters: 16,
+  kMeansNrOfClusters: 12,
   kMeansMinDeltaDifference: 1,
-  narrowPixelStripCleanupRuns: 3,
-  removeFacetsSmallerThanNrOfPoints: 20,
-  removeFacetsFromLargeToSmall: true,
-  maximumNumberOfFacets: 100000,
+  narrowPixelStripCleanupRuns: 4,
+  removeFacetsSmallerThanNrOfPoints: 260,
+  removeFacetsFromLargeToSmall: false,
+  maximumNumberOfFacets: 0,
   nrOfTimesToHalveBorderSegments: 2,
-  resizeImageWidth: 1024,
-  resizeImageHeight: 1024,
+  resizeImageWidth: 1280,
+  resizeImageHeight: 1280,
   randomSeed: 0,
 };
 

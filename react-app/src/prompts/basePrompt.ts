@@ -1,19 +1,19 @@
 export const IDEA_BASE_PROMPT = `
-Du erstellst eine freundliche, klare und gut weiterverarbeitbare Illustration fuer eine Malen-nach-Zahlen-App.
+Du erstellst eine freundliche, klare und gut weiterverarbeitbare Illustration für eine Malen-nach-Zahlen-App.
 
 Das Bild muss:
 - ein einzelnes, klares Hauptmotiv haben
-- gut lesbare Formen und grosse, erkennbare Farbflächen besitzen
+- gut lesbare Formen und große, erkennbare Farbflächen besitzen
 - helle, freundliche Farben nutzen
-- keine fotografische Koernung, keine feinen Mikrotexturen und kein unruhiges Rauschen enthalten
+- keine fotografische Körnung, keine feinen Mikrotexturen und kein unruhiges Rauschen enthalten
 - keine Schrift, keine Logos, keine Wasserzeichen und keinen Rahmen enthalten
-- auf weissem oder sehr ruhigem, cleanem Hintergrund stehen
+- auf weißem oder sehr ruhigem, cleanem Hintergrund stehen
 - kindgerecht, positiv und kreativ wirken
 
-Wichtig fuer die Weiterverarbeitung:
+Wichtig für die Weiterverarbeitung:
 - klare Kanten zwischen wichtigen Formen
-- moeglichst wenig winzige Details
+- möglichst wenig winzige Details
 - gut getrennte Bildelemente
-- keine extrem dunklen Schattenflaechen
-- keine verwischten oder abstrakten Strukturen, die spaeter zu chaotischen Miniregionen werden
+- keine extrem dunklen Schattenflächen
+- keine verwischten oder abstrakten Strukturen, die später zu chaotischen Miniregionen werden
 `.trim();

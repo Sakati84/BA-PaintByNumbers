@@ -12,37 +12,76 @@ export type GeneratorSettings = {
 };
 
 export const DEFAULT_SETTINGS: GeneratorSettings = {
-  kMeansNrOfClusters: 16,
+  kMeansNrOfClusters: 12,
   kMeansMinDeltaDifference: 1,
-  narrowPixelStripCleanupRuns: 3,
-  removeFacetsSmallerThanNrOfPoints: 20,
-  removeFacetsFromLargeToSmall: true,
-  maximumNumberOfFacets: 100000,
+  narrowPixelStripCleanupRuns: 4,
+  removeFacetsSmallerThanNrOfPoints: 260,
+  removeFacetsFromLargeToSmall: false,
+  maximumNumberOfFacets: 0,
   nrOfTimesToHalveBorderSegments: 2,
-  resizeImageWidth: 1024,
-  resizeImageHeight: 1024,
+  resizeImageWidth: 1280,
+  resizeImageHeight: 1280,
   randomSeed: 0,
 };
 
-export type DetailPreset = 'low' | 'medium' | 'high';
+export type ComplexityPreset = 'simple' | 'medium' | 'detailed';
 
-export function settingsForPreset(preset: DetailPreset): GeneratorSettings {
-  if (preset === 'low') {
+export type ComplexityOption = {
+  preset: ComplexityPreset;
+  label: string;
+  colorCount: number;
+  description: string;
+};
+
+export const COMPLEXITY_OPTIONS: ComplexityOption[] = [
+  {
+    preset: 'simple',
+    label: 'Einfach',
+    colorCount: 8,
+    description: 'Große Flächen, klare Konturen, wenig Detail.',
+  },
+  {
+    preset: 'medium',
+    label: 'Mittel',
+    colorCount: 12,
+    description: 'Ausgewogene Vorlage mit gut lesbaren Bereichen.',
+  },
+  {
+    preset: 'detailed',
+    label: 'Detailreich',
+    colorCount: 24,
+    description: 'Mehr Farbnuancen und feinere Segmente.',
+  },
+];
+
+export function complexityOptionForPreset(preset: ComplexityPreset): ComplexityOption {
+  return COMPLEXITY_OPTIONS.find((option) => option.preset === preset) ?? COMPLEXITY_OPTIONS[1];
+}
+
+export function settingsForComplexity(preset: ComplexityPreset): GeneratorSettings {
+  if (preset === 'simple') {
     return {
       ...DEFAULT_SETTINGS,
-      kMeansNrOfClusters: 10,
-      narrowPixelStripCleanupRuns: 2,
-      removeFacetsSmallerThanNrOfPoints: 36,
-      nrOfTimesToHalveBorderSegments: 1,
+      kMeansNrOfClusters: 8,
+      narrowPixelStripCleanupRuns: 5,
+      removeFacetsSmallerThanNrOfPoints: 420,
+      maximumNumberOfFacets: 0,
+      nrOfTimesToHalveBorderSegments: 2,
+      resizeImageWidth: 1100,
+      resizeImageHeight: 1100,
     };
   }
 
-  if (preset === 'high') {
+  if (preset === 'detailed') {
     return {
       ...DEFAULT_SETTINGS,
-      kMeansNrOfClusters: 20,
-      removeFacetsSmallerThanNrOfPoints: 12,
-      nrOfTimesToHalveBorderSegments: 2,
+      kMeansNrOfClusters: 24,
+      narrowPixelStripCleanupRuns: 3,
+      removeFacetsSmallerThanNrOfPoints: 170,
+      maximumNumberOfFacets: 0,
+      nrOfTimesToHalveBorderSegments: 1,
+      resizeImageWidth: 1500,
+      resizeImageHeight: 1500,
     };
   }
 

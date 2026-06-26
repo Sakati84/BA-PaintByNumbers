@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "react-app-native-expo_2",
-    "slug": "react-app-native-expo_2",
+    "name": "Happy Numbers",
+    "slug": "happy-numbers",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/icon-sunflower.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
@@ -19,14 +19,14 @@
     "android": {
       "package": "com.anonymous.reactappnativeexpo2",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/adaptive-icon-sunflower.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon-sunflower.png"
     },
     "extra": {
       "eas": {

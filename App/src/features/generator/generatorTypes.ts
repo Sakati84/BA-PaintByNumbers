@@ -41,6 +41,35 @@ export type PaletteStat = {
   areaPercentage: number;
 };
 
+export type GeneratorOutputVariantId =
+  | 'brightColorCircles'
+  | 'colorCircles'
+  | 'cleanColor'
+  | 'coloredEdges'
+  | 'circlesOnly'
+  | 'numbers'
+  | 'classic'
+  | 'debugUnlabeled';
+
+export type GeneratorOutputVariant = {
+  id: GeneratorOutputVariantId;
+  label: string;
+  description: string;
+  pngBase64?: string;
+  pngUri?: string;
+  pngFileName?: string;
+  pngWidth: number;
+  pngHeight: number;
+  pngByteLength?: number;
+  svg?: string;
+  svgUri?: string;
+  svgFileName?: string;
+  svgWidth?: number;
+  svgHeight?: number;
+  svgByteLength?: number;
+  isDefault?: boolean;
+};
+
 export type PreparedImage = {
   imageUri: string;
   width: number;
@@ -60,6 +89,16 @@ export type PreparedGeneratorImage = {
 
 export type GeneratorResult = {
   svg: string;
+  svgUri?: string;
+  svgFileName?: string;
+  svgByteLength?: number;
+  previewPngBase64?: string;
+  previewPngUri?: string;
+  previewPngFileName?: string;
+  previewPngWidth?: number;
+  previewPngHeight?: number;
+  previewPngByteLength?: number;
+  variants?: GeneratorOutputVariant[];
   svgWidth: number;
   svgHeight: number;
   imageWidth: number;

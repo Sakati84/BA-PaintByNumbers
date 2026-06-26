@@ -1,5 +1,5 @@
 {
-  "name": "react-app-native-expo_2",
+  "name": "happy-numbers",
   "version": "1.0.0",
   "main": "index.ts",
   "scripts": {
@@ -16,6 +16,7 @@
     "expo-file-system": "~19.0.22",
     "expo-image-manipulator": "~14.0.8",
     "expo-image-picker": "~17.0.11",
+    "expo-sharing": "~14.0.8",
     "expo-status-bar": "~3.0.9",
     "fast-png": "^8.0.0",
     "react": "19.1.0",
@@ -27,6 +28,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
+    "esbuild": "^0.28.1",
     "typescript": "~5.9.2"
   },
   "private": true

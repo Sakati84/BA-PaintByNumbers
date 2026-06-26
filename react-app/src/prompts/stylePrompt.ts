@@ -1,8 +1,8 @@
 export const IDEA_STYLE_PROMPT = `
 Visuelle Richtung:
-- moderne, sanfte Sketch-&-Bloom-Aesthetik
+- moderne, sanfte Sketch-&-Bloom-Ästhetik
 - weiche Illustration mit klarer Formensprache
-- freundliche Pastell- und Naturtoene
+- freundliche Pastell- und Naturtöne
 - ausgewogene Komposition mit genug Luft um das Motiv
 - sauber, hochwertig, ruhig und warm
 

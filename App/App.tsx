@@ -1,28 +1,52 @@
 import { StatusBar } from 'expo-status-bar';
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
-import { File } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import { Directory, File } from 'expo-file-system';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
-import { generateIdeaImage } from './src/features/ideaGeneration/generateIdeaImage';
 import { generatePaintByNumbers } from './src/features/generator/generatePaintByNumbers';
 import { ensureLocalWebViewBundle } from './src/features/generator/localWebViewLoader';
+import { posterizeImageWithNanoBanana } from './src/features/imagePosterization/posterizeImageWithNanoBanana';
 import type {
   GeneratorSettings,
   WebImageSource,
   WebViewAppRequest,
   WebViewHostEvent,
 } from './src/features/webview/appWebViewBridgeTypes';
+import type { GeneratorResult } from './src/features/generator/generatorTypes';
 
 const NativeWebView = require('react-native-webview').WebView;
+
+const WEBVIEW_ERROR_BRIDGE = `
+(() => {
+  const sendError = (message) => {
+    try {
+      window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'webRuntimeError',
+        requestId: 'web-runtime',
+        payload: { message: String(message || 'Unbekannter WebView-Fehler.') }
+      }));
+    } catch (_) {}
+  };
+  window.addEventListener('error', (event) => {
+    sendError(event.message || (event.error && event.error.message));
+  });
+  window.addEventListener('unhandledrejection', (event) => {
+    const reason = event.reason;
+    sendError(reason && reason.message ? reason.message : reason);
+  });
+})();
+true;
+`;
 
 type StoredSource = {
   asset: ImagePicker.ImagePickerAsset;
   source: WebImageSource;
 };
 
-type BridgeErrorStage = 'bridge' | 'pickImage' | 'ideaImage' | 'paintByNumbers';
+type BridgeErrorStage = 'bridge' | 'pickImage' | 'posterizeImage' | 'paintByNumbers' | 'shareResult';
 
 function serializeBridgeEvent(event: WebViewHostEvent): string {
   return JSON.stringify(event);
@@ -34,6 +58,33 @@ function parseBridgeRequest(rawValue: string): WebViewAppRequest {
 
 function createSourceToken(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function createResultFileName(): string {
+  return `happy-numbers-malvorlage-${Date.now()}.svg`;
+}
+
+function createPreviewFileName(): string {
+  return `happy-numbers-vorschau-${Date.now()}.png`;
+}
+
+function createVariantFileName(variantId: string, extension = 'png'): string {
+  return `happy-numbers-${variantId}-${Date.now()}.${extension}`;
+}
+
+function createVariantSvgFileName(fileName?: string): string {
+  if (fileName != null && fileName.length > 0) {
+    return fileName.toLowerCase().endsWith('.svg') ? fileName : fileName.replace(/\.[^.]+$/, '') + '.svg';
+  }
+  return `happy-numbers-svg-${Date.now()}.svg`;
+}
+
+function createEmbeddedPngSvg(pngBase64: string, width: number, height: number): string {
+  return [
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
+    `<image href="data:image/png;base64,${pngBase64}" width="${width}" height="${height}" preserveAspectRatio="xMidYMid meet" />`,
+    '</svg>',
+  ].join('');
 }
 
 async function buildPreviewDataUrl(asset: ImagePicker.ImagePickerAsset): Promise<{ previewDataUrl: string; width: number; height: number }> {
@@ -57,7 +108,7 @@ async function buildPreviewDataUrl(asset: ImagePicker.ImagePickerAsset): Promise
   );
 
   if (preview.base64 == null) {
-    throw new Error('Konnte keine WebView-Vorschau fuer das Bild erstellen.');
+    throw new Error('Konnte keine WebView-Vorschau für das Bild erstellen.');
   }
 
   return {
@@ -93,6 +144,7 @@ export default function App() {
   const [bundleUri, setBundleUri] = useState<string | null>(null);
   const [readAccessUri, setReadAccessUri] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [webViewReady, setWebViewReady] = useState(false);
 
   useEffect(() => {
     let isActive = true;
@@ -121,6 +173,18 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (bundleUri == null || webViewReady || loadError != null) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setLoadError('Die lokale WebView-App hat nicht geantwortet. Bitte neu bauen oder Logs prüfen.');
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [bundleUri, loadError, webViewReady]);
+
   function postEvent(event: WebViewHostEvent): void {
     const serialized = serializeBridgeEvent(event);
     webViewRef.current?.postMessage?.(serialized);
@@ -143,9 +207,10 @@ export default function App() {
     asset: ImagePicker.ImagePickerAsset,
     label: string,
     promptText?: string,
+    previewOverride?: { previewDataUrl: string; width: number; height: number },
   ): Promise<void> {
     const token = createSourceToken(kind);
-    const preview = await buildPreviewDataUrl(asset);
+    const preview = previewOverride ?? (await buildPreviewDataUrl(asset));
     const source = createWebImageSource(
       token,
       kind,
@@ -183,19 +248,47 @@ export default function App() {
     await registerSource(requestId, 'uploaded', asset, asset.fileName ?? 'Hochgeladenes Bild');
   }
 
-  async function handleGenerateIdeaImage(requestId: string, prompt: string, label: string): Promise<void> {
+  async function handlePosterizeUploadedImage(
+    requestId: string,
+    sourceToken: string,
+    complexity: string,
+    colorCount: number,
+    prompt: string,
+  ): Promise<void> {
+    const source = sourceStoreRef.current.get(sourceToken);
+    if (source == null) {
+      throw new Error(`Die angeforderte Bildquelle ${sourceToken} ist in der Shell nicht mehr vorhanden.`);
+    }
+
     postEvent({
       type: 'processingProgress',
       requestId,
       payload: {
-        phase: 'ideaImage',
+        phase: 'posterizeImage',
         progress: null,
-        message: 'Ideenbild wird ueber Gemini erzeugt...',
+        message: `Bild wird mit ${colorCount} Farben per KI vorbereitet...`,
       },
     });
 
-    const generated = await generateIdeaImage({ prompt, label });
-    await registerSource(requestId, 'generated', generated.asset, generated.label, generated.promptText);
+    const posterized = await posterizeImageWithNanoBanana({
+      asset: source.asset,
+      prompt,
+      colorCount,
+      complexity,
+    });
+
+    await registerSource(
+      requestId,
+      'posterized',
+      posterized.asset,
+      posterized.label,
+      posterized.promptText,
+      {
+        previewDataUrl: posterized.previewDataUrl,
+        width: posterized.asset.width,
+        height: posterized.asset.height,
+      },
+    );
   }
 
   async function handleRunPaintByNumbers(requestId: string, sourceToken: string, settings: GeneratorSettings): Promise<void> {
@@ -214,7 +307,7 @@ export default function App() {
       },
     });
 
-    const result = await generatePaintByNumbers(source.asset, settings, (progress) => {
+    const generatedResult = await generatePaintByNumbers(source.asset, settings, (progress) => {
       postEvent({
         type: 'processingProgress',
         requestId,
@@ -225,6 +318,7 @@ export default function App() {
         },
       });
     });
+    const result = persistResultAssets(generatedResult);
 
     postEvent({
       type: 'runCompleted',
@@ -236,10 +330,181 @@ export default function App() {
     });
   }
 
+  function persistResultAssets(result: GeneratorResult): GeneratorResult {
+    if (readAccessUri == null) {
+      return result;
+    }
+
+    const outputDirectory = new Directory(readAccessUri, 'generated');
+    outputDirectory.create({ idempotent: true, intermediates: true });
+
+    const fileName = createResultFileName();
+    const outputFile = new File(outputDirectory, fileName);
+    outputFile.create({ intermediates: true, overwrite: true });
+    outputFile.write(result.svg);
+
+    let previewPngUri: string | undefined;
+    let previewPngFileName: string | undefined;
+    const variants = result.variants?.map((variant) => {
+      let pngUri = variant.pngUri;
+      let pngFileName = variant.pngFileName;
+      let pngByteLength = variant.pngByteLength;
+      if (variant.pngBase64 != null && variant.pngBase64.length > 0) {
+        pngFileName = createVariantFileName(variant.id, 'png');
+        const variantFile = new File(outputDirectory, pngFileName);
+        variantFile.create({ intermediates: true, overwrite: true });
+        variantFile.write(variant.pngBase64, { encoding: 'base64' });
+        pngUri = variantFile.uri;
+        pngByteLength = Math.ceil((variant.pngBase64.length * 3) / 4);
+      }
+
+      let svgUri = variant.svgUri;
+      let svgFileName = variant.svgFileName;
+      let svgByteLength = variant.svgByteLength;
+      if (variant.svg != null && variant.svg.length > 0) {
+        svgFileName = createVariantFileName(variant.id, 'svg');
+        const variantSvgFile = new File(outputDirectory, svgFileName);
+        variantSvgFile.create({ intermediates: true, overwrite: true });
+        variantSvgFile.write(variant.svg);
+        svgUri = variantSvgFile.uri;
+        svgByteLength = variant.svg.length;
+      }
+
+      if (variant.isDefault) {
+        previewPngUri = pngUri;
+        previewPngFileName = pngFileName;
+      }
+
+      return {
+        ...variant,
+        pngBase64: undefined,
+        svg: undefined,
+        pngUri,
+        pngFileName,
+        pngByteLength,
+        svgUri,
+        svgFileName,
+        svgByteLength,
+      };
+    });
+
+    if (previewPngUri == null && result.previewPngBase64 != null && result.previewPngBase64.length > 0) {
+      previewPngFileName = createPreviewFileName();
+      const previewFile = new File(outputDirectory, previewPngFileName);
+      previewFile.create({ intermediates: true, overwrite: true });
+      previewFile.write(result.previewPngBase64, { encoding: 'base64' });
+      previewPngUri = previewFile.uri;
+    }
+
+    if (previewPngUri == null && variants != null && variants.length > 0) {
+      previewPngUri = variants[0].pngUri;
+      previewPngFileName = variants[0].pngFileName;
+    }
+
+    return {
+      ...result,
+      svg: '',
+      previewPngBase64: undefined,
+      variants,
+      svgUri: outputFile.uri,
+      svgFileName: fileName,
+      svgByteLength: result.svg.length,
+      previewPngUri,
+      previewPngFileName,
+      previewPngByteLength:
+        result.previewPngBase64 != null && result.previewPngBase64.length > 0
+          ? Math.ceil((result.previewPngBase64.length * 3) / 4)
+          : undefined,
+    };
+  }
+
+  async function handleShareResultFile(
+    requestId: string,
+    uri: string,
+    fileName?: string,
+    mimeType?: string,
+    uti?: string,
+  ): Promise<void> {
+    const isAvailable = await Sharing.isAvailableAsync();
+    if (!isAvailable) {
+      throw new Error('Teilen oder Speichern ist auf diesem Gerät nicht verfügbar.');
+    }
+
+    await Sharing.shareAsync(uri, {
+      mimeType: mimeType ?? 'image/png',
+      UTI: uti ?? 'public.png',
+      dialogTitle: fileName ?? 'Happy Numbers Malvorlage',
+    });
+
+    postEvent({
+      type: 'shareCompleted',
+      requestId,
+      payload: {
+        message: 'Export geöffnet.',
+      },
+    });
+  }
+
+  async function handleShareResultSvgFromPng(
+    requestId: string,
+    pngUri: string,
+    width: number,
+    height: number,
+    fileName?: string,
+  ): Promise<void> {
+    const isAvailable = await Sharing.isAvailableAsync();
+    if (!isAvailable) {
+      throw new Error('Teilen oder Speichern ist auf diesem Gerät nicht verfügbar.');
+    }
+
+    const pngFile = new File(pngUri);
+    const pngBase64 = await pngFile.base64();
+    const outputFile = new File(pngFile.parentDirectory, createVariantSvgFileName(fileName));
+    outputFile.create({ intermediates: true, overwrite: true });
+    outputFile.write(createEmbeddedPngSvg(pngBase64, width, height));
+
+    await Sharing.shareAsync(outputFile.uri, {
+      mimeType: 'image/svg+xml',
+      UTI: 'public.svg-image',
+      dialogTitle: outputFile.name,
+    });
+
+    postEvent({
+      type: 'shareCompleted',
+      requestId,
+      payload: {
+        message: 'SVG-Export geöffnet.',
+      },
+    });
+  }
+
+  async function handleShareResultSvg(requestId: string, svgUri: string, fileName?: string): Promise<void> {
+    const isAvailable = await Sharing.isAvailableAsync();
+    if (!isAvailable) {
+      throw new Error('Teilen oder Speichern ist auf diesem Gerät nicht verfügbar.');
+    }
+
+    await Sharing.shareAsync(svgUri, {
+      mimeType: 'image/svg+xml',
+      UTI: 'public.svg-image',
+      dialogTitle: fileName ?? 'Happy Numbers Malvorlage',
+    });
+
+    postEvent({
+      type: 'shareCompleted',
+      requestId,
+      payload: {
+        message: 'Export geöffnet.',
+      },
+    });
+  }
+
   async function handleMessage(rawValue: string): Promise<void> {
     const request = parseBridgeRequest(rawValue);
 
     if (request.type === 'webAppReady') {
+      setWebViewReady(true);
+      setLoadError(null);
       postEvent({
         type: 'hostReady',
         requestId: request.requestId,
@@ -247,6 +512,11 @@ export default function App() {
           runnerVersion: '2',
         },
       });
+      return;
+    }
+
+    if (request.type === 'webRuntimeError') {
+      setLoadError(request.payload.message);
       return;
     }
 
@@ -260,12 +530,18 @@ export default function App() {
       return;
     }
 
-    if (request.type === 'generateIdeaImage') {
+    if (request.type === 'posterizeUploadedImage') {
       try {
-        await handleGenerateIdeaImage(request.requestId, request.payload.prompt, request.payload.label);
+        await handlePosterizeUploadedImage(
+          request.requestId,
+          request.payload.sourceToken,
+          request.payload.complexity,
+          request.payload.colorCount,
+          request.payload.prompt,
+        );
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Das Ideenbild konnte nicht erzeugt werden.';
-        postError(request.requestId, 'ideaImage', message);
+        const message = error instanceof Error ? error.message : 'Das Bild konnte nicht posterisiert werden.';
+        postError(request.requestId, 'posterizeImage', message);
       }
       return;
     }
@@ -276,6 +552,48 @@ export default function App() {
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Die Paint-by-Numbers-Verarbeitung ist fehlgeschlagen.';
         postError(request.requestId, 'paintByNumbers', message);
+      }
+      return;
+    }
+
+    if (request.type === 'shareResultSvg') {
+      try {
+        await handleShareResultSvg(request.requestId, request.payload.svgUri, request.payload.fileName);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Die Malvorlage konnte nicht exportiert werden.';
+        postError(request.requestId, 'shareResult', message);
+      }
+      return;
+    }
+
+    if (request.type === 'shareResultFile') {
+      try {
+        await handleShareResultFile(
+          request.requestId,
+          request.payload.uri,
+          request.payload.fileName,
+          request.payload.mimeType,
+          request.payload.uti,
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Die Malvorlage konnte nicht exportiert werden.';
+        postError(request.requestId, 'shareResult', message);
+      }
+      return;
+    }
+
+    if (request.type === 'shareResultSvgFromPng') {
+      try {
+        await handleShareResultSvgFromPng(
+          request.requestId,
+          request.payload.pngUri,
+          request.payload.width,
+          request.payload.height,
+          request.payload.fileName,
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Die SVG-Datei konnte nicht exportiert werden.';
+        postError(request.requestId, 'shareResult', message);
       }
     }
   }
@@ -289,43 +607,52 @@ export default function App() {
           <Text style={styles.loadingText}>{loadError ?? 'Die lokale React-App wird vorbereitet...'}</Text>
         </View>
       ) : (
-        <NativeWebView
-          ref={webViewRef}
-          source={{ uri: bundleUri }}
-          originWhitelist={['*']}
-          allowFileAccess
-          allowFileAccessFromFileURLs
-          allowUniversalAccessFromFileURLs
-          allowingReadAccessToURL={readAccessUri ?? bundleUri}
-          domStorageEnabled
-          javaScriptEnabled
-          nestedScrollEnabled
-          overScrollMode="always"
-          scrollEnabled
-          bounces={false}
-          onHttpError={(event: any) => {
-            const message = `HTTP ${event.nativeEvent.statusCode}`;
-            setLoadError(message);
-          }}
-          onError={(event: any) => {
-            const message = event.nativeEvent.description ?? 'Die lokale WebView konnte nicht geladen werden.';
-            setLoadError(message);
-          }}
-          onMessage={(event: any) => {
-            void handleMessage(String(event.nativeEvent.data ?? '')).catch((error: unknown) => {
-              const message = error instanceof Error ? error.message : 'Unbekannter Bridge-Fehler.';
-              postError('bridge', 'bridge', message);
-            });
-          }}
-          renderLoading={() => (
-            <View style={styles.loadingState}>
-              <ActivityIndicator color="#2d6a4f" size="large" />
-              <Text style={styles.loadingText}>Die lokale React-App wird geladen...</Text>
+        <>
+          <NativeWebView
+            ref={webViewRef}
+            source={{ uri: bundleUri }}
+            originWhitelist={['*']}
+            allowFileAccess
+            allowFileAccessFromFileURLs
+            allowUniversalAccessFromFileURLs
+            allowingReadAccessToURL={readAccessUri ?? bundleUri}
+            domStorageEnabled
+            injectedJavaScriptBeforeContentLoaded={WEBVIEW_ERROR_BRIDGE}
+            javaScriptEnabled
+            nestedScrollEnabled
+            overScrollMode="always"
+            scrollEnabled
+            bounces={false}
+            onHttpError={(event: any) => {
+              const message = `HTTP ${event.nativeEvent.statusCode}`;
+              setLoadError(message);
+            }}
+            onError={(event: any) => {
+              const message = event.nativeEvent.description ?? 'Die lokale WebView konnte nicht geladen werden.';
+              setLoadError(message);
+            }}
+            onMessage={(event: any) => {
+              void handleMessage(String(event.nativeEvent.data ?? '')).catch((error: unknown) => {
+                const message = error instanceof Error ? error.message : 'Unbekannter Bridge-Fehler.';
+                postError('bridge', 'bridge', message);
+              });
+            }}
+            renderLoading={() => (
+              <View style={styles.loadingState}>
+                <ActivityIndicator color="#2d6a4f" size="large" />
+                <Text style={styles.loadingText}>Die lokale React-App wird geladen...</Text>
+              </View>
+            )}
+            startInLoadingState
+            style={styles.webview}
+          />
+          {loadError != null ? (
+            <View style={styles.errorOverlay}>
+              <Text style={styles.errorTitle}>Startfehler</Text>
+              <Text style={styles.loadingText}>{loadError}</Text>
             </View>
-          )}
-          startInLoadingState
-          style={styles.webview}
-        />
+          ) : null}
+        </>
       )}
     </View>
   );
@@ -353,5 +680,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 14,
     lineHeight: 20,
+  },
+  errorOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    paddingHorizontal: 24,
+    backgroundColor: '#f9fcfc',
+  },
+  errorTitle: {
+    color: '#c65252',
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
   },
 });

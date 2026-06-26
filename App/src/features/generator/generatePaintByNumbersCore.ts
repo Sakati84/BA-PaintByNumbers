@@ -198,6 +198,8 @@ export async function generatePaintByNumbersFromPreparedInput(
     report('facetReduce', 1, 'Facet reduction complete.');
   } else {
     for (let run = 0; run < cleanupRuns; run += 1) {
+      const isFinalCleanupRun = run === cleanupRuns - 1;
+      const maximumFacetsForRun = isFinalCleanupRun ? vendorSettings.maximumNumberOfFacets : Number.MAX_VALUE;
       const cleanupLocalStart = cleanupRuns > 0 ? run / cleanupRuns : 0;
       report('narrowCleanup', cleanupLocalStart, `Cleanup run ${run + 1}/${cleanupRuns}...`);
       const cleanupStarted = nowMs();
@@ -225,7 +227,7 @@ export async function generatePaintByNumbersFromPreparedInput(
       await FacetReducer.reduceFacets(
         vendorSettings.removeFacetsSmallerThanNrOfPoints,
         vendorSettings.removeFacetsFromLargeToSmall,
-        vendorSettings.maximumNumberOfFacets,
+        maximumFacetsForRun,
         colorMapResult.colorsByIndex,
         facetResult,
         colorMapResult.imgColorIndices,
