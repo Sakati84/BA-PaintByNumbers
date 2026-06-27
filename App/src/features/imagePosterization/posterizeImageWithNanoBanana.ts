@@ -21,7 +21,7 @@ type InlineImagePart = {
   data: string;
 };
 
-const MODEL_INPUT_MAX_EDGE = 1200;
+const MODEL_INPUT_MAX_EDGE = 1024;
 
 function getNanoBananaModel(): string {
   return (

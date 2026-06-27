@@ -42,6 +42,8 @@ export type PaletteStat = {
 };
 
 export type GeneratorOutputVariantId =
+  | 'inputImage'
+  | 'aiPosterizedImage'
   | 'brightColorCircles'
   | 'colorCircles'
   | 'cleanColor'

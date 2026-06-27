@@ -20,6 +20,7 @@ export type {
 
 export type WebImageSource = {
   sourceToken: string;
+  parentSourceToken?: string;
   kind: 'uploaded' | 'posterized';
   label: string;
   width: number;

@@ -95,6 +95,10 @@ const TINY_HARD_EDGE_MERGE_MAX_AREA = 8;
 const MIN_REGION_AREA_RATIO = 0.00025;
 const MIN_LABEL_AREA_RATIO = 0.00025;
 const SMALL_REGION_MAX_PASSES = 3;
+const MAX_FACELET_REDUCTION_MAX_PASSES = 24;
+const MAX_FACELET_REDUCTION_EXTRA_CANDIDATES = 0.35;
+const MAX_FACELET_REDUCTION_MIN_EXTRA_CANDIDATES = 12;
+const MAX_FACELET_MERGE_LAB_DISTANCE = 18;
 const THIN_REGION_AREA_MULTIPLIER = 2;
 const THIN_REGION_MAX_AVERAGE_THICKNESS = 5.5;
 const EXPORT_SCALE = 2;
@@ -674,6 +678,90 @@ function chooseMergeTarget(
   return bestTarget;
 }
 
+function chooseMaxFaceletMergeTarget(
+  region: RegionInfo,
+  regions: RegionInfo[],
+  adjacency: Map<number, Map<number, number>>,
+  candidateMask: Uint8Array,
+  paletteLab: Float32Array,
+): number {
+  const neighbors = adjacency.get(region.id);
+  if (neighbors == null || neighbors.size === 0) {
+    return -1;
+  }
+
+  let bestTarget = -1;
+  let bestCandidatePenalty = Number.POSITIVE_INFINITY;
+  let bestScore = Number.NEGATIVE_INFINITY;
+  let bestArea = -1;
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  function visitNeighbor(neighborId: number, borderLength: number, allowCandidateTarget: boolean): void {
+    const neighbor = regions[neighborId];
+    if (neighbor == null) {
+      return;
+    }
+
+    const candidatePenalty = candidateMask[neighborId] === 1 ? 1 : 0;
+    if (!allowCandidateTarget && candidatePenalty === 1 && neighbor.area <= region.area) {
+      return;
+    }
+
+    const distance = paletteLabDistance(paletteLab, region.colorIndex, neighbor.colorIndex);
+    if (region.area > TINY_HARD_EDGE_MERGE_MAX_AREA && distance > MAX_FACELET_MERGE_LAB_DISTANCE) {
+      return;
+    }
+
+    const score = borderLength * 12 + Math.log2(Math.max(2, neighbor.area)) * 4 - distance * 2.5;
+    const isBetter =
+      candidatePenalty < bestCandidatePenalty ||
+      (candidatePenalty === bestCandidatePenalty && score > bestScore) ||
+      (candidatePenalty === bestCandidatePenalty && score === bestScore && neighbor.area > bestArea) ||
+      (candidatePenalty === bestCandidatePenalty && score === bestScore && neighbor.area === bestArea && distance < bestDistance) ||
+      (candidatePenalty === bestCandidatePenalty &&
+        score === bestScore &&
+        neighbor.area === bestArea &&
+        distance === bestDistance &&
+        neighborId < bestTarget);
+
+    if (isBetter) {
+      bestTarget = neighborId;
+      bestCandidatePenalty = candidatePenalty;
+      bestScore = score;
+      bestArea = neighbor.area;
+      bestDistance = distance;
+    }
+  }
+
+  for (const [neighborId, borderLength] of neighbors) {
+    visitNeighbor(neighborId, borderLength, false);
+  }
+
+  if (bestTarget < 0) {
+    for (const [neighborId, borderLength] of neighbors) {
+      visitNeighbor(neighborId, borderLength, true);
+    }
+  }
+
+  return bestTarget;
+}
+
+function buildMaxFaceletCandidateWindow(regions: RegionInfo[], targetFacelets: number): RegionInfo[] {
+  const excess = regions.length - targetFacelets;
+  if (excess <= 0) {
+    return [];
+  }
+
+  const extraCandidateCount = Math.max(
+    MAX_FACELET_REDUCTION_MIN_EXTRA_CANDIDATES,
+    Math.ceil(excess * MAX_FACELET_REDUCTION_EXTRA_CANDIDATES),
+  );
+  return regions
+    .slice()
+    .sort((left, right) => left.area - right.area || left.id - right.id)
+    .slice(0, Math.min(regions.length - 1, excess + extraCandidateCount));
+}
+
 function resolveMergeTarget(targets: Int32Array, regionId: number): number {
   let current = regionId;
   let guard = 0;
@@ -758,6 +846,71 @@ async function mergeSmallAndThinRegions(raster: RasterData, minRegionArea: numbe
   }
 
   return current;
+}
+
+async function limitMaximumFacelets(
+  raster: RasterData,
+  maxFacelets: number,
+  report: RasterReport,
+): Promise<{ raster: RasterData; connected: ConnectedRegions }> {
+  let current = raster;
+  let connected = findConnectedRegions(current.labelMap, current.width, current.height);
+  if (maxFacelets <= 0) {
+    return { raster: current, connected };
+  }
+
+  const targetFacelets = Math.max(1, Math.floor(maxFacelets));
+  if (connected.regions.length <= targetFacelets) {
+    return { raster: current, connected };
+  }
+
+  const initialRegionCount = connected.regions.length;
+  let pass = 0;
+  while (connected.regions.length > targetFacelets && pass < MAX_FACELET_REDUCTION_MAX_PASSES) {
+    const paletteLab = computePaletteLab(current.paletteRgb);
+    const excess = connected.regions.length - targetFacelets;
+    const adjacency = buildRegionAdjacency(connected.regionMap, current.width, current.height);
+    const candidates = buildMaxFaceletCandidateWindow(connected.regions, targetFacelets);
+    const candidateMask = new Uint8Array(connected.regions.length);
+    for (const candidate of candidates) {
+      candidateMask[candidate.id] = 1;
+    }
+
+    const targets = new Int32Array(connected.regions.length);
+    targets.fill(-1);
+    let mergeCount = 0;
+    for (const region of candidates) {
+      if (mergeCount >= excess) {
+        break;
+      }
+      const target = chooseMaxFaceletMergeTarget(region, connected.regions, adjacency, candidateMask, paletteLab);
+      if (target >= 0 && resolveMergeTarget(targets, target) !== region.id) {
+        targets[region.id] = target;
+        mergeCount += 1;
+      }
+    }
+
+    if (mergeCount === 0) {
+      break;
+    }
+
+    current = compactLabels({
+      ...current,
+      labelMap: applyMergeTargets(current.labelMap, connected.regionMap, connected.regions, targets),
+    });
+    connected = findConnectedRegions(current.labelMap, current.width, current.height);
+    pass += 1;
+    const totalReductionNeeded = Math.max(1, initialRegionCount - targetFacelets);
+    const reducedCount = Math.max(0, initialRegionCount - connected.regions.length);
+    report(
+      'facetReduce',
+      Math.min(1, 0.72 + reducedCount / totalReductionNeeded * 0.26),
+      `${connected.regions.length} Flächen übrig, Ziel ${targetFacelets} ohne harte Farbkanten zu mischen.`,
+    );
+    await nowYield();
+  }
+
+  return { raster: current, connected };
 }
 
 function buildBoundaryMask(regionMap: Int32Array, width: number, height: number): Uint8Array {
@@ -1471,14 +1624,24 @@ export async function buildRasterPaintByNumbers(
   options.report('facetBuild', 0, 'Regionen werden erkannt.');
   options.report('facetReduce', 0, `Regionen unter ${minRegionArea} Pixeln werden zusammengeführt.`);
   raster = await mergeSmallAndThinRegions(raster, minRegionArea, options.report);
+  let connected = findConnectedRegions(raster.labelMap, raster.width, raster.height);
+  if (settings.maximumNumberOfFacets > 0 && connected.regions.length > settings.maximumNumberOfFacets) {
+    options.report(
+      'facetReduce',
+      0.72,
+      `Zielwert ${settings.maximumNumberOfFacets} Flächen wird kontrastgeschützt vorbereitet.`,
+    );
+    const limited = await limitMaximumFacelets(raster, settings.maximumNumberOfFacets, options.report);
+    raster = limited.raster;
+    connected = limited.connected;
+  }
   options.addTiming('facetBuild', (options.nowMs() - started) * 0.45);
   options.addTiming('facetReduce', (options.nowMs() - started) * 0.55);
-  options.report('facetBuild', 1, 'Regionen erkannt.');
-  options.report('facetReduce', 1, 'Kleine Regionen zusammengeführt.');
+  options.report('facetBuild', 1, `${connected.regions.length} ausmalbare Flächen erkannt.`);
+  options.report('facetReduce', 1, 'Regionen zusammengeführt.');
 
   started = options.nowMs();
   options.report('borderTrace', 0, 'Grenzen werden berechnet.');
-  const connected = findConnectedRegions(raster.labelMap, raster.width, raster.height);
   buildBoundaryMask(connected.regionMap, raster.width, raster.height);
   options.addTiming('borderTrace', options.nowMs() - started);
   options.report('borderTrace', 1, 'Grenzen berechnet.');

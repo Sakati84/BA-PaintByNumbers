@@ -12,45 +12,54 @@ export type GeneratorSettings = {
 };
 
 export const DEFAULT_SETTINGS: GeneratorSettings = {
-  kMeansNrOfClusters: 12,
+  kMeansNrOfClusters: 16,
   kMeansMinDeltaDifference: 1,
-  narrowPixelStripCleanupRuns: 4,
-  removeFacetsSmallerThanNrOfPoints: 260,
-  removeFacetsFromLargeToSmall: false,
+  narrowPixelStripCleanupRuns: 3,
+  removeFacetsSmallerThanNrOfPoints: 50,
+  removeFacetsFromLargeToSmall: true,
   maximumNumberOfFacets: 0,
   nrOfTimesToHalveBorderSegments: 2,
-  resizeImageWidth: 1280,
-  resizeImageHeight: 1280,
-  randomSeed: 0,
+  resizeImageWidth: 1024,
+  resizeImageHeight: 1024,
+  randomSeed: 7707,
 };
+
+export const COLOR_COUNT_MIN = 8;
+export const COLOR_COUNT_MAX = 24;
+export const DEFAULT_COLOR_COUNT = 16;
+export const POSTERIZE_MAX_EDGE = 1024;
 
 export type ComplexityPreset = 'simple' | 'medium' | 'detailed';
 
 export type ComplexityOption = {
   preset: ComplexityPreset;
   label: string;
-  colorCount: number;
+  minColorCount: number;
+  maxColorCount: number;
   description: string;
 };
 
 export const COMPLEXITY_OPTIONS: ComplexityOption[] = [
   {
     preset: 'simple',
-    label: 'Einfach',
-    colorCount: 8,
-    description: 'Große Flächen, klare Konturen, wenig Detail.',
+    label: 'Easy',
+    minColorCount: 8,
+    maxColorCount: 11,
+    description: 'Wenige Farben, sehr breite Formen.',
   },
   {
     preset: 'medium',
-    label: 'Mittel',
-    colorCount: 12,
-    description: 'Ausgewogene Vorlage mit gut lesbaren Bereichen.',
+    label: 'Medium',
+    minColorCount: 12,
+    maxColorCount: 17,
+    description: 'Ausgewogene Farbanzahl und klare Details.',
   },
   {
     preset: 'detailed',
-    label: 'Detailreich',
-    colorCount: 24,
-    description: 'Mehr Farbnuancen und feinere Segmente.',
+    label: 'Hard',
+    minColorCount: 18,
+    maxColorCount: 24,
+    description: 'Mehr Farben fuer differenzierte Formen.',
   },
 ];
 
@@ -58,32 +67,52 @@ export function complexityOptionForPreset(preset: ComplexityPreset): ComplexityO
   return COMPLEXITY_OPTIONS.find((option) => option.preset === preset) ?? COMPLEXITY_OPTIONS[1];
 }
 
-export function settingsForComplexity(preset: ComplexityPreset): GeneratorSettings {
-  if (preset === 'simple') {
+export function clampColorCount(value: number): number {
+  if (!Number.isFinite(value)) {
+    return DEFAULT_COLOR_COUNT;
+  }
+  return Math.max(COLOR_COUNT_MIN, Math.min(COLOR_COUNT_MAX, Math.round(value)));
+}
+
+export function complexityForColorCount(colorCount: number): ComplexityPreset {
+  const clamped = clampColorCount(colorCount);
+  if (clamped <= COMPLEXITY_OPTIONS[0].maxColorCount) {
+    return 'simple';
+  }
+  if (clamped <= COMPLEXITY_OPTIONS[1].maxColorCount) {
+    return 'medium';
+  }
+  return 'detailed';
+}
+
+export function settingsForColorCount(colorCount: number): GeneratorSettings {
+  const kMeansNrOfClusters = clampColorCount(colorCount);
+  const complexity = complexityForColorCount(kMeansNrOfClusters);
+  if (complexity === 'simple') {
     return {
       ...DEFAULT_SETTINGS,
-      kMeansNrOfClusters: 8,
-      narrowPixelStripCleanupRuns: 5,
-      removeFacetsSmallerThanNrOfPoints: 420,
-      maximumNumberOfFacets: 0,
+      kMeansNrOfClusters,
+      removeFacetsSmallerThanNrOfPoints: 70,
       nrOfTimesToHalveBorderSegments: 2,
-      resizeImageWidth: 1100,
-      resizeImageHeight: 1100,
     };
   }
 
-  if (preset === 'detailed') {
+  if (complexity === 'detailed') {
     return {
       ...DEFAULT_SETTINGS,
-      kMeansNrOfClusters: 24,
-      narrowPixelStripCleanupRuns: 3,
-      removeFacetsSmallerThanNrOfPoints: 170,
-      maximumNumberOfFacets: 0,
+      kMeansNrOfClusters,
+      removeFacetsSmallerThanNrOfPoints: 40,
       nrOfTimesToHalveBorderSegments: 1,
-      resizeImageWidth: 1500,
-      resizeImageHeight: 1500,
     };
   }
 
-  return DEFAULT_SETTINGS;
+  return {
+    ...DEFAULT_SETTINGS,
+    kMeansNrOfClusters,
+  };
+}
+
+export function settingsForComplexity(preset: ComplexityPreset): GeneratorSettings {
+  const option = complexityOptionForPreset(preset);
+  return settingsForColorCount(Math.round((option.minColorCount + option.maxColorCount) / 2));
 }

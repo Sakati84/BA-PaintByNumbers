@@ -5,6 +5,7 @@ import uploadArt from '../../../App/assets/Upload.png';
 import type {
   GeneratorOutputVariant,
   GeneratorResult,
+  GeneratorStage,
   WebImageSource,
   WebViewHostEvent,
 } from '../../../App/src/features/webview/appWebViewBridgeTypes';
@@ -12,20 +13,24 @@ import { UI_TEXT } from '../content/uiText';
 import { buildPosterizePrompt } from '../lib/promptBuilder';
 import {
   COMPLEXITY_OPTIONS,
+  COLOR_COUNT_MAX,
+  COLOR_COUNT_MIN,
+  DEFAULT_COLOR_COUNT,
+  clampColorCount,
+  complexityForColorCount,
   complexityOptionForPreset,
-  settingsForComplexity,
-  type ComplexityPreset,
+  settingsForColorCount,
 } from '../lib/settings';
 import { WebViewBridge } from '../lib/webviewBridge';
 
 type ScreenState =
   | { name: 'splash' }
-  | { name: 'upload'; complexity: ComplexityPreset }
-  | { name: 'config'; source: WebImageSource; complexity: ComplexityPreset }
+  | { name: 'upload'; colorCount: number }
+  | { name: 'config'; source: WebImageSource; colorCount: number }
   | {
       name: 'processing';
       source?: WebImageSource;
-      complexity: ComplexityPreset;
+      colorCount: number;
       progressPhase: 'posterizeImage' | 'paintByNumbers';
       progressValue: number | null;
       progressMessage: string;
@@ -34,7 +39,7 @@ type ScreenState =
       name: 'result';
       source: WebImageSource;
       result: GeneratorResult;
-      complexity: ComplexityPreset;
+      colorCount: number;
     };
 
 type StoredCreation = {
@@ -48,8 +53,19 @@ type StoredCreation = {
 
 const bridge = new WebViewBridge();
 const RECENT_STORAGE_KEY = 'happynumbers.recentCreations';
-const DEFAULT_COMPLEXITY: ComplexityPreset = 'medium';
 const RESULT_PREVIEW_MAX_EDGE = 1400;
+const DEBUG_TIMING_STAGES: Array<{ stage: GeneratorStage; label: string }> = [
+  { stage: 'decode', label: 'Bild vorbereiten' },
+  { stage: 'kmeans', label: 'Farben gruppieren' },
+  { stage: 'colorMap', label: 'Farbkarte' },
+  { stage: 'narrowCleanup', label: 'Streifen-Cleanup' },
+  { stage: 'borderSegment', label: 'Ausläufer-Cleanup' },
+  { stage: 'facetBuild', label: 'Regionen erkennen' },
+  { stage: 'facetReduce', label: 'Regionen mergen' },
+  { stage: 'borderTrace', label: 'Konturen' },
+  { stage: 'labelPlacement', label: 'Label-Platzierung' },
+  { stage: 'svgRender', label: 'Rendern' },
+];
 
 function createRequestId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -95,6 +111,44 @@ function getResultVariants(result: GeneratorResult): GeneratorOutputVariant[] {
 
 function getDefaultVariantId(variants: GeneratorOutputVariant[]): string | null {
   return variants.find((variant) => variant.isDefault)?.id ?? variants[0]?.id ?? null;
+}
+
+function formatInteger(value: number): string {
+  return new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 }).format(value);
+}
+
+function formatPercent(value: number): string {
+  return new Intl.NumberFormat('de-DE', { maximumFractionDigits: 1 }).format(value * 100) + '%';
+}
+
+function formatDuration(ms: number | undefined): string {
+  if (ms == null || !Number.isFinite(ms)) {
+    return 'n/a';
+  }
+  if (ms < 1000) {
+    return `${Math.round(ms)} ms`;
+  }
+  return `${new Intl.NumberFormat('de-DE', { maximumFractionDigits: 2 }).format(ms / 1000)} s`;
+}
+
+function formatBytes(bytes: number | undefined): string {
+  if (bytes == null || !Number.isFinite(bytes) || bytes <= 0) {
+    return 'n/a';
+  }
+  if (bytes < 1024) {
+    return `${Math.round(bytes)} B`;
+  }
+  if (bytes < 1024 * 1024) {
+    return `${new Intl.NumberFormat('de-DE', { maximumFractionDigits: 1 }).format(bytes / 1024)} KB`;
+  }
+  return `${new Intl.NumberFormat('de-DE', { maximumFractionDigits: 1 }).format(bytes / (1024 * 1024))} MB`;
+}
+
+function formatDimensions(width: number | undefined, height: number | undefined): string {
+  if (width == null || height == null || width <= 0 || height <= 0) {
+    return 'n/a';
+  }
+  return `${formatInteger(width)} x ${formatInteger(height)} px`;
 }
 
 function isSafeStoredThumbnail(value: string): boolean {
@@ -254,28 +308,44 @@ function Hero({
   );
 }
 
-function ComplexitySelector({
+function ColorCountSelector({
   value,
   onChange,
 }: {
-  value: ComplexityPreset;
-  onChange: (preset: ComplexityPreset) => void;
+  value: number;
+  onChange: (colorCount: number) => void;
 }) {
+  const colorCount = clampColorCount(value);
+  const complexity = complexityForColorCount(colorCount);
+  const option = complexityOptionForPreset(complexity);
+
   return (
     <section className="glass-panel">
-      <span className="field-label">Komplexität</span>
-      <div className="complexity-grid">
-        {COMPLEXITY_OPTIONS.map((option) => (
-          <button
-            className={`select-card complexity-card ${value === option.preset ? 'select-card--selected' : ''}`}
-            key={option.preset}
-            onClick={() => onChange(option.preset)}
-          >
-            <div className="complexity-card__count">{option.colorCount}</div>
-            <div className="select-card__header">{option.label}</div>
-            <div className="select-card__meta">{option.description}</div>
-          </button>
-        ))}
+      <span className="field-label">Farben</span>
+      <div className="color-count-control">
+        <div className="color-count-control__header">
+          <div>
+            <strong>{colorCount} Farben</strong>
+            <span>{option.description}</span>
+          </div>
+          <span className="color-count-control__pill">{option.label}</span>
+        </div>
+        <input
+          aria-label="Anzahl der Farben"
+          max={COLOR_COUNT_MAX}
+          min={COLOR_COUNT_MIN}
+          onChange={(event: React.ChangeEvent<HTMLInputElement>) => onChange(clampColorCount(Number(event.currentTarget.value)))}
+          step={1}
+          type="range"
+          value={colorCount}
+        />
+        <div className="color-count-control__scale">
+          {COMPLEXITY_OPTIONS.map((range) => (
+            <span className={range.preset === complexity ? 'color-count-control__scale-active' : ''} key={range.preset}>
+              {range.label}
+            </span>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -299,7 +369,11 @@ export function App() {
     const unsubscribe = bridge.subscribe((event: WebViewHostEvent) => {
       if (event.type === 'hostReady') {
         window.setTimeout(() => {
-          setScreen((current) => (current.name === 'splash' ? { name: 'upload', complexity: DEFAULT_COMPLEXITY } : current));
+          setScreen((current) =>
+            current.name === 'splash'
+              ? { name: 'upload', colorCount: DEFAULT_COLOR_COUNT }
+              : current,
+          );
         }, 500);
         return;
       }
@@ -314,13 +388,13 @@ export function App() {
             return {
               name: 'config',
               source: current.source,
-              complexity: current.complexity,
+              colorCount: current.colorCount,
             };
           }
           if (current.name === 'processing') {
             return {
               name: 'upload',
-              complexity: current.complexity,
+              colorCount: current.colorCount,
             };
           }
           return current;
@@ -340,7 +414,7 @@ export function App() {
           setScreen({
             name: 'config',
             source: event.payload,
-            complexity: DEFAULT_COMPLEXITY,
+            colorCount: DEFAULT_COLOR_COUNT,
           });
           return;
         }
@@ -360,7 +434,7 @@ export function App() {
               requestId: runRequestId,
               payload: {
                 sourceToken: posterizedSource.sourceToken,
-                settings: settingsForComplexity(current.complexity),
+                settings: settingsForColorCount(current.colorCount),
               },
             });
 
@@ -404,14 +478,14 @@ export function App() {
         const source = event.payload.source;
         const result = event.payload.result;
         setScreen((current) => {
-          const complexity = current.name === 'processing' ? current.complexity : DEFAULT_COMPLEXITY;
+          const colorCount = current.name === 'processing' ? current.colorCount : DEFAULT_COLOR_COUNT;
           saveCreation(source, result);
           setRecentCreations(readStoredCreations());
           return {
             name: 'result',
             source,
             result,
-            complexity,
+            colorCount,
           };
         });
       }
@@ -426,7 +500,11 @@ export function App() {
     } else {
       setIsBrowserPreview(true);
       window.setTimeout(() => {
-        setScreen((current) => (current.name === 'splash' ? { name: 'upload', complexity: DEFAULT_COMPLEXITY } : current));
+        setScreen((current) =>
+          current.name === 'splash'
+            ? { name: 'upload', colorCount: DEFAULT_COLOR_COUNT }
+            : current,
+        );
       }, 500);
     }
 
@@ -453,6 +531,52 @@ export function App() {
     }
     return resultVariants.find((variant) => variant.id === selectedVariantId) ?? resultVariants[0];
   }, [resultVariants, selectedVariantId]);
+
+  const resultDebugRows = useMemo(() => {
+    if (screen.name !== 'result') {
+      return [];
+    }
+
+    const result = screen.result;
+    const largestPaletteEntry = result.palette[0];
+    const totalTimingMs = Object.entries(result.timings)
+      .filter(([stage]) => stage !== 'done')
+      .reduce((sum, [, elapsedMs]) => sum + (Number.isFinite(elapsedMs) ? elapsedMs : 0), 0);
+    const selectedPngBytes = selectedVariant?.pngByteLength ?? result.previewPngByteLength;
+    const selectedSvgBytes = selectedVariant?.svgByteLength ?? result.svgByteLength ?? (result.svg.length > 0 ? result.svg.length : undefined);
+    const outputWidth = selectedVariant?.pngWidth ?? selectedVariant?.svgWidth ?? result.previewPngWidth ?? result.svgWidth;
+    const outputHeight = selectedVariant?.pngHeight ?? selectedVariant?.svgHeight ?? result.previewPngHeight ?? result.svgHeight;
+
+    return [
+      { label: 'Quelle', value: screen.source.label },
+      { label: 'Aktuelle Ausgabe', value: selectedVariant?.label ?? 'Malvorlage' },
+      { label: 'Gewählte Farben', value: formatInteger(screen.colorCount) },
+      { label: 'Verwendete Farben', value: formatInteger(result.palette.length) },
+      { label: 'Ausmalbare Flächen', value: formatInteger(result.facetCount) },
+      { label: 'Arbeitsgröße', value: formatDimensions(result.imageWidth, result.imageHeight) },
+      { label: 'Ausgabegröße', value: formatDimensions(outputWidth, outputHeight) },
+      { label: 'Ausgabevarianten', value: formatInteger(resultVariants.length) },
+      {
+        label: 'Größte Farbe',
+        value: largestPaletteEntry != null
+          ? `Farbe ${largestPaletteEntry.index} · ${formatPercent(largestPaletteEntry.areaPercentage)}`
+          : 'n/a',
+      },
+      { label: 'PNG-Groesse', value: formatBytes(selectedPngBytes) },
+      { label: 'SVG-Groesse', value: formatBytes(selectedSvgBytes) },
+      { label: 'Gesamtzeit lokal', value: totalTimingMs > 0 ? formatDuration(totalTimingMs) : 'n/a' },
+    ];
+  }, [resultVariants.length, screen, selectedVariant]);
+
+  const resultTimingRows = useMemo(() => {
+    if (screen.name !== 'result') {
+      return [];
+    }
+
+    return DEBUG_TIMING_STAGES
+      .map(({ stage, label }) => ({ label, value: screen.result.timings[stage] }))
+      .filter((entry) => entry.value != null && Number.isFinite(entry.value));
+  }, [screen]);
 
   useEffect(() => {
     if (screen.name !== 'result') {
@@ -607,23 +731,24 @@ export function App() {
     });
   }
 
-  function launchPosterizeAndRun(source: WebImageSource, complexity: ComplexityPreset): void {
+  function launchPosterizeAndRun(source: WebImageSource, colorCount: number): void {
     if (isBrowserPreview) {
       setErrorBanner('Der App-Flow funktioniert erst eingebettet in der Expo-WebView-App.');
       return;
     }
 
-    const option = complexityOptionForPreset(complexity);
+    const clampedColorCount = clampColorCount(colorCount);
+    const complexity = complexityForColorCount(clampedColorCount);
     const requestId = createRequestId('posterize');
     activePosterizeRequestIdRef.current = requestId;
     setErrorBanner(null);
     setScreen({
       name: 'processing',
       source,
-      complexity,
+      colorCount: clampedColorCount,
       progressPhase: 'posterizeImage',
       progressValue: null,
-      progressMessage: `Das Bild wird mit ${option.colorCount} Farben posterisiert...`,
+      progressMessage: `Das Bild wird mit ${clampedColorCount} Farben posterisiert...`,
     });
     bridge.send({
       type: 'posterizeUploadedImage',
@@ -631,8 +756,8 @@ export function App() {
       payload: {
         sourceToken: source.sourceToken,
         complexity,
-        colorCount: option.colorCount,
-        prompt: buildPosterizePrompt({ complexity }),
+        colorCount: clampedColorCount,
+        prompt: buildPosterizePrompt({ colorCount: clampedColorCount }),
       },
     });
   }
@@ -693,9 +818,9 @@ export function App() {
                 <span>JPG oder PNG, wird automatisch auf eine sinnvolle Größe skaliert.</span>
               </div>
             </button>
-            <ComplexitySelector
-              value={screen.complexity}
-              onChange={(complexity) => setScreen({ ...screen, complexity })}
+            <ColorCountSelector
+              value={screen.colorCount}
+              onChange={(colorCount) => setScreen({ ...screen, colorCount })}
             />
             {recentCreations.length > 0 ? (
               <section className="recent-section">
@@ -724,15 +849,15 @@ export function App() {
             <section className="preview-frame">
               <img src={screen.source.previewDataUrl} alt={screen.source.label} />
             </section>
-            <ComplexitySelector
-              value={screen.complexity}
-              onChange={(complexity) => setScreen({ ...screen, complexity })}
+            <ColorCountSelector
+              value={screen.colorCount}
+              onChange={(colorCount) => setScreen({ ...screen, colorCount })}
             />
             <div className="toolbar">
-              <button className="button-secondary" onClick={() => setScreen({ name: 'upload', complexity: screen.complexity })}>
+              <button className="button-secondary" onClick={() => setScreen({ name: 'upload', colorCount: screen.colorCount })}>
                 Neues Bild
               </button>
-              <button className="button-primary" onClick={() => launchPosterizeAndRun(screen.source, screen.complexity)}>
+              <button className="button-primary" onClick={() => launchPosterizeAndRun(screen.source, screen.colorCount)}>
                 Malvorlage erstellen
               </button>
             </div>
@@ -804,16 +929,49 @@ export function App() {
               <span className="field-label">Quelle</span>
               <div>{screen.source.label}</div>
               <span className="field-label" style={{ marginTop: 16 }}>
-                Komplexität
+                Farben
               </span>
               <div>
-                {complexityOptionForPreset(screen.complexity).label}, {complexityOptionForPreset(screen.complexity).colorCount} Farben
+                {complexityOptionForPreset(complexityForColorCount(screen.colorCount)).label},{' '}
+                {screen.colorCount} Farben
               </div>
+              <span className="field-label" style={{ marginTop: 16 }}>
+                Ergebnis
+              </span>
+              <div>{screen.result.facetCount} ausmalbare Flächen erzeugt</div>
             </section>
             <section className="glass-panel">
-              <span className="field-label">Palette</span>
+              <span className="field-label">Debug-Infos</span>
+              <table className="debug-table">
+                <tbody>
+                  {resultDebugRows.map((row) => (
+                    <tr key={row.label}>
+                      <th scope="row">{row.label}</th>
+                      <td>{row.value}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {resultTimingRows.length > 0 ? (
+                <>
+                  <span className="field-label field-label--subtle">Pipeline-Timings</span>
+                  <table className="debug-table debug-table--compact">
+                    <tbody>
+                      {resultTimingRows.map((row) => (
+                        <tr key={row.label}>
+                          <th scope="row">{row.label}</th>
+                          <td>{formatDuration(row.value)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>
+              ) : null}
+            </section>
+            <section className="glass-panel">
+              <span className="field-label">Palette ({screen.result.palette.length})</span>
               <div className="palette-list">
-                {screen.result.palette.slice(0, 8).map((entry) => (
+                {screen.result.palette.map((entry) => (
                   <div className="palette-item" key={entry.index}>
                     <div
                       className="palette-swatch"
@@ -832,7 +990,7 @@ export function App() {
               </div>
             </section>
             <div className="toolbar">
-              <button className="button-secondary" onClick={() => setScreen({ name: 'upload', complexity: screen.complexity })}>
+              <button className="button-secondary" onClick={() => setScreen({ name: 'upload', colorCount: screen.colorCount })}>
                 Neues Bild
               </button>
               <button className="button-secondary" onClick={() => shareCurrentResult('svg')}>

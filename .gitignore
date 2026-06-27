@@ -3,9 +3,12 @@
 Thumbs.db
 .idea/
 .vscode/
+*.swp
+*.swo
 
 # Python
 .venv/
+.python-pbn-deps/
 __pycache__/
 *.py[cod]
 *.pyo
@@ -57,3 +60,5 @@ ios/build/
 # Project-specific generated files
 react-app-native-expo/expo-*.log
 react-app-native-expo_2/expo-*.log
+output/*_pipeline_*/
+output/*_pipeline_comparison.png
