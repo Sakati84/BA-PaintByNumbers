@@ -523,23 +523,36 @@ function findConnectedRegions(labelMap: Int32Array, width: number, height: numbe
       if (y < minY) minY = y;
       if (y > maxY) maxY = y;
 
-      const yStart = y > 0 ? y - 1 : y;
-      const yEnd = y < height - 1 ? y + 1 : y;
-      const xStart = x > 0 ? x - 1 : x;
-      const xEnd = x < width - 1 ? x + 1 : x;
-
-      for (let neighborY = yStart; neighborY <= yEnd; neighborY += 1) {
-        const neighborRowOffset = neighborY * width;
-        for (let neighborX = xStart; neighborX <= xEnd; neighborX += 1) {
-          if (neighborX === x && neighborY === y) {
-            continue;
-          }
-          const neighborIndex = neighborRowOffset + neighborX;
-          if (visited[neighborIndex] === 0 && labelMap[neighborIndex] === colorIndex) {
-            visited[neighborIndex] = 1;
-            stack[stackSize] = neighborIndex;
-            stackSize += 1;
-          }
+      if (x > 0) {
+        const neighborIndex = index - 1;
+        if (visited[neighborIndex] === 0 && labelMap[neighborIndex] === colorIndex) {
+          visited[neighborIndex] = 1;
+          stack[stackSize] = neighborIndex;
+          stackSize += 1;
+        }
+      }
+      if (x < width - 1) {
+        const neighborIndex = index + 1;
+        if (visited[neighborIndex] === 0 && labelMap[neighborIndex] === colorIndex) {
+          visited[neighborIndex] = 1;
+          stack[stackSize] = neighborIndex;
+          stackSize += 1;
+        }
+      }
+      if (y > 0) {
+        const neighborIndex = index - width;
+        if (visited[neighborIndex] === 0 && labelMap[neighborIndex] === colorIndex) {
+          visited[neighborIndex] = 1;
+          stack[stackSize] = neighborIndex;
+          stackSize += 1;
+        }
+      }
+      if (y < height - 1) {
+        const neighborIndex = index + width;
+        if (visited[neighborIndex] === 0 && labelMap[neighborIndex] === colorIndex) {
+          visited[neighborIndex] = 1;
+          stack[stackSize] = neighborIndex;
+          stackSize += 1;
         }
       }
     }
@@ -795,9 +808,9 @@ function applyMergeTargets(
 
 async function mergeSmallAndThinRegions(raster: RasterData, minRegionArea: number, report: RasterReport): Promise<RasterData> {
   let current = raster;
-  const paletteLab = computePaletteLab(current.paletteRgb);
 
   for (let pass = 0; pass < SMALL_REGION_MAX_PASSES; pass += 1) {
+    const paletteLab = computePaletteLab(current.paletteRgb);
     const connected = findConnectedRegions(current.labelMap, current.width, current.height);
     const candidateMask = buildCandidateMask(connected.regions, minRegionArea);
     let candidateCount = 0;
