@@ -321,11 +321,11 @@ function ColorCountSelector({
 
   return (
     <section className="glass-panel">
-      <span className="field-label">Farben</span>
+      <span className="field-label">Farben & Detailgrad</span>
       <div className="color-count-control">
         <div className="color-count-control__header">
           <div>
-            <strong>{colorCount} Farben</strong>
+            <strong>{colorCount} Farben - {option.label}</strong>
             <span>{option.description}</span>
           </div>
           <span className="color-count-control__pill">{option.label}</span>
@@ -342,7 +342,8 @@ function ColorCountSelector({
         <div className="color-count-control__scale">
           {COMPLEXITY_OPTIONS.map((range) => (
             <span className={range.preset === complexity ? 'color-count-control__scale-active' : ''} key={range.preset}>
-              {range.label}
+              <strong>{range.label}</strong>
+              <small>{range.scaleDescription}</small>
             </span>
           ))}
         </div>
@@ -353,7 +354,6 @@ function ColorCountSelector({
 
 export function App() {
   const [screen, setScreen] = useState<ScreenState>({ name: 'splash' });
-  const [recentCreations, setRecentCreations] = useState<StoredCreation[]>(() => readStoredCreations());
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
   const [isBrowserPreview, setIsBrowserPreview] = useState(false);
   const [resultPngPreviewUrl, setResultPngPreviewUrl] = useState<string | null>(null);
@@ -480,7 +480,6 @@ export function App() {
         setScreen((current) => {
           const colorCount = current.name === 'processing' ? current.colorCount : DEFAULT_COLOR_COUNT;
           saveCreation(source, result);
-          setRecentCreations(readStoredCreations());
           return {
             name: 'result',
             source,
@@ -731,6 +730,21 @@ export function App() {
     });
   }
 
+  function startCameraFlow(): void {
+    if (isBrowserPreview) {
+      setErrorBanner('Kameraaufnahme ist in der reinen Browser-Vorschau nicht verdrahtet. Bitte nutze die Expo-WebView-App.');
+      return;
+    }
+    setErrorBanner(null);
+    const requestId = createRequestId('camera');
+    activePickRequestIdRef.current = requestId;
+    bridge.send({
+      type: 'captureImage',
+      requestId,
+      payload: null,
+    });
+  }
+
   function launchPosterizeAndRun(source: WebImageSource, colorCount: number): void {
     if (isBrowserPreview) {
       setErrorBanner('Der App-Flow funktioniert erst eingebettet in der Expo-WebView-App.');
@@ -815,31 +829,23 @@ export function App() {
               <img src={uploadArt} alt="" />
               <div className="upload-panel__body">
                 <strong>Bild auswählen</strong>
-                <span>JPG oder PNG, wird automatisch auf eine sinnvolle Größe skaliert.</span>
+                <span>Aus deiner Galerie wählen oder direkt mit der Kamera aufnehmen.</span>
               </div>
             </button>
+            <div className="upload-actions">
+              <button className="upload-action" onClick={startUploadFlow}>
+                <span className="upload-action__icon upload-action__icon--gallery" aria-hidden="true" />
+                <span>Galerie</span>
+              </button>
+              <button className="upload-action" onClick={startCameraFlow}>
+                <span className="upload-action__icon upload-action__icon--camera" aria-hidden="true" />
+                <span>Kamera</span>
+              </button>
+            </div>
             <ColorCountSelector
               value={screen.colorCount}
               onChange={(colorCount) => setScreen({ ...screen, colorCount })}
             />
-            {recentCreations.length > 0 ? (
-              <section className="recent-section">
-                <div className="section-heading">
-                  <h2>Letzte Vorlagen</h2>
-                </div>
-                <div className="recent-grid">
-                  {recentCreations.map((creation) => (
-                    <article className="recent-card" key={creation.id}>
-                      <img className="recent-card__thumb" src={creation.thumbnailDataUrl} alt={creation.title} />
-                      <div className="recent-card__body">
-                        <h4>{creation.title}</h4>
-                        <p>{new Date(creation.createdAt).toLocaleDateString('de-DE')}</p>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </section>
-            ) : null}
           </>
         ) : null}
 

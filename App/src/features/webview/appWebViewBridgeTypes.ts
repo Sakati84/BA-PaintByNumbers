@@ -48,6 +48,11 @@ export type WebViewAppRequest =
       payload?: null;
     }
   | {
+      type: 'captureImage';
+      requestId: string;
+      payload?: null;
+    }
+  | {
       type: 'posterizeUploadedImage';
       requestId: string;
       payload: {
@@ -135,7 +140,7 @@ export type WebViewHostEvent =
       type: 'error';
       requestId: string;
       error: {
-        stage: 'bridge' | 'pickImage' | 'posterizeImage' | 'paintByNumbers' | 'shareResult';
+        stage: 'bridge' | 'pickImage' | 'captureImage' | 'posterizeImage' | 'paintByNumbers' | 'shareResult';
         message: string;
       };
     };

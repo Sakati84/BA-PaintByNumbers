@@ -211,6 +211,98 @@ button {
   line-height: 1.55;
 }
 
+.upload-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.upload-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 18px;
+  border: 1px solid rgba(205, 217, 219, 0.95);
+  border-radius: 999px;
+  background: var(--surface-strong);
+  color: var(--primary-strong);
+  box-shadow: 0 10px 20px rgba(39, 67, 71, 0.08);
+  font-weight: 800;
+}
+
+.upload-action:active {
+  transform: translateY(2px);
+}
+
+.upload-action__icon {
+  position: relative;
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  color: currentColor;
+}
+
+.upload-action__icon--gallery {
+  border: 2px solid currentColor;
+  border-radius: 5px;
+}
+
+.upload-action__icon--gallery::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.upload-action__icon--gallery::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  bottom: 3px;
+  height: 7px;
+  border-radius: 2px 2px 3px 3px;
+  background: currentColor;
+  clip-path: polygon(0 100%, 34% 32%, 52% 58%, 68% 20%, 100% 100%);
+}
+
+.upload-action__icon--camera {
+  margin-top: 0;
+  border: 2px solid currentColor;
+  border-radius: 6px;
+  background: transparent;
+}
+
+.upload-action__icon--camera::before {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 2px;
+  width: 8px;
+  height: 3px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.upload-action__icon--camera::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 7px;
+  width: 6px;
+  height: 6px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  box-shadow: 8px -5px 0 -3px currentColor;
+}
+
 .feature-card {
   position: relative;
   display: flex;
@@ -580,7 +672,26 @@ button {
   text-align: center;
 }
 
+.color-count-control__scale span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.color-count-control__scale small {
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
 .color-count-control__scale-active {
+  color: var(--primary-strong);
+}
+
+.color-count-control__scale-active small {
   color: var(--primary-strong);
 }
 

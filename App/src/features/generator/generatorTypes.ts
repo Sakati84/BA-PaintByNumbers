@@ -48,6 +48,7 @@ export type GeneratorOutputVariantId =
   | 'colorCircles'
   | 'cleanColor'
   | 'coloredEdges'
+  | 'coloredEdgesWithDots'
   | 'circlesOnly'
   | 'numbers'
   | 'classic'

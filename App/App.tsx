@@ -46,7 +46,7 @@ type StoredSource = {
   source: WebImageSource;
 };
 
-type BridgeErrorStage = 'bridge' | 'pickImage' | 'posterizeImage' | 'paintByNumbers' | 'shareResult';
+type BridgeErrorStage = 'bridge' | 'pickImage' | 'captureImage' | 'posterizeImage' | 'paintByNumbers' | 'shareResult';
 
 function serializeBridgeEvent(event: WebViewHostEvent): string {
   return JSON.stringify(event);
@@ -238,6 +238,11 @@ export default function App() {
   }
 
   async function handlePickImage(requestId: string): Promise<void> {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      throw new Error('Bitte erlaube den Zugriff auf deine Fotos, um ein Bild auszuwählen.');
+    }
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: false,
@@ -250,6 +255,26 @@ export default function App() {
 
     const asset = result.assets[0];
     await registerSource(requestId, 'uploaded', asset, asset.fileName ?? 'Hochgeladenes Bild');
+  }
+
+  async function handleCaptureImage(requestId: string): Promise<void> {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      throw new Error('Bitte erlaube den Kamerazugriff, um direkt ein Foto aufzunehmen.');
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
+      allowsEditing: false,
+      quality: 1,
+    });
+
+    if (result.canceled) {
+      return;
+    }
+
+    const asset = result.assets[0];
+    await registerSource(requestId, 'uploaded', asset, asset.fileName ?? 'Aufgenommenes Foto');
   }
 
   async function handlePosterizeUploadedImage(
@@ -604,6 +629,16 @@ export default function App() {
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Die Bildauswahl ist fehlgeschlagen.';
         postError(request.requestId, 'pickImage', message);
+      }
+      return;
+    }
+
+    if (request.type === 'captureImage') {
+      try {
+        await handleCaptureImage(request.requestId);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Die Kameraaufnahme ist fehlgeschlagen.';
+        postError(request.requestId, 'captureImage', message);
       }
       return;
     }

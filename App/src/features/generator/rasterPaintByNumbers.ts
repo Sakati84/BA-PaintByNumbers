@@ -92,8 +92,8 @@ export type RasterPaintByNumbersResult = {
 
 const HARD_EDGE_PROTECTION_LAB_DISTANCE = 26;
 const TINY_HARD_EDGE_MERGE_MAX_AREA = 8;
-const MIN_REGION_AREA_RATIO = 0.00025;
-const MIN_LABEL_AREA_RATIO = 0.00025;
+const MIN_REGION_AREA_RATIO = 0.0001;
+const MIN_LABEL_AREA_RATIO = 0.0001;
 const SMALL_REGION_MAX_PASSES = 3;
 const MAX_FACELET_REDUCTION_MAX_PASSES = 24;
 const MAX_FACELET_REDUCTION_EXTRA_CANDIDATES = 0.35;
@@ -142,6 +142,14 @@ const RENDER_VARIANTS: RenderVariantConfig[] = [
     description: 'Helle Vorlage mit farbigen statt schwarzen Grenzen.',
     fillMode: 'white',
     markerMode: 'none',
+    strokeMode: 'color',
+  },
+  {
+    id: 'coloredEdgesWithDots',
+    label: 'Farbige Kanten + Punkte',
+    description: 'Weiße Vorlage mit farbigen Kanten und Farbpunkten.',
+    fillMode: 'white',
+    markerMode: 'circlesOnly',
     strokeMode: 'color',
   },
   {
