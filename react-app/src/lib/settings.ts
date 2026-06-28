@@ -37,6 +37,7 @@ export type ComplexityOption = {
   minColorCount: number;
   maxColorCount: number;
   description: string;
+  scaleDescription: string;
 };
 
 export const COMPLEXITY_OPTIONS: ComplexityOption[] = [
@@ -45,21 +46,24 @@ export const COMPLEXITY_OPTIONS: ComplexityOption[] = [
     label: 'Easy',
     minColorCount: 8,
     maxColorCount: 11,
-    description: 'Wenige Farben, sehr breite Formen.',
+    description: 'Kindgerecht: grosse Malflaechen, sehr niedriger Detailgrad.',
+    scaleDescription: '8-11 Farben, sehr grob',
   },
   {
     preset: 'medium',
     label: 'Medium',
     minColorCount: 12,
     maxColorCount: 17,
-    description: 'Ausgewogene Farbanzahl und klare Details.',
+    description: 'Ausgewogen: klare Formen, mittlerer Detailgrad.',
+    scaleDescription: '12-17 Farben, mittel',
   },
   {
     preset: 'detailed',
-    label: 'Hard',
+    label: 'Expert',
     minColorCount: 18,
     maxColorCount: 24,
-    description: 'Mehr Farben fuer differenzierte Formen.',
+    description: 'Expert: hohe Motivtreue, mehr Struktur und feinere Flaechen.',
+    scaleDescription: '18-24 Farben, fein',
   },
 ];
 
@@ -92,8 +96,9 @@ export function settingsForColorCount(colorCount: number): GeneratorSettings {
     return {
       ...DEFAULT_SETTINGS,
       kMeansNrOfClusters,
-      removeFacetsSmallerThanNrOfPoints: 70,
-      nrOfTimesToHalveBorderSegments: 2,
+      narrowPixelStripCleanupRuns: 4,
+      removeFacetsSmallerThanNrOfPoints: 320,
+      nrOfTimesToHalveBorderSegments: 3,
     };
   }
 
