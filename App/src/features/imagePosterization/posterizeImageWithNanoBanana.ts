@@ -2,11 +2,19 @@ import { Directory, File, Paths } from 'expo-file-system';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import type { ImagePickerAsset } from 'expo-image-picker';
 
+import {
+  buildGeminiImageGenerateContentBody,
+  extractGeminiImage,
+  stripDataUrlPrefix,
+  type InlineImagePart,
+} from './geminiImageRequest';
+
 type PosterizeImageRequest = {
   asset: ImagePickerAsset;
   prompt: string;
   colorCount: number;
   complexity: string;
+  seed?: number;
 };
 
 export type PosterizedImage = {
@@ -16,18 +24,13 @@ export type PosterizedImage = {
   promptText: string;
 };
 
-type InlineImagePart = {
-  mimeType: string;
-  data: string;
-};
-
 const MODEL_INPUT_MAX_EDGE = 1024;
 
 function getNanoBananaModel(): string {
   return (
     process.env.EXPO_PUBLIC_NANO_BANANA_MODEL?.trim() ||
     process.env.EXPO_PUBLIC_GEMINI_IMAGE_MODEL?.trim() ||
-    'gemini-2.5-flash-image'
+    'gemini-3.1-flash-lite-image'
   );
 }
 
@@ -43,18 +46,23 @@ function resizeToFit(width: number, height: number, maxEdge: number): { width: n
   };
 }
 
-function stripDataUrlPrefix(value: string): string {
-  const marker = ';base64,';
-  const markerIndex = value.indexOf(marker);
-  if (markerIndex < 0) {
-    return value;
-  }
-  return value.slice(markerIndex + marker.length);
-}
-
 function sanitizeLabel(asset: ImagePickerAsset, colorCount: number): string {
   const baseName = asset.fileName?.replace(/\.[^.]+$/, '').trim() || 'Hochgeladenes Bild';
   return `${baseName} (${colorCount} Farben)`;
+}
+
+function getConfiguredSeed(explicitSeed: number | undefined): number | undefined {
+  if (typeof explicitSeed === 'number' && Number.isFinite(explicitSeed)) {
+    return Math.trunc(explicitSeed);
+  }
+
+  const rawSeed = process.env.EXPO_PUBLIC_GEMINI_IMAGE_SEED?.trim() || process.env.EXPO_PUBLIC_NANO_BANANA_SEED?.trim();
+  if (rawSeed == null || rawSeed.length === 0) {
+    return undefined;
+  }
+
+  const parsed = Number(rawSeed);
+  return Number.isFinite(parsed) ? Math.trunc(parsed) : undefined;
 }
 
 function extractProxyImage(payload: unknown): InlineImagePart | null {
@@ -80,56 +88,6 @@ function extractProxyImage(payload: unknown): InlineImagePart | null {
         mimeType: typeof imageRecord.mimeType === 'string' ? imageRecord.mimeType : 'image/png',
         data: stripDataUrlPrefix(imageRecord.base64),
       };
-    }
-  }
-
-  return null;
-}
-
-function extractGeminiImage(payload: unknown): InlineImagePart | null {
-  if (payload == null || typeof payload !== 'object') {
-    return null;
-  }
-
-  const candidates = (payload as Record<string, unknown>).candidates;
-  if (!Array.isArray(candidates)) {
-    return null;
-  }
-
-  for (const candidate of candidates) {
-    if (candidate == null || typeof candidate !== 'object') {
-      continue;
-    }
-    const content = (candidate as Record<string, unknown>).content;
-    if (content == null || typeof content !== 'object') {
-      continue;
-    }
-    const parts = (content as Record<string, unknown>).parts;
-    if (!Array.isArray(parts)) {
-      continue;
-    }
-    for (const part of parts) {
-      if (part == null || typeof part !== 'object') {
-        continue;
-      }
-
-      const inlineData = (part as Record<string, unknown>).inlineData ?? (part as Record<string, unknown>).inline_data;
-      if (inlineData == null || typeof inlineData !== 'object') {
-        continue;
-      }
-
-      const imageRecord = inlineData as Record<string, unknown>;
-      if (typeof imageRecord.data === 'string') {
-        return {
-          mimeType:
-            typeof imageRecord.mimeType === 'string'
-              ? imageRecord.mimeType
-              : typeof imageRecord.mime_type === 'string'
-                ? imageRecord.mime_type
-                : 'image/png',
-          data: imageRecord.data,
-        };
-      }
     }
   }
 
@@ -187,6 +145,7 @@ async function requestViaProxy(request: PosterizeImageRequest, image: Awaited<Re
         width: image.width,
         height: image.height,
       },
+      seed: getConfiguredSeed(request.seed),
     }),
   });
 
@@ -209,6 +168,18 @@ async function requestViaGemini(request: PosterizeImageRequest, image: Awaited<R
   }
 
   const model = getNanoBananaModel();
+  const body = buildGeminiImageGenerateContentBody({
+    prompt: request.prompt,
+    image: {
+      mimeType: image.mimeType,
+      data: image.base64,
+    },
+    generationConfig: {
+      responseModalities: ['IMAGE'],
+      temperature: 0.2,
+      seed: getConfiguredSeed(request.seed),
+    },
+  });
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
     {
@@ -217,25 +188,7 @@ async function requestViaGemini(request: PosterizeImageRequest, image: Awaited<R
         'Content-Type': 'application/json',
         'x-goog-api-key': apiKey,
       },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              { text: request.prompt },
-              {
-                inline_data: {
-                  mime_type: image.mimeType,
-                  data: image.base64,
-                },
-              },
-            ],
-          },
-        ],
-        generationConfig: {
-          responseModalities: ['IMAGE'],
-          temperature: 0.2,
-        },
-      }),
+      body: JSON.stringify(body),
     },
   );
 

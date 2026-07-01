@@ -7,6 +7,8 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
+    "prompt:lab": "node ./scripts/prompt-lab.mjs",
+    "pipeline:lab": "node ./scripts/pipeline-lab.mjs",
     "sync:webview-local": "node ./scripts/sync-local-webview.mjs",
     "typecheck": "tsc --noEmit"
   },

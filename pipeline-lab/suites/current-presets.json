@@ -1,0 +1,29 @@
+{
+  "name": "current-presets",
+  "sourceRun": "../../prompt-lab/runs/2026-06-30T19-40-19-250Z_nano-banana-2-lite-easy-medium-expert",
+  "sourceCases": ["easy-v5", "medium-v6", "expert-i4"],
+  "variants": ["classic"],
+  "configs": [
+    {
+      "id": "easy-current",
+      "label": "Easy current",
+      "description": "Current app Easy pipeline preset at 8 colors.",
+      "difficulty": "easy",
+      "colorCount": 8
+    },
+    {
+      "id": "medium-current",
+      "label": "Medium current",
+      "description": "Current app Medium pipeline preset at 12 colors.",
+      "difficulty": "medium",
+      "colorCount": 12
+    },
+    {
+      "id": "expert-current",
+      "label": "Expert current",
+      "description": "Current app Expert pipeline preset at 24 colors.",
+      "difficulty": "expert",
+      "colorCount": 24
+    }
+  ]
+}

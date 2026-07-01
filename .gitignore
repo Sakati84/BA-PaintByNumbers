@@ -62,3 +62,7 @@ react-app-native-expo/expo-*.log
 react-app-native-expo_2/expo-*.log
 output/*_pipeline_*/
 output/*_pipeline_comparison.png
+prompt-lab/runs/
+App/.prompt-lab-cache/
+pipeline-lab/runs/
+App/.pipeline-lab-cache/

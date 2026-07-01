@@ -67,8 +67,46 @@ export class KMeans {
     }
 
     private initCentroids() {
+        const weightedPoints = this.points.slice();
+        weightedPoints.sort((left, right) => right.weight - left.weight);
+
+        if (weightedPoints.length > 0) {
+            this.centroids.push(weightedPoints[0]);
+        }
+
+        while (this.centroids.length < this.k && this.centroids.length < weightedPoints.length) {
+            let bestPoint: Vector | null = null;
+            let bestScore = Number.NEGATIVE_INFINITY;
+
+            for (const point of weightedPoints) {
+                if (this.centroids.includes(point)) {
+                    continue;
+                }
+
+                let nearestCentroidDistance = Number.POSITIVE_INFINITY;
+                for (const centroid of this.centroids) {
+                    nearestCentroidDistance = Math.min(nearestCentroidDistance, point.distanceTo(centroid));
+                }
+
+                const score = point.weight * nearestCentroidDistance * nearestCentroidDistance;
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestPoint = point;
+                }
+            }
+
+            if (bestPoint == null) {
+                break;
+            }
+
+            this.centroids.push(bestPoint);
+        }
+
+        for (let i: number = this.centroids.length; i < this.k; i++) {
+            this.centroids.push(weightedPoints[i % weightedPoints.length]);
+        }
+
         for (let i: number = 0; i < this.k; i++) {
-            this.centroids.push(this.points[Math.floor(this.points.length * this.random.next())]);
             this.pointsPerCategory.push([]);
         }
     }

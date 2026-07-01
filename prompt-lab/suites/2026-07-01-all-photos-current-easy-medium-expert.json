@@ -1,0 +1,37 @@
+{
+  "name": "2026-07-01-all-photos-current-easy-medium-expert",
+  "model": "gemini-3.1-flash-lite-image",
+  "maxEdge": 1024,
+  "generationConfig": {
+    "seed": 1234,
+    "temperature": 0.2
+  },
+  "inputs": [
+    "../../test_images/IMG_1394.JPG",
+    "../../test_images/IMG_1681.PNG",
+    "../../test_images/IMG_1704.JPG",
+    "../../test_images/IMG_1998.JPG",
+    "../inputs/2026-07-01-extra-photos/foto-1-dog.jpg",
+    "../inputs/2026-07-01-extra-photos/foto-2-frog.jpg",
+    "../inputs/2026-07-01-extra-photos/foto-3-stork.jpg"
+  ],
+  "cases": [
+    {
+      "id": "easy-v5",
+      "difficulty": "easy",
+      "colorCount": 8
+    },
+    {
+      "id": "medium-v6",
+      "promptFile": "../prompts/medium-v6-stylized-paintable-poster.md",
+      "difficulty": "medium",
+      "colorCount": 12
+    },
+    {
+      "id": "expert-i4",
+      "promptFile": "../prompts/expert-v6-uniform-detailed-posterization.md",
+      "difficulty": "expert",
+      "colorCount": 24
+    }
+  ]
+}

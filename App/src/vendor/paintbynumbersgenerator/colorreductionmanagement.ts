@@ -93,6 +93,8 @@ export class ColorReducer {
             }
         }
 
+        const totalPixelCount = imgData.width * imgData.height;
+
         for (const color of Object.keys(pointsByColor)) {
             const rgb: number[] = color.split(",").map((v) => parseInt(v));
 
@@ -107,8 +109,13 @@ export class ColorReducer {
             } else {
                 data = rgb;
             }
-            // determine the weight (#pointsOfColor / #totalpoints) of each color
-            const weight = pointsByColor[color].length / (imgData.width * imgData.height);
+            // Bias K-Means by painted area, while still protecting small visible accent colors.
+            // Large regions keep their full area weight; tiny saturated accents get a bounded lift.
+            const areaShare = pointsByColor[color].length / totalPixelCount;
+            const hsl = rgbToHsl(rgb[0], rgb[1], rgb[2]);
+            const saturation = Math.max(0, Math.min(1, hsl[1] ?? 0));
+            const accentVisibilityLift = Math.min(0.025, Math.sqrt(areaShare) * (0.18 + 0.14 * saturation));
+            const weight = Math.max(areaShare, accentVisibilityLift);
 
             const vec = new Vector(data, weight);
             vec.tag = rgb;

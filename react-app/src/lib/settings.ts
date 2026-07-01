@@ -1,8 +1,10 @@
 export type GeneratorSettings = {
   kMeansNrOfClusters: number;
   kMeansMinDeltaDifference: number;
+  nearIdenticalPaletteMergeLabDistance: number;
   narrowPixelStripCleanupRuns: number;
-  removeFacetsSmallerThanNrOfPoints: number;
+  mergeSimilarAdjacentRegions: boolean;
+  removeFacetsSmallerThanImageRatio: number;
   removeFacetsFromLargeToSmall: boolean;
   maximumNumberOfFacets: number;
   nrOfTimesToHalveBorderSegments: number;
@@ -14,11 +16,13 @@ export type GeneratorSettings = {
 export const DEFAULT_SETTINGS: GeneratorSettings = {
   kMeansNrOfClusters: 16,
   kMeansMinDeltaDifference: 1,
-  narrowPixelStripCleanupRuns: 3,
-  removeFacetsSmallerThanNrOfPoints: 50,
+  nearIdenticalPaletteMergeLabDistance: 4.25,
+  narrowPixelStripCleanupRuns: 0,
+  mergeSimilarAdjacentRegions: false,
+  removeFacetsSmallerThanImageRatio: 0.00006,
   removeFacetsFromLargeToSmall: true,
   maximumNumberOfFacets: 0,
-  nrOfTimesToHalveBorderSegments: 2,
+  nrOfTimesToHalveBorderSegments: 0,
   resizeImageWidth: 1024,
   resizeImageHeight: 1024,
   randomSeed: 7707,
@@ -26,7 +30,7 @@ export const DEFAULT_SETTINGS: GeneratorSettings = {
 
 export const COLOR_COUNT_MIN = 8;
 export const COLOR_COUNT_MAX = 24;
-export const DEFAULT_COLOR_COUNT = 16;
+export const DEFAULT_COLOR_COUNT = 12;
 export const POSTERIZE_MAX_EDGE = 1024;
 
 export type ComplexityPreset = 'simple' | 'medium' | 'detailed';
@@ -96,9 +100,9 @@ export function settingsForColorCount(colorCount: number): GeneratorSettings {
     return {
       ...DEFAULT_SETTINGS,
       kMeansNrOfClusters,
-      narrowPixelStripCleanupRuns: 4,
-      removeFacetsSmallerThanNrOfPoints: 320,
-      nrOfTimesToHalveBorderSegments: 3,
+      narrowPixelStripCleanupRuns: 0,
+      removeFacetsSmallerThanImageRatio: 0.00012,
+      nrOfTimesToHalveBorderSegments: 0,
     };
   }
 
@@ -106,8 +110,8 @@ export function settingsForColorCount(colorCount: number): GeneratorSettings {
     return {
       ...DEFAULT_SETTINGS,
       kMeansNrOfClusters,
-      removeFacetsSmallerThanNrOfPoints: 40,
-      nrOfTimesToHalveBorderSegments: 1,
+      removeFacetsSmallerThanImageRatio: 0.000025,
+      nrOfTimesToHalveBorderSegments: 0,
     };
   }
 
@@ -118,6 +122,11 @@ export function settingsForColorCount(colorCount: number): GeneratorSettings {
 }
 
 export function settingsForComplexity(preset: ComplexityPreset): GeneratorSettings {
-  const option = complexityOptionForPreset(preset);
-  return settingsForColorCount(Math.round((option.minColorCount + option.maxColorCount) / 2));
+  if (preset === 'simple') {
+    return settingsForColorCount(8);
+  }
+  if (preset === 'detailed') {
+    return settingsForColorCount(24);
+  }
+  return settingsForColorCount(12);
 }

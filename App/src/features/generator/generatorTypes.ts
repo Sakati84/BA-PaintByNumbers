@@ -16,8 +16,10 @@ export type GeneratorStage =
 export type GeneratorSettings = {
   kMeansNrOfClusters: number;
   kMeansMinDeltaDifference: number;
+  nearIdenticalPaletteMergeLabDistance: number;
   narrowPixelStripCleanupRuns: number;
-  removeFacetsSmallerThanNrOfPoints: number;
+  mergeSimilarAdjacentRegions: boolean;
+  removeFacetsSmallerThanImageRatio: number;
   removeFacetsFromLargeToSmall: boolean;
   maximumNumberOfFacets: number;
   nrOfTimesToHalveBorderSegments: number;

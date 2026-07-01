@@ -20,6 +20,7 @@ type RasterPipelineOptions = {
   report: RasterReport;
   addTiming: AddTiming;
   nowMs: () => number;
+  variantIds?: readonly GeneratorOutputVariantId[];
 };
 
 type RasterData = {
@@ -92,15 +93,17 @@ export type RasterPaintByNumbersResult = {
 
 const HARD_EDGE_PROTECTION_LAB_DISTANCE = 26;
 const TINY_HARD_EDGE_MERGE_MAX_AREA = 8;
-const MIN_REGION_AREA_RATIO = 0.0001;
 const MIN_LABEL_AREA_RATIO = 0.0001;
 const SMALL_REGION_MAX_PASSES = 3;
+const SIMILAR_REGION_MAX_PASSES = 4;
+const SIMILAR_REGION_MERGE_LAB_DISTANCE = 8.5;
 const MAX_FACELET_REDUCTION_MAX_PASSES = 24;
 const MAX_FACELET_REDUCTION_EXTRA_CANDIDATES = 0.35;
 const MAX_FACELET_REDUCTION_MIN_EXTRA_CANDIDATES = 12;
 const MAX_FACELET_MERGE_LAB_DISTANCE = 18;
 const THIN_REGION_AREA_MULTIPLIER = 2;
 const THIN_REGION_MAX_AVERAGE_THICKNESS = 5.5;
+const THIN_REGION_SOFT_MERGE_LAB_DISTANCE = 34;
 const EXPORT_SCALE = 2;
 const SVG_PATH_SIMPLIFY_TOLERANCE = 0.85;
 const OUTLINE_R = 22;
@@ -270,9 +273,54 @@ function canReplaceLabel(paletteLab: Float32Array, sourceLabel: number, targetLa
   return paletteLabDistance(paletteLab, sourceLabel, targetLabel) <= HARD_EDGE_PROTECTION_LAB_DISTANCE;
 }
 
+function labelPixelCounts(labelMap: Int32Array, colorCount: number): Int32Array {
+  const counts = new Int32Array(colorCount);
+  for (const label of labelMap) {
+    if (label >= 0 && label < colorCount) {
+      counts[label] += 1;
+    }
+  }
+  return counts;
+}
+
+function countPresentLabels(counts: Int32Array): number {
+  let present = 0;
+  for (const count of counts) {
+    if (count > 0) {
+      present += 1;
+    }
+  }
+  return present;
+}
+
+function canRemoveLabelPixel(counts: Int32Array, presentLabelCount: number, label: number, minPaletteColors: number): boolean {
+  if (label < 0 || label >= counts.length) {
+    return true;
+  }
+  return presentLabelCount > minPaletteColors || counts[label] > 1;
+}
+
+function moveLabelCount(counts: Int32Array, sourceLabel: number, targetLabel: number, presentLabelCount: number): number {
+  let nextPresentLabelCount = presentLabelCount;
+  if (sourceLabel >= 0 && sourceLabel < counts.length) {
+    counts[sourceLabel] -= 1;
+    if (counts[sourceLabel] === 0) {
+      nextPresentLabelCount -= 1;
+    }
+  }
+  if (targetLabel >= 0 && targetLabel < counts.length) {
+    if (counts[targetLabel] === 0) {
+      nextPresentLabelCount += 1;
+    }
+    counts[targetLabel] += 1;
+  }
+  return nextPresentLabelCount;
+}
+
 function cleanupNarrowPixelStrips(
   raster: RasterData,
   runs: number,
+  minPaletteColors: number,
   report?: (run: number, runs: number, changedPixels: number) => void,
 ): RasterData {
   if (runs <= 0 || raster.width < 3 || raster.height < 3) {
@@ -281,10 +329,13 @@ function cleanupNarrowPixelStrips(
 
   const { width, height } = raster;
   const paletteLab = computePaletteLab(raster.paletteRgb);
+  const colorCount = raster.paletteRgb.length / 3;
   let current = raster.labelMap;
 
   for (let run = 0; run < runs; run += 1) {
     const next = new Int32Array(current);
+    const counts = labelPixelCounts(current, colorCount);
+    let presentLabelCount = countPresentLabels(counts);
     let changedPixels = 0;
 
     for (let y = 1; y < height - 1; y += 1) {
@@ -296,22 +347,41 @@ function cleanupNarrowPixelStrips(
         const right = current[index + 1];
         const up = current[index - width];
         const down = current[index + width];
+        const upLeft = current[index - width - 1];
+        const upRight = current[index - width + 1];
+        const downLeft = current[index + width - 1];
+        const downRight = current[index + width + 1];
 
         let replacement = -1;
+        let replacementStrength = -1;
         let bestDistance = Number.POSITIVE_INFINITY;
 
-        if (left === right && left !== label && canReplaceLabel(paletteLab, label, left)) {
-          const distance = paletteLabDistance(paletteLab, label, left);
-          replacement = left;
-          bestDistance = distance;
-        }
-        if (up === down && up !== label && canReplaceLabel(paletteLab, label, up)) {
-          const distance = paletteLabDistance(paletteLab, label, up);
-          if (distance < bestDistance) {
-            replacement = up;
+        const promote = (targetLabel: number): void => {
+          if (
+            targetLabel < 0 ||
+            targetLabel === label ||
+            !canRemoveLabelPixel(counts, presentLabelCount, label, minPaletteColors) ||
+            !canReplaceLabel(paletteLab, label, targetLabel)
+          ) {
+            return;
+          }
+          const strength = counts[targetLabel] ?? 0;
+          const distance = paletteLabDistance(paletteLab, label, targetLabel);
+          if (strength > replacementStrength || (strength === replacementStrength && distance < bestDistance)) {
+            replacement = targetLabel;
+            replacementStrength = strength;
             bestDistance = distance;
           }
-        }
+        };
+
+        if (left === right && left !== label) promote(left);
+        if (up === down && up !== label) promote(up);
+        if (upLeft === downRight && upLeft !== label) promote(upLeft);
+        if (upRight === downLeft && upRight !== label) promote(upRight);
+        if (left === up && left === down && left !== label) promote(left);
+        if (right === up && right === down && right !== label) promote(right);
+        if (up === left && up === right && up !== label) promote(up);
+        if (down === left && down === right && down !== label) promote(down);
 
         if (replacement < 0) {
           const neighborLabels = [left, right, up, down];
@@ -325,7 +395,11 @@ function cleanupNarrowPixelStrips(
           if (sameNeighborCount === 0) {
             const candidates = [left, right, up, down];
             for (const candidate of candidates) {
-              if (candidate === label || !canReplaceLabel(paletteLab, label, candidate)) {
+              if (
+                candidate === label ||
+                !canRemoveLabelPixel(counts, presentLabelCount, label, minPaletteColors) ||
+                !canReplaceLabel(paletteLab, label, candidate)
+              ) {
                 continue;
               }
               const distance = paletteLabDistance(paletteLab, label, candidate);
@@ -339,6 +413,7 @@ function cleanupNarrowPixelStrips(
 
         if (replacement >= 0 && replacement !== label) {
           next[index] = replacement;
+          presentLabelCount = moveLabelCount(counts, label, replacement, presentLabelCount);
           changedPixels += 1;
         }
       }
@@ -354,17 +429,20 @@ function cleanupNarrowPixelStrips(
   return { ...raster, labelMap: current };
 }
 
-function pruneWeakProtrusionPixels(raster: RasterData, runs: number): RasterData {
+function pruneWeakProtrusionPixels(raster: RasterData, runs: number, minPaletteColors: number): RasterData {
   if (runs <= 0 || raster.width < 3 || raster.height < 3) {
     return raster;
   }
 
   const { width, height } = raster;
   const paletteLab = computePaletteLab(raster.paletteRgb);
+  const colorCount = raster.paletteRgb.length / 3;
   let current = raster.labelMap;
 
   for (let run = 0; run < runs; run += 1) {
     const next = new Int32Array(current);
+    const counts = labelPixelCounts(current, colorCount);
+    let presentLabelCount = countPresentLabels(counts);
     let changedPixels = 0;
 
     for (let y = 1; y < height - 1; y += 1) {
@@ -406,7 +484,11 @@ function pruneWeakProtrusionPixels(raster: RasterData, runs: number): RasterData
         let bestScore = Number.NEGATIVE_INFINITY;
 
         for (const candidate of candidates) {
-          if (candidate === label || !canReplaceLabel(paletteLab, label, candidate)) {
+          if (
+            candidate === label ||
+            !canRemoveLabelPixel(counts, presentLabelCount, label, minPaletteColors) ||
+            !canReplaceLabel(paletteLab, label, candidate)
+          ) {
             continue;
           }
           let count = 0;
@@ -425,6 +507,7 @@ function pruneWeakProtrusionPixels(raster: RasterData, runs: number): RasterData
 
         if (bestLabel >= 0) {
           next[index] = bestLabel;
+          presentLabelCount = moveLabelCount(counts, label, bestLabel, presentLabelCount);
           changedPixels += 1;
         }
       }
@@ -618,15 +701,21 @@ function buildRegionAdjacency(regionMap: Int32Array, width: number, height: numb
   return adjacency;
 }
 
-function isThinRegion(region: RegionInfo, minRegionArea: number): boolean {
+function regionAverageThickness(region: RegionInfo): number {
   const bboxWidth = region.maxX - region.minX + 1;
   const bboxHeight = region.maxY - region.minY + 1;
   const longestSide = Math.max(bboxWidth, bboxHeight);
   if (longestSide <= 0) {
-    return false;
+    return Number.POSITIVE_INFINITY;
   }
-  const averageThickness = region.area / longestSide;
-  return region.area <= minRegionArea * THIN_REGION_AREA_MULTIPLIER && averageThickness <= THIN_REGION_MAX_AVERAGE_THICKNESS;
+  return region.area / longestSide;
+}
+
+function isThinRegion(region: RegionInfo, minRegionArea: number): boolean {
+  return (
+    region.area <= minRegionArea * THIN_REGION_AREA_MULTIPLIER &&
+    regionAverageThickness(region) <= THIN_REGION_MAX_AVERAGE_THICKNESS
+  );
 }
 
 function buildCandidateMask(regions: RegionInfo[], minRegionArea: number): Uint8Array {
@@ -637,6 +726,28 @@ function buildCandidateMask(regions: RegionInfo[], minRegionArea: number): Uint8
     }
   }
   return candidates;
+}
+
+function countRegionsByColor(regions: RegionInfo[], colorCount: number): Int32Array {
+  const counts = new Int32Array(colorCount);
+  for (const region of regions) {
+    if (region.colorIndex >= 0 && region.colorIndex < colorCount) {
+      counts[region.colorIndex] += 1;
+    }
+  }
+  return counts;
+}
+
+function canMergeRegionWithoutDroppingPaletteColor(
+  region: RegionInfo,
+  regionColorCounts: Int32Array,
+  currentPaletteColors: number,
+  minPaletteColors: number,
+): boolean {
+  if (region.colorIndex < 0 || region.colorIndex >= regionColorCounts.length) {
+    return true;
+  }
+  return currentPaletteColors > minPaletteColors || regionColorCounts[region.colorIndex] > 1;
 }
 
 function chooseMergeTarget(
@@ -664,7 +775,11 @@ function chooseMergeTarget(
     }
 
     const distance = paletteLabDistance(paletteLab, region.colorIndex, neighbor.colorIndex);
-    if (region.area > TINY_HARD_EDGE_MERGE_MAX_AREA && distance > HARD_EDGE_PROTECTION_LAB_DISTANCE) {
+    const distanceLimit =
+      regionAverageThickness(region) <= THIN_REGION_MAX_AVERAGE_THICKNESS
+        ? THIN_REGION_SOFT_MERGE_LAB_DISTANCE
+        : HARD_EDGE_PROTECTION_LAB_DISTANCE;
+    if (region.area > TINY_HARD_EDGE_MERGE_MAX_AREA && distance > distanceLimit) {
       continue;
     }
 
@@ -814,7 +929,105 @@ function applyMergeTargets(
   return next;
 }
 
-async function mergeSmallAndThinRegions(raster: RasterData, minRegionArea: number, report: RasterReport): Promise<RasterData> {
+function chooseSimilarColorMergeTarget(
+  region: RegionInfo,
+  regions: RegionInfo[],
+  adjacency: Map<number, Map<number, number>>,
+  paletteLab: Float32Array,
+): number {
+  const neighbors = adjacency.get(region.id);
+  if (neighbors == null || neighbors.size === 0) {
+    return -1;
+  }
+
+  let bestTarget = -1;
+  let bestBorder = -1;
+  let bestArea = -1;
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  for (const [neighborId, borderLength] of neighbors) {
+    const neighbor = regions[neighborId];
+    if (neighbor == null || neighbor.colorIndex === region.colorIndex) {
+      continue;
+    }
+    if (neighbor.area < region.area || (neighbor.area === region.area && neighbor.id > region.id)) {
+      continue;
+    }
+
+    const distance = paletteLabDistance(paletteLab, region.colorIndex, neighbor.colorIndex);
+    if (distance > SIMILAR_REGION_MERGE_LAB_DISTANCE) {
+      continue;
+    }
+
+    const isBetter =
+      borderLength > bestBorder ||
+      (borderLength === bestBorder && neighbor.area > bestArea) ||
+      (borderLength === bestBorder && neighbor.area === bestArea && distance < bestDistance) ||
+      (borderLength === bestBorder &&
+        neighbor.area === bestArea &&
+        distance === bestDistance &&
+        neighbor.id < bestTarget);
+
+    if (isBetter) {
+      bestTarget = neighbor.id;
+      bestBorder = borderLength;
+      bestArea = neighbor.area;
+      bestDistance = distance;
+    }
+  }
+
+  return bestTarget;
+}
+
+async function mergeSimilarAdjacentRegions(raster: RasterData, report: RasterReport): Promise<RasterData> {
+  let current = raster;
+
+  for (let pass = 0; pass < SIMILAR_REGION_MAX_PASSES; pass += 1) {
+    const paletteLab = computePaletteLab(current.paletteRgb);
+    const connected = findConnectedRegions(current.labelMap, current.width, current.height);
+    const adjacency = buildRegionAdjacency(connected.regionMap, current.width, current.height);
+    const targets = new Int32Array(connected.regions.length);
+    targets.fill(-1);
+
+    const regions = connected.regions
+      .slice()
+      .sort((left, right) => left.area - right.area || left.id - right.id);
+
+    let mergeCount = 0;
+    for (const region of regions) {
+      const target = chooseSimilarColorMergeTarget(region, connected.regions, adjacency, paletteLab);
+      if (target >= 0) {
+        targets[region.id] = target;
+        mergeCount += 1;
+      }
+    }
+
+    report(
+      'facetReduce',
+      0.08 + (pass + 1) / SIMILAR_REGION_MAX_PASSES * 0.18,
+      `${mergeCount} benachbarte Regionen mit sehr ähnlicher Farbe zusammengeführt.`,
+    );
+
+    if (mergeCount === 0) {
+      return current;
+    }
+
+    current = compactLabels({
+      ...current,
+      labelMap: applyMergeTargets(current.labelMap, connected.regionMap, connected.regions, targets),
+    });
+    await nowYield();
+  }
+
+  return current;
+}
+
+async function mergeSmallAndThinRegions(
+  raster: RasterData,
+  minRegionArea: number,
+  minPaletteColors: number,
+  report: RasterReport,
+): Promise<RasterData> {
   let current = raster;
 
   for (let pass = 0; pass < SMALL_REGION_MAX_PASSES; pass += 1) {
@@ -836,15 +1049,33 @@ async function mergeSmallAndThinRegions(raster: RasterData, minRegionArea: numbe
     const adjacency = buildRegionAdjacency(connected.regionMap, current.width, current.height);
     const targets = new Int32Array(connected.regions.length);
     targets.fill(-1);
+    const regionColorCounts = countRegionsByColor(connected.regions, current.paletteRgb.length / 3);
+    let currentPaletteColors = countPresentLabels(regionColorCounts);
     const candidateRegions = connected.regions
       .filter((region) => candidateMask[region.id] === 1)
       .sort((left, right) => left.area - right.area || left.id - right.id);
 
     let mergeCount = 0;
     for (const region of candidateRegions) {
+      if (
+        !canMergeRegionWithoutDroppingPaletteColor(
+          region,
+          regionColorCounts,
+          currentPaletteColors,
+          minPaletteColors,
+        )
+      ) {
+        continue;
+      }
       const target = chooseMergeTarget(region, connected.regions, adjacency, candidateMask, paletteLab);
       if (target >= 0) {
         targets[region.id] = target;
+        if (region.colorIndex >= 0 && region.colorIndex < regionColorCounts.length) {
+          regionColorCounts[region.colorIndex] -= 1;
+          if (regionColorCounts[region.colorIndex] === 0) {
+            currentPaletteColors -= 1;
+          }
+        }
         mergeCount += 1;
       }
     }
@@ -1361,6 +1592,72 @@ function drawCircleOutline(data: Uint8Array, width: number, height: number, cx: 
   }
 }
 
+function drawBoundaryLineBlock(
+  data: Uint8Array,
+  width: number,
+  height: number,
+  startX: number,
+  startY: number,
+  lineWidth: number,
+  lineHeight: number,
+  rgb: [number, number, number],
+): void {
+  for (let y = 0; y < lineHeight; y += 1) {
+    for (let x = 0; x < lineWidth; x += 1) {
+      setPixel(data, width, height, startX + x, startY + y, rgb);
+    }
+  }
+}
+
+function drawBoundaryLines(
+  data: Uint8Array,
+  outputWidth: number,
+  outputHeight: number,
+  raster: RasterData,
+  regionMap: Int32Array,
+  config: RenderVariantConfig,
+): void {
+  const { width, height, labelMap, paletteRgb } = raster;
+  const lineWidth = Math.max(1, Math.floor(EXPORT_SCALE / 2));
+
+  for (let y = 0; y < height; y += 1) {
+    const rowOffset = y * width;
+    for (let x = 0; x < width; x += 1) {
+      const index = rowOffset + x;
+      const regionId = regionMap[index];
+      const label = labelMap[index];
+      const fillColor = fillColorForPixel(config, label, regionId, paletteRgb);
+      const strokeColor = strokeColorForPixel(config, label, fillColor, paletteRgb);
+
+      if (x + 1 < width && regionMap[index + 1] !== regionId) {
+        drawBoundaryLineBlock(
+          data,
+          outputWidth,
+          outputHeight,
+          (x + 1) * EXPORT_SCALE - lineWidth,
+          y * EXPORT_SCALE,
+          lineWidth,
+          EXPORT_SCALE,
+          strokeColor,
+        );
+      }
+
+      if (y + 1 < height && regionMap[index + width] !== regionId) {
+        drawBoundaryLineBlock(
+          data,
+          outputWidth,
+          outputHeight,
+          x * EXPORT_SCALE,
+          (y + 1) * EXPORT_SCALE - lineWidth,
+          EXPORT_SCALE,
+          lineWidth,
+          strokeColor,
+        );
+      }
+    }
+  }
+}
+
 function drawDigitText(
   data: Uint8Array,
   width: number,
@@ -1442,7 +1739,6 @@ async function renderTemplatePngBase64(
   const { width, height, labelMap, paletteRgb } = raster;
   const outputWidth = width * EXPORT_SCALE;
   const outputHeight = height * EXPORT_SCALE;
-  const boundary = buildBoundaryMask(connected.regionMap, width, height);
   const data = new Uint8Array(outputWidth * outputHeight * 4);
 
   for (let index = 0; index < labelMap.length; index += 1) {
@@ -1450,13 +1746,10 @@ async function renderTemplatePngBase64(
     const y = Math.floor(index / width);
     const label = labelMap[index];
     const fillColor = fillColorForPixel(config, label, connected.regionMap[index], paletteRgb);
-    if (boundary[index] === 1) {
-      fillPixelBlock(data, outputWidth, outputHeight, x, y, EXPORT_SCALE, strokeColorForPixel(config, label, fillColor, paletteRgb));
-      continue;
-    }
-
     fillPixelBlock(data, outputWidth, outputHeight, x, y, EXPORT_SCALE, fillColor);
   }
+
+  drawBoundaryLines(data, outputWidth, outputHeight, raster, connected.regionMap, config);
 
   if (config.markerMode !== 'none') {
     for (const placement of placements) {
@@ -1513,6 +1806,37 @@ function rgbCss(rgb: [number, number, number]): string {
   return `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
 }
 
+function buildGlobalBoundaryPath(regionMap: Int32Array, width: number, height: number): string {
+  const segments: string[] = [];
+
+  for (let y = 0; y < height; y += 1) {
+    const rowOffset = y * width;
+    for (let x = 0; x < width; x += 1) {
+      const index = rowOffset + x;
+      const regionId = regionMap[index];
+
+      if (x === 0) {
+        segments.push(`M0 ${y}L0 ${y + 1}`);
+      }
+      if (y === 0) {
+        segments.push(`M${x} 0L${x + 1} 0`);
+      }
+      if (x + 1 >= width) {
+        segments.push(`M${x + 1} ${y}L${x + 1} ${y + 1}`);
+      } else if (regionMap[index + 1] !== regionId) {
+        segments.push(`M${x + 1} ${y}L${x + 1} ${y + 1}`);
+      }
+      if (y + 1 >= height) {
+        segments.push(`M${x} ${y + 1}L${x + 1} ${y + 1}`);
+      } else if (regionMap[index + width] !== regionId) {
+        segments.push(`M${x} ${y + 1}L${x + 1} ${y + 1}`);
+      }
+    }
+  }
+
+  return segments.join('');
+}
+
 function escapeXml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -1529,6 +1853,7 @@ function renderVectorSvg(
   config: RenderVariantConfig,
 ): string {
   const { width, height, paletteRgb } = raster;
+  const useGlobalBlackBoundaries = config.strokeMode === 'black';
   const parts: string[] = [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
     '<rect width="100%" height="100%" fill="rgb(255,255,255)" />',
@@ -1539,11 +1864,24 @@ function renderVectorSvg(
     const fillColor = fillColorForPixel(config, regionPath.colorIndex, regionPath.regionId, paletteRgb);
     const strokeColor = strokeColorForPixel(config, regionPath.colorIndex, fillColor, paletteRgb);
     const strokeWidth = config.strokeMode === 'black' ? 0.65 : config.fillMode === 'white' ? 0.95 : 0.75;
-    parts.push(
-      `<path d="${regionPath.pathData}" fill="${rgbCss(fillColor)}" stroke="${rgbCss(strokeColor)}" stroke-width="${strokeWidth}" stroke-linejoin="round" stroke-linecap="round" />`,
-    );
+    if (useGlobalBlackBoundaries) {
+      parts.push(`<path d="${regionPath.pathData}" fill="${rgbCss(fillColor)}" stroke="none" />`);
+    } else {
+      parts.push(
+        `<path d="${regionPath.pathData}" fill="${rgbCss(fillColor)}" stroke="${rgbCss(strokeColor)}" stroke-width="${strokeWidth}" stroke-linejoin="round" stroke-linecap="round" />`,
+      );
+    }
   }
   parts.push('</g>');
+
+  if (useGlobalBlackBoundaries) {
+    const boundaryPath = buildGlobalBoundaryPath(connected.regionMap, width, height);
+    if (boundaryPath.length > 0) {
+      parts.push(
+        `<path class="boundaries" d="${boundaryPath}" fill="none" stroke="${rgbCss([OUTLINE_R, OUTLINE_G, OUTLINE_B])}" stroke-width="0.55" stroke-linecap="square" />`,
+      );
+    }
+  }
 
   if (config.markerMode !== 'none') {
     parts.push('<g class="markers" font-family="Arial, Helvetica, sans-serif" font-weight="700" text-anchor="middle" dominant-baseline="central">');
@@ -1619,32 +1957,39 @@ export async function buildRasterPaintByNumbers(
   settings: GeneratorSettings,
   options: RasterPipelineOptions,
 ): Promise<RasterPaintByNumbersResult> {
+  const targetPaletteColors = Math.max(1, Math.floor(settings.kMeansNrOfClusters));
   let started = options.nowMs();
   let raster = colorMapToRaster(colorMapResult);
   options.report('narrowCleanup', 0, 'Schmale Streifen werden geglättet.');
-  raster = cleanupNarrowPixelStrips(raster, Math.max(1, settings.narrowPixelStripCleanupRuns + 4), (run, runs, changedPixels) => {
-    options.report('narrowCleanup', run / runs, `${changedPixels} Streifen-Pixel geglättet.`);
-  });
+  raster = cleanupNarrowPixelStrips(
+    raster,
+    Math.max(0, settings.narrowPixelStripCleanupRuns),
+    targetPaletteColors,
+    (run, runs, changedPixels) => {
+      options.report('narrowCleanup', run / runs, `${changedPixels} Streifen-Pixel geglättet.`);
+    },
+  );
   raster = compactLabels(raster);
   options.addTiming('narrowCleanup', options.nowMs() - started);
   await nowYield();
 
   started = options.nowMs();
   options.report('borderSegment', 0, 'Dünne Ausläufer werden bereinigt.');
-  raster = pruneWeakProtrusionPixels(raster, settings.nrOfTimesToHalveBorderSegments + 1);
+  raster = pruneWeakProtrusionPixels(raster, Math.max(0, settings.nrOfTimesToHalveBorderSegments), targetPaletteColors);
   raster = compactLabels(raster);
   options.report('borderSegment', 1, 'Dünne Ausläufer bereinigt.');
   options.addTiming('borderSegment', options.nowMs() - started);
   await nowYield();
 
-  const minRegionArea = Math.max(
-    settings.removeFacetsSmallerThanNrOfPoints,
-    Math.round(raster.width * raster.height * MIN_REGION_AREA_RATIO),
-  );
+  const minRegionArea = Math.max(1, Math.round(raster.width * raster.height * settings.removeFacetsSmallerThanImageRatio));
   started = options.nowMs();
   options.report('facetBuild', 0, 'Regionen werden erkannt.');
-  options.report('facetReduce', 0, `Regionen unter ${minRegionArea} Pixeln werden zusammengeführt.`);
-  raster = await mergeSmallAndThinRegions(raster, minRegionArea, options.report);
+  if (settings.mergeSimilarAdjacentRegions) {
+    options.report('facetReduce', 0, 'Benachbarte Regionen mit sehr ähnlichen Farben werden bereinigt.');
+    raster = await mergeSimilarAdjacentRegions(raster, options.report);
+  }
+  options.report('facetReduce', 0.28, `Regionen unter ${minRegionArea} Pixeln werden zusammengeführt.`);
+  raster = await mergeSmallAndThinRegions(raster, minRegionArea, targetPaletteColors, options.report);
   let connected = findConnectedRegions(raster.labelMap, raster.width, raster.height);
   if (settings.maximumNumberOfFacets > 0 && connected.regions.length > settings.maximumNumberOfFacets) {
     options.report(
@@ -1679,9 +2024,15 @@ export async function buildRasterPaintByNumbers(
   started = options.nowMs();
   options.report('svgRender', 0, 'Ausgabevarianten werden gerendert.');
   const svgPaths = buildSvgRegionPaths(connected, raster.width, raster.height);
+  const renderVariants = options.variantIds == null
+    ? RENDER_VARIANTS
+    : RENDER_VARIANTS.filter((config) => options.variantIds?.includes(config.id));
+  if (renderVariants.length === 0) {
+    throw new Error('No render variants selected.');
+  }
   const variants: GeneratorOutputVariant[] = [];
-  for (let index = 0; index < RENDER_VARIANTS.length; index += 1) {
-    const config = RENDER_VARIANTS[index];
+  for (let index = 0; index < renderVariants.length; index += 1) {
+    const config = renderVariants[index];
     const renderedPng = await renderTemplatePngBase64(raster, connected, placements, config);
     const svg = renderVectorSvg(raster, connected, placements, svgPaths, config);
     variants.push({
@@ -1698,7 +2049,7 @@ export async function buildRasterPaintByNumbers(
       svgByteLength: svg.length,
       isDefault: config.isDefault,
     });
-    options.report('svgRender', (index + 1) / RENDER_VARIANTS.length, `${config.label} gerendert.`);
+    options.report('svgRender', (index + 1) / renderVariants.length, `${config.label} gerendert.`);
     await nowYield();
   }
   const defaultVariant = variants.find((variant) => variant.isDefault) ?? variants[0];

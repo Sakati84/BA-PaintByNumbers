@@ -1,0 +1,630 @@
+{
+  "name": "2026-07-01-semantic-flats-easy-medium-expert",
+  "createdAt": "2026-07-01T09:47:58.025Z",
+  "dryRun": false,
+  "model": "gemini-3.1-flash-lite-image",
+  "maxEdge": 1024,
+  "runDir": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert",
+  "inputs": [
+    {
+      "id": "img-1394",
+      "originalPath": "/Users/Basti/Projekte/BA-PaintByNumbers/test_images/IMG_1394.JPG",
+      "originalCopyPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1394/input.original.jpg",
+      "originalSha256": "5ac7df9d80aa12c379a6dcc549c8312ec362435a3c8ce205f22aa0dc1482dc0f",
+      "originalByteLength": 4801887,
+      "preparedPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1394/input.prepared.jpg",
+      "preparedSha256": "4104b0890d5fd3802dd8cc651da0be90472e9a4b0595721929f01ad4baf7645a",
+      "preparedByteLength": 303553,
+      "width": 1024,
+      "height": 768,
+      "mimeType": "image/jpeg"
+    },
+    {
+      "id": "img-1681",
+      "originalPath": "/Users/Basti/Projekte/BA-PaintByNumbers/test_images/IMG_1681.PNG",
+      "originalCopyPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1681/input.original.png",
+      "originalSha256": "c2a9998b78e674ff6052a29fb77294dc27826f62335bd1ed515b220df73d4d38",
+      "originalByteLength": 6075858,
+      "preparedPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1681/input.prepared.jpg",
+      "preparedSha256": "22f4b80de0a83e4c283028b324189e09e25c635d8b969cd7975b0c9c66e6000c",
+      "preparedByteLength": 240491,
+      "width": 1024,
+      "height": 576,
+      "mimeType": "image/jpeg"
+    },
+    {
+      "id": "img-1704",
+      "originalPath": "/Users/Basti/Projekte/BA-PaintByNumbers/test_images/IMG_1704.JPG",
+      "originalCopyPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1704/input.original.jpg",
+      "originalSha256": "0257f8bdc4e620a056ecd1ee6c82518414800711ead6ce73223bbe29d1f814a2",
+      "originalByteLength": 897443,
+      "preparedPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1704/input.prepared.jpg",
+      "preparedSha256": "72986fb38509581eae5381866799ba52575700bf2b0ac0c4d58d3338f454f509",
+      "preparedByteLength": 206482,
+      "width": 572,
+      "height": 1024,
+      "mimeType": "image/jpeg"
+    },
+    {
+      "id": "img-1998",
+      "originalPath": "/Users/Basti/Projekte/BA-PaintByNumbers/test_images/IMG_1998.JPG",
+      "originalCopyPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1998/input.original.jpg",
+      "originalSha256": "cd1c79b5a472033947ef0bfa9c54baf2628e50c6eb1cd1671231abb89348b188",
+      "originalByteLength": 1660480,
+      "preparedPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1998/input.prepared.jpg",
+      "preparedSha256": "a418637e7526a49228fa52332a73ee51c7d1fe574e9e9f7746bcf595891e58fc",
+      "preparedByteLength": 155988,
+      "width": 768,
+      "height": 1024,
+      "mimeType": "image/jpeg"
+    },
+    {
+      "id": "foto-1-dog",
+      "originalPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/inputs/2026-07-01-extra-photos/foto-1-dog.jpg",
+      "originalCopyPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-1-dog/input.original.jpg",
+      "originalSha256": "627cf08b57246f5f13b9c8791aebddbae631902d49fbac961e04208fbac53a59",
+      "originalByteLength": 65068,
+      "preparedPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-1-dog/input.prepared.jpg",
+      "preparedSha256": "652bd063cf2aef8d29e33828902dbf225a7415190d0565ad667025aee6fd46d7",
+      "preparedByteLength": 65369,
+      "width": 640,
+      "height": 360,
+      "mimeType": "image/jpeg"
+    },
+    {
+      "id": "foto-2-frog",
+      "originalPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/inputs/2026-07-01-extra-photos/foto-2-frog.jpg",
+      "originalCopyPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-2-frog/input.original.jpg",
+      "originalSha256": "5f4f33505640a08e0960737401e4d7f19529bbe431f783eab054679c2b15c92a",
+      "originalByteLength": 234643,
+      "preparedPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-2-frog/input.prepared.jpg",
+      "preparedSha256": "335961a078e1dd6d08229088a8a11769ddebc5d56be988bef13038e920d7c8a2",
+      "preparedByteLength": 175731,
+      "width": 1024,
+      "height": 571,
+      "mimeType": "image/jpeg"
+    },
+    {
+      "id": "foto-3-stork",
+      "originalPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/inputs/2026-07-01-extra-photos/foto-3-stork.jpg",
+      "originalCopyPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-3-stork/input.original.jpg",
+      "originalSha256": "12e30346c65fee070bc6828e764f65280c6aa5073933d191e85d4680e25136b6",
+      "originalByteLength": 157085,
+      "preparedPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-3-stork/input.prepared.jpg",
+      "preparedSha256": "939b994bf4b99aaf15c8151e9563d807d68be1cda6156fb46dcb83aaf815971b",
+      "preparedByteLength": 120457,
+      "width": 571,
+      "height": 1024,
+      "mimeType": "image/jpeg"
+    }
+  ],
+  "cases": [
+    {
+      "id": "easy-v8-semantic-large-shapes",
+      "difficulty": "easy",
+      "colorCount": 8,
+      "promptFile": "../prompts/easy-v8-semantic-large-shapes.md",
+      "model": "gemini-3.1-flash-lite-image",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      }
+    },
+    {
+      "id": "medium-v7-semantic-flat-regions",
+      "difficulty": "medium",
+      "colorCount": 12,
+      "promptFile": "../prompts/medium-v7-semantic-flat-regions.md",
+      "model": "gemini-3.1-flash-lite-image",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      }
+    },
+    {
+      "id": "expert-v8-controlled-region-plate",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "promptFile": "../prompts/expert-v8-controlled-region-plate.md",
+      "model": "gemini-3.1-flash-lite-image",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      }
+    }
+  ],
+  "results": [
+    {
+      "inputId": "img-1394",
+      "caseId": "easy-v8-semantic-large-shapes",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1394/easy-v8-semantic-large-shapes/prompt.txt",
+      "promptSha256": "4febc19f72a83a12839817a537b62fc616100c09c356627fe30cca1bc714e9ee",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1394/easy-v8-semantic-large-shapes/request.json",
+      "requestSha256": "14af897261bb38faaf1eb9b79128ad7f30fe92a5d72ec36a5eb450be6996f2d3",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1394/easy-v8-semantic-large-shapes/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1394/easy-v8-semantic-large-shapes/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "904b8f826ce3e11b57bd390f72b9d3f57e039a3b010d489a45b3b640fe2166e7",
+      "outputByteLength": 378524,
+      "durationMs": 33678
+    },
+    {
+      "inputId": "img-1394",
+      "caseId": "medium-v7-semantic-flat-regions",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1394/medium-v7-semantic-flat-regions/prompt.txt",
+      "promptSha256": "239bbbe4712e1ad0faed24f6caff85d55a73b1239ea18e160c22bf78586c719e",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1394/medium-v7-semantic-flat-regions/request.json",
+      "requestSha256": "47f3482dfd12f006d1d5c94e0fcf36e49a8fccf15d8e78f52043cb946b2c628e",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1394/medium-v7-semantic-flat-regions/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1394/medium-v7-semantic-flat-regions/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "7969584fcf8295a1be10b86049449259e62a7b8013b95d996f771eb494bf4359",
+      "outputByteLength": 470186,
+      "durationMs": 4273
+    },
+    {
+      "inputId": "img-1394",
+      "caseId": "expert-v8-controlled-region-plate",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1394/expert-v8-controlled-region-plate/prompt.txt",
+      "promptSha256": "18fb127c0af406875a2389d6a23ed7e17db44031d57083138ad41acecaa7e4ef",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1394/expert-v8-controlled-region-plate/request.json",
+      "requestSha256": "dccabbc1316978128ae30eabf7aae011d648fb09ca1bc9e8184a30a213a6f4de",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1394/expert-v8-controlled-region-plate/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1394/expert-v8-controlled-region-plate/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "d7c27e22eead68340233d311c42591fba411f9de20cde7a42d2ac4abbd737aa9",
+      "outputByteLength": 661987,
+      "durationMs": 3722
+    },
+    {
+      "inputId": "img-1681",
+      "caseId": "easy-v8-semantic-large-shapes",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1681/easy-v8-semantic-large-shapes/prompt.txt",
+      "promptSha256": "4febc19f72a83a12839817a537b62fc616100c09c356627fe30cca1bc714e9ee",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1681/easy-v8-semantic-large-shapes/request.json",
+      "requestSha256": "44b1899ba7fc42126e054951fddd896432a60ab90449d82c10826f8b3e987771",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1681/easy-v8-semantic-large-shapes/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1681/easy-v8-semantic-large-shapes/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "7db244c0ff2c7a8af28bcc115e3b7a5825e5b3eb9a08b7f8c7cde29152986b0b",
+      "outputByteLength": 331224,
+      "durationMs": 3164
+    },
+    {
+      "inputId": "img-1681",
+      "caseId": "medium-v7-semantic-flat-regions",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1681/medium-v7-semantic-flat-regions/prompt.txt",
+      "promptSha256": "239bbbe4712e1ad0faed24f6caff85d55a73b1239ea18e160c22bf78586c719e",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1681/medium-v7-semantic-flat-regions/request.json",
+      "requestSha256": "08848732ae9e3348c4697535903dc6c7b86a1c6f82df4d088f7b9d460c1e6d59",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1681/medium-v7-semantic-flat-regions/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1681/medium-v7-semantic-flat-regions/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "e3198930d2fd33410d74d9a3d132b606847a7e4d868322bad14d95256b03f7b3",
+      "outputByteLength": 380599,
+      "durationMs": 3789
+    },
+    {
+      "inputId": "img-1681",
+      "caseId": "expert-v8-controlled-region-plate",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1681/expert-v8-controlled-region-plate/prompt.txt",
+      "promptSha256": "18fb127c0af406875a2389d6a23ed7e17db44031d57083138ad41acecaa7e4ef",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1681/expert-v8-controlled-region-plate/request.json",
+      "requestSha256": "d7b9138109e004fdc82851a989abafd4bd070843a4f2e7c54caeb2f21c8607df",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1681/expert-v8-controlled-region-plate/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1681/expert-v8-controlled-region-plate/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "94b723ff3d2bf4911bd9577a938ef5c10a777b302a8ae12a0976b941f3221a75",
+      "outputByteLength": 734143,
+      "durationMs": 3549
+    },
+    {
+      "inputId": "img-1704",
+      "caseId": "easy-v8-semantic-large-shapes",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1704/easy-v8-semantic-large-shapes/prompt.txt",
+      "promptSha256": "4febc19f72a83a12839817a537b62fc616100c09c356627fe30cca1bc714e9ee",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1704/easy-v8-semantic-large-shapes/request.json",
+      "requestSha256": "057f2d26333b2938565a0a6e1df18169de1cc2b35e93ffca823469c6f58e3a6b",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1704/easy-v8-semantic-large-shapes/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1704/easy-v8-semantic-large-shapes/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "f407c555cc5a4a8afd06dbcdbdb0b122c05ddb814183a5d9545627d418c157f2",
+      "outputByteLength": 403677,
+      "durationMs": 3240
+    },
+    {
+      "inputId": "img-1704",
+      "caseId": "medium-v7-semantic-flat-regions",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1704/medium-v7-semantic-flat-regions/prompt.txt",
+      "promptSha256": "239bbbe4712e1ad0faed24f6caff85d55a73b1239ea18e160c22bf78586c719e",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1704/medium-v7-semantic-flat-regions/request.json",
+      "requestSha256": "0cca6428e69645d34f12daff55d0cc6e357925386f7c7c753e6f055cbd5b8b70",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1704/medium-v7-semantic-flat-regions/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1704/medium-v7-semantic-flat-regions/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "f5bd7e65d044e442be018b7d9649fde0b569273a696abd65588b479498450b37",
+      "outputByteLength": 655014,
+      "durationMs": 3406
+    },
+    {
+      "inputId": "img-1704",
+      "caseId": "expert-v8-controlled-region-plate",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1704/expert-v8-controlled-region-plate/prompt.txt",
+      "promptSha256": "18fb127c0af406875a2389d6a23ed7e17db44031d57083138ad41acecaa7e4ef",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1704/expert-v8-controlled-region-plate/request.json",
+      "requestSha256": "b365c2dea732e53b5ce9d5a038a97b0da3072581198be3cb3e2f4c6df4669922",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1704/expert-v8-controlled-region-plate/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1704/expert-v8-controlled-region-plate/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "bedcb79206453b122c6a59b7e56af7ff288a04ac7023e42bf0c6c10f75972557",
+      "outputByteLength": 738681,
+      "durationMs": 3161
+    },
+    {
+      "inputId": "img-1998",
+      "caseId": "easy-v8-semantic-large-shapes",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1998/easy-v8-semantic-large-shapes/prompt.txt",
+      "promptSha256": "4febc19f72a83a12839817a537b62fc616100c09c356627fe30cca1bc714e9ee",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1998/easy-v8-semantic-large-shapes/request.json",
+      "requestSha256": "b208afdf4ec9e7d4e54fb12ee7f41e86b51f26a9cf3e61d600fe6a6942ca3151",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1998/easy-v8-semantic-large-shapes/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1998/easy-v8-semantic-large-shapes/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "8e25f7c3831b9c9e6f2abfaf2b28ddb8fbc378dbc383364322c9a1c3ef689a55",
+      "outputByteLength": 345433,
+      "durationMs": 3095
+    },
+    {
+      "inputId": "img-1998",
+      "caseId": "medium-v7-semantic-flat-regions",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1998/medium-v7-semantic-flat-regions/prompt.txt",
+      "promptSha256": "239bbbe4712e1ad0faed24f6caff85d55a73b1239ea18e160c22bf78586c719e",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1998/medium-v7-semantic-flat-regions/request.json",
+      "requestSha256": "9b9172b4a7a13340c7b6af452be0f0034fd586da36757343cc6c6e2d34255e0d",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1998/medium-v7-semantic-flat-regions/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1998/medium-v7-semantic-flat-regions/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "ae4d39129f7e4234471d57e6360c0603fe73029862956ac935a50be3cb28dc34",
+      "outputByteLength": 435047,
+      "durationMs": 3179
+    },
+    {
+      "inputId": "img-1998",
+      "caseId": "expert-v8-controlled-region-plate",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1998/expert-v8-controlled-region-plate/prompt.txt",
+      "promptSha256": "18fb127c0af406875a2389d6a23ed7e17db44031d57083138ad41acecaa7e4ef",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1998/expert-v8-controlled-region-plate/request.json",
+      "requestSha256": "d61692cfd16cbac6f09a07f570c60fd612c53d26dc588baffeff994df4b25a4a",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1998/expert-v8-controlled-region-plate/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/img-1998/expert-v8-controlled-region-plate/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "25da4e77c5e4811e9b0465e49c309eb124a40abfb1f2961600bcc9d234f3c0b7",
+      "outputByteLength": 506566,
+      "durationMs": 3529
+    },
+    {
+      "inputId": "foto-1-dog",
+      "caseId": "easy-v8-semantic-large-shapes",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-1-dog/easy-v8-semantic-large-shapes/prompt.txt",
+      "promptSha256": "4febc19f72a83a12839817a537b62fc616100c09c356627fe30cca1bc714e9ee",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-1-dog/easy-v8-semantic-large-shapes/request.json",
+      "requestSha256": "98b97c9880ae51a87f1ea9cd0eb8d3d870cbf89bad15297537ad82efb2ba776d",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-1-dog/easy-v8-semantic-large-shapes/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-1-dog/easy-v8-semantic-large-shapes/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "d093cefdcb3463755a3293ee5ad7df2a35b8c5aecb56dc2d80eaa92a456f9c9d",
+      "outputByteLength": 295314,
+      "durationMs": 2827
+    },
+    {
+      "inputId": "foto-1-dog",
+      "caseId": "medium-v7-semantic-flat-regions",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-1-dog/medium-v7-semantic-flat-regions/prompt.txt",
+      "promptSha256": "239bbbe4712e1ad0faed24f6caff85d55a73b1239ea18e160c22bf78586c719e",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-1-dog/medium-v7-semantic-flat-regions/request.json",
+      "requestSha256": "b511c656b2833603fc74ec2afcd399c666fba1477c619090d90f75b175b60373",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-1-dog/medium-v7-semantic-flat-regions/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-1-dog/medium-v7-semantic-flat-regions/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "a9e739ee6055f46ebfd21aad94f1c8b5b6f80592c770fe99b7d5cf12f52fa5d4",
+      "outputByteLength": 348148,
+      "durationMs": 3029
+    },
+    {
+      "inputId": "foto-1-dog",
+      "caseId": "expert-v8-controlled-region-plate",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-1-dog/expert-v8-controlled-region-plate/prompt.txt",
+      "promptSha256": "18fb127c0af406875a2389d6a23ed7e17db44031d57083138ad41acecaa7e4ef",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-1-dog/expert-v8-controlled-region-plate/request.json",
+      "requestSha256": "7a15a8f8e3d71fe81c7725ac2c66076bc812be8881404ed863bb581838a55a15",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-1-dog/expert-v8-controlled-region-plate/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-1-dog/expert-v8-controlled-region-plate/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "32e3a9b251302b8af738c954f4e5dce9358eb5dbfccaa4108f1c7a4fef1e4524",
+      "outputByteLength": 611651,
+      "durationMs": 3357
+    },
+    {
+      "inputId": "foto-2-frog",
+      "caseId": "easy-v8-semantic-large-shapes",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-2-frog/easy-v8-semantic-large-shapes/prompt.txt",
+      "promptSha256": "4febc19f72a83a12839817a537b62fc616100c09c356627fe30cca1bc714e9ee",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-2-frog/easy-v8-semantic-large-shapes/request.json",
+      "requestSha256": "5ba248d531159c60715914634d7e490e883813590fff614a302ef73155eb91ec",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-2-frog/easy-v8-semantic-large-shapes/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-2-frog/easy-v8-semantic-large-shapes/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "d8e97832796c5bbcda1a237627e1aea72250097ef5dcd62b054750f1f33af2ae",
+      "outputByteLength": 376540,
+      "durationMs": 3005
+    },
+    {
+      "inputId": "foto-2-frog",
+      "caseId": "medium-v7-semantic-flat-regions",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-2-frog/medium-v7-semantic-flat-regions/prompt.txt",
+      "promptSha256": "239bbbe4712e1ad0faed24f6caff85d55a73b1239ea18e160c22bf78586c719e",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-2-frog/medium-v7-semantic-flat-regions/request.json",
+      "requestSha256": "99fba5d6ac51225a54e37be0f323654b347ce6d876efb4c1e75831013e276abe",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-2-frog/medium-v7-semantic-flat-regions/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-2-frog/medium-v7-semantic-flat-regions/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "dbb88ed753a3a667c53de15f6f54d736d2210e632b0a281391691256e156b399",
+      "outputByteLength": 542036,
+      "durationMs": 3605
+    },
+    {
+      "inputId": "foto-2-frog",
+      "caseId": "expert-v8-controlled-region-plate",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-2-frog/expert-v8-controlled-region-plate/prompt.txt",
+      "promptSha256": "18fb127c0af406875a2389d6a23ed7e17db44031d57083138ad41acecaa7e4ef",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-2-frog/expert-v8-controlled-region-plate/request.json",
+      "requestSha256": "92ad1c3abdb532df4307b8caaee798433c11bf9efcb7898bd0ab9b35913783a7",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-2-frog/expert-v8-controlled-region-plate/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-2-frog/expert-v8-controlled-region-plate/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "0a9b8ba4f2d2beddff71d1ed049e25ab8898361cde927169f725afa84438d190",
+      "outputByteLength": 668553,
+      "durationMs": 3307
+    },
+    {
+      "inputId": "foto-3-stork",
+      "caseId": "easy-v8-semantic-large-shapes",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-3-stork/easy-v8-semantic-large-shapes/prompt.txt",
+      "promptSha256": "4febc19f72a83a12839817a537b62fc616100c09c356627fe30cca1bc714e9ee",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-3-stork/easy-v8-semantic-large-shapes/request.json",
+      "requestSha256": "b8622b8e09ad4db62ff45f13d7713c81261649a00d30d85fb63ca6e525bfd35e",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-3-stork/easy-v8-semantic-large-shapes/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-3-stork/easy-v8-semantic-large-shapes/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "e23e9d6ef937d0422932db4681f732a9431a1c31642a220b247e8d20dc320148",
+      "outputByteLength": 293652,
+      "durationMs": 2896
+    },
+    {
+      "inputId": "foto-3-stork",
+      "caseId": "medium-v7-semantic-flat-regions",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-3-stork/medium-v7-semantic-flat-regions/prompt.txt",
+      "promptSha256": "239bbbe4712e1ad0faed24f6caff85d55a73b1239ea18e160c22bf78586c719e",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-3-stork/medium-v7-semantic-flat-regions/request.json",
+      "requestSha256": "9363d2073e25d3e8196383b2fa5025533961c912c7d09a9a55d32f4dfd6ad15f",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-3-stork/medium-v7-semantic-flat-regions/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-3-stork/medium-v7-semantic-flat-regions/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "e2051894081d183b2368fa2527ed5b13386959449693ca14ef9d0fce3c41ecd6",
+      "outputByteLength": 460486,
+      "durationMs": 2908
+    },
+    {
+      "inputId": "foto-3-stork",
+      "caseId": "expert-v8-controlled-region-plate",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-3-stork/expert-v8-controlled-region-plate/prompt.txt",
+      "promptSha256": "18fb127c0af406875a2389d6a23ed7e17db44031d57083138ad41acecaa7e4ef",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-3-stork/expert-v8-controlled-region-plate/request.json",
+      "requestSha256": "08a40638f18c919d517563411a202560539a55f9b3c5924483ec2ad377abbc23",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-3-stork/expert-v8-controlled-region-plate/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-01T09-47-58-025Z_2026-07-01-semantic-flats-easy-medium-expert/foto-3-stork/expert-v8-controlled-region-plate/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "e6aebc92ea5f6fa0c39c341a72409aa3503712180394c431725897c3f0ce8c9b",
+      "outputByteLength": 543853,
+      "durationMs": 3495
+    }
+  ]
+}

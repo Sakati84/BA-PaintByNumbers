@@ -1,0 +1,27 @@
+{
+  "name": "2026-07-01-all-photos-high-fidelity-current",
+  "variants": ["cleanColor", "classic"],
+  "configs": [
+    {
+      "id": "easy-high-fidelity-current",
+      "label": "Easy high-fidelity current",
+      "description": "Current Easy pipeline after detail-preserving cleanup/merge tuning, matched to 8 colors.",
+      "difficulty": "easy",
+      "colorCount": 8
+    },
+    {
+      "id": "medium-high-fidelity-current",
+      "label": "Medium high-fidelity current",
+      "description": "Current Medium pipeline after detail-preserving cleanup/merge tuning, matched to 12 colors.",
+      "difficulty": "medium",
+      "colorCount": 12
+    },
+    {
+      "id": "expert-high-fidelity-current",
+      "label": "Expert high-fidelity current",
+      "description": "Current Expert pipeline after detail-preserving cleanup/merge tuning.",
+      "difficulty": "expert",
+      "colorCount": 24
+    }
+  ]
+}

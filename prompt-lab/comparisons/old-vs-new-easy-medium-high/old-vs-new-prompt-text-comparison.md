@@ -1,0 +1,421 @@
+# Promptvergleich alt vs neu
+
+Hinweis: Der exakte Git-Stand vor ca. vier Wochen (`2026-06-03`, Commit `170b236`) hatte noch keinen getrennten Foto-Posterize-Prompt für Easy/Medium/High. Der sinnvoll vergleichbare alte Stand sind die frühen Prompt-Lab-Single-Runs vom 30.06. (`easy`, `medium`, `expert`).
+
+Bildvergleich: `/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/comparisons/old-vs-new-easy-medium-high/old-vs-new-prompt-image-comparison.html`
+
+| Schwierigkeit | Alter Prompt | Neuer Prompt | Hauptunterschied |
+| --- | --- | --- | --- |
+| Easy | exact colors, flat regions, no black outlines, target audience | exact colors, subject-specific rules, flat regions, no black outlines, no photo filter, target audience | Neu ist länger, stärker motivspezifisch und trennt Zielgruppen/Detailgrad klarer. |
+| Medium | exact colors, flat regions, no black outlines, target audience | exact colors, flat regions, no photo filter | Neu ist länger, stärker motivspezifisch und trennt Zielgruppen/Detailgrad klarer. |
+| High | exact colors, flat regions, no black outlines, target audience | exact colors, flat regions, no black outlines, no photo filter | Neu ist länger, stärker motivspezifisch und trennt Zielgruppen/Detailgrad klarer. |
+
+## Easy
+
+### Alter Prompt
+
+```text
+Use the uploaded photo as the strict visual reference.
+
+First, analyze the uploaded photo and extract exactly 12 dominant main colors from it. The palette must be derived from the broad, important visual areas of the photo, not from tiny details, compression artifacts, sensor noise, reflections, or isolated pixels.
+
+When extracting the palette:
+- Prioritize colors from large image regions.
+- Merge similar shades into one representative color.
+- Ignore insignificant micro-variations.
+- Preserve the overall color identity of the original photo.
+- Do not invent an unrelated decorative palette.
+- If needed, slightly simplify or gently brighten the extracted colors so they work well in a clean child-friendly illustration, while remaining clearly related to the original photo.
+
+Then transform the uploaded photo into an easy, child-friendly flat illustration suitable for a young child around 4 years old.
+
+Preserve:
+- the main composition of the original photo
+- the placement of the dominant objects
+- the foreground, middle ground, and background structure
+- the horizon line and perspective
+- the overall scene type and mood
+- the most recognizable visual elements
+
+Simplify:
+- reduce the image to very large, clear color areas
+- merge small details into broad simplified shapes
+- use rounded, friendly forms
+- remove fine details, textures, tiny branches, small leaves, and visual clutter
+- make the image very easy for a young child to understand
+
+Style:
+- flat poster-like illustration
+- very large simplified shapes
+- clean color-block areas
+- crisp boundaries between color areas
+- no black outlines
+- no dark contour lines
+- no coloring-book line art
+- no thin strokes
+- no realistic texture
+- no grain, noise, hatching, sketch marks, or painterly effects
+- minimal or no gradients
+- bright, calm, clear, and friendly mood
+
+Color rules:
+- Use exactly 12 intended main colors, automatically extracted from the uploaded photo.
+- Use those colors as the complete visual color system of the illustration.
+- Do not intentionally introduce additional colors.
+- Reuse the extracted colors across different objects where needed.
+- Separate shapes through clean color-area boundaries, not outlines.
+
+The final result should look like a simplified children's illustration based on the uploaded photo: recognizable in composition, built from very large clean areas, and visually suitable for a young child around 4 years old.
+
+Negative prompt:
+black outlines, dark outlines, coloring book line art, ink drawing, sketch, thin strokes, photorealism, realistic texture, complex detail, tiny objects, detailed leaves, fine branches, visual clutter, noise, grain, hatching, watercolor texture, oil painting texture, 3D render, excessive shading, strong gradients, too many colors, arbitrary palette, unrelated colors, harsh contrast
+numbers, labels, text, logos, watermarks
+
+Output constraints:
+- Output a normal clean image only, not a numbered template.
+- Keep the useful image size within about 1024px on the longest edge.
+```
+
+### Neuer Prompt
+
+```text
+Use the uploaded photo as a loose visual reference.
+
+Create a very easy child paint-by-numbers source image.
+
+The image should look like a simple colored child drawing made from a few big paint regions. It should be clearly transformed from the photo, not a filtered photo.
+
+Preserve:
+- the main subject or scene type
+- the rough crop and composition
+- the approximate location of the main objects
+- the most important color identity of the subject
+
+Simplify strongly:
+- redraw the scene in a childlike way
+- remove small visual details
+- remove realistic texture, lighting, shadows, and reflections
+- reduce complex natural areas to simple shapes
+- make every region large enough for a young child to paint
+
+Region rules:
+- Use exactly 12 intended main colors.
+- Merge similar colors strongly.
+- Use very few large regions per material or object.
+- Do not create lots of small repeated patches.
+- Avoid thin slivers, tiny islands, speckles, and detailed patterns.
+- Prefer simple bands and blocks over accurate detail.
+
+Subject rules:
+- Landscapes: use big simple bands for sky, water, grass, tree groups, shore, paths, and far background. Water should be mostly one or two broad areas, with only a few simple reflection shapes.
+- Animals: keep pose, head direction, legs, tail, and main markings, but simplify the body into broad color blocks.
+- Birds: keep pose, beak, eye area, and main black/white/red or other key markings, but simplify feathers and foliage into broad color blocks.
+- Flowers: keep the main flower shape, large petals, center, stem or vase if visible, but simplify petal detail and background into broad color blocks.
+
+Style:
+- child drawing for paint by numbers
+- simple flat matte colors
+- large closed paintable areas
+- rounded friendly simplified shapes
+- clear separation between neighboring colors
+- very simple background
+- no black outlines
+- no dark contour lines
+- no numbers, labels, or text
+- no photographic texture or shading
+
+The final result should be a child-friendly paint-by-numbers reference for a young child around 4 years old: simple, recognizable, strongly simplified, and easy to paint.
+
+Negative prompt:
+unchanged photo, photo filter, photorealistic image, realistic rendering, realistic lighting, realistic shadow, lens blur, depth of field, bokeh, glossy reflection, complex reflection detail, texture detail, grass blade detail, leaf detail, feather detail, fur detail, flower seed detail, tiny pattern, grain, noise, tiny speckles, many small regions, many repeated patches, thin slivers, black outlines, dark contour lines, coloring book line art, sketch, ink drawing, hatching, brush texture, watercolor texture, oil paint texture, adult illustration, unrelated object, changed main subject, numbers, labels, text, logos, watermarks
+numbers, labels, text, logos, watermarks
+
+Output constraints:
+- Output a normal clean image only, not a numbered template.
+- Keep the useful image size within about 1024px on the longest edge.
+```
+
+## Medium
+
+### Alter Prompt
+
+```text
+Use the uploaded photo as the strict visual reference.
+
+First, analyze the uploaded photo and extract exactly 16 dominant main colors from it. The palette must be derived from the major and secondary visual regions of the photo, not from tiny details, compression artifacts, sensor noise, random reflections, or isolated pixels.
+
+When extracting the palette:
+- Prioritize colors from large and medium-sized image regions.
+- Merge very similar shades into one representative color when appropriate.
+- Preserve meaningful color differences when they help describe important forms.
+- Preserve the overall natural color identity of the source photo.
+- Do not invent an unrelated decorative palette.
+- If needed, simplify the extracted colors so they work well in a clean illustrated image, while remaining faithful to the original photo.
+
+Then transform the uploaded photo into a medium-difficulty paint-by-numbers source illustration suitable for teenagers. The result should stay close to the original composition, but it must clearly look like a deliberately simplified flat artwork, not like a filtered or retouched photograph.
+
+Preserve:
+- the main composition of the original photo
+- the placement of the dominant subjects
+- the foreground, middle ground, and background structure
+- the horizon line and perspective
+- the overall scene type and mood
+- the most recognizable visual elements
+- the main secondary forms and shape transitions
+
+Simplify:
+- reduce photographic complexity into clear posterized color regions
+- preserve more internal structure than in an easy version
+- keep medium-sized forms, shape changes, and visible area separations
+- remove tiny details, micro-textures, visual noise, and insignificant clutter
+- simplify textures into readable color areas
+- convert shadows, highlights, and material changes into a small number of intentional flat shape cells
+- suppress camera-realistic cues such as lens softness, natural micro-detail, glossy reflections, and lifelike lighting
+- make the image clearly structured but still approachable
+
+Style:
+- clean posterized paint-by-numbers illustration
+- flat matte color regions
+- medium number of separated color areas
+- clear visual segmentation
+- crisp boundaries between areas
+- hand-composed graphic shapes
+- visible color-block construction
+- no black outlines
+- no dark contour lines
+- no coloring-book line art
+- no sketch effect
+- no realistic texture
+- no photorealistic rendering
+- no photographic lighting
+- no camera-like depth of field
+- minimal gradients only if absolutely necessary
+- calm, clear, graphic appearance
+
+Color-area behavior:
+- break the image into a balanced number of distinct surfaces
+- preserve important regional differences in sky, foliage, water, ground, buildings, people, objects, or other visible materials
+- represent structure through posterized area segmentation, not through outlines
+- avoid both excessive simplification and excessive micro-detail
+
+Color rules:
+- Use exactly 16 intended main colors, automatically extracted from the uploaded photo.
+- Use those colors as the complete visual color system of the illustration.
+- Do not intentionally introduce additional colors.
+- Reuse the extracted colors where appropriate.
+- Distinguish areas through shape and color separation, not through outlines.
+
+The final result should look like a medium-difficulty paint-by-numbers source artwork based on the uploaded photo: clearly recognizable, more detailed than an easy version, visibly made from clean flat color cells, unmistakably non-photographic, and suitable for teenagers.
+
+Negative prompt:
+black outlines, dark outlines, coloring book line art, sketch, ink drawing, photorealism, photographic rendering, camera-realistic image, lifelike lighting, realistic shadows, lens blur, depth of field, bokeh, glossy reflections, tiny details, excessive texture, grain, noise, hatching, watercolor texture, painterly brushwork, 3D render, heavy gradients, too few color regions, oversimplified preschool style, unrelated palette, muddy colors, visual clutter
+numbers, labels, text, logos, watermarks
+
+Output constraints:
+- Output a normal clean image only, not a numbered template.
+- Keep the useful image size within about 1024px on the longest edge.
+```
+
+### Neuer Prompt
+
+```text
+Transform the uploaded photo into a medium-difficulty paint-by-numbers source image.
+
+Make a visibly stylized flat posterized illustration. The output must be clearly different from the photo and should look intentionally prepared for paint-by-numbers.
+
+Core requirement:
+- Redraw the image as clean flat color regions.
+- Use exactly 16 intended main colors.
+- Keep the main subject, crop, and overall composition recognizable.
+- Preserve important pose and subject identity.
+- Simplify photographic surfaces aggressively.
+- Do not add decorative symbols, sparkles, stars, icons, or unrelated new elements.
+
+Visual target:
+- stylized flat poster artwork
+- medium-sized closed paint regions
+- crisp boundaries between colors
+- clear color cells for shadows, highlights, and material changes
+- more detailed than Easy, much simpler than a photo
+- practical for paint-by-numbers segmentation
+
+Simplify aggressively:
+- grass becomes grouped green areas
+- leaves and foliage become grouped color masses with simplified cell shapes
+- fur and feathers become clean color patches
+- flower centers become a few clear shapes, not tiny seeds
+- petal shading becomes broad color bands
+- water reflections become broad simplified shapes
+- background clutter becomes larger color areas
+
+Keep medium detail:
+- enough shape information to understand the subject
+- visible regional color variation
+- important markings on animals and birds
+- important petal and subject structure
+- recognizable landscape depth
+
+Avoid:
+- unchanged or lightly filtered photo
+- realistic texture
+- tiny repeated details
+- dense micro-regions
+- muddy noisy gradients
+- black outlines
+- dark contour lines
+- sketch or coloring-book line art
+- numbers, labels, or text
+- preschool drawing
+- generic cartoon replacement
+
+The result should look like a clean medium-level paint-by-numbers color reference: recognizably based on the uploaded photo, visibly posterized, and made from deliberate flat paintable regions.
+
+Negative prompt:
+unchanged photo, lightly filtered photo, photo filter, photorealistic image, camera-realistic rendering, realistic lighting, realistic shadows, photographic texture, natural micro-detail, grass blade detail, leaf detail, leaf micro-detail, feather detail, fur detail, flower seed detail, detailed flower center, bark detail, water ripple detail, noisy gradients, grain, noise, speckles, tiny color cells, thin slivers, black outlines, dark contour lines, coloring book line art, sketch, ink drawing, brush strokes, watercolor texture, oil paint texture, decorative symbol, sparkle, star, icon, unrelated objects, changed main subject, numbers, labels, text, logos, watermarks
+
+Output constraints:
+- Output a normal clean image only, not a numbered template.
+- Keep the useful image size within about 1024px on the longest edge.
+```
+
+## High
+
+### Alter Prompt
+
+```text
+Use the uploaded photo as the strict visual reference.
+
+First, analyze the uploaded photo and extract exactly 24 dominant main colors from it. The palette must be derived from broad, medium, and visually important smaller regions of the source photo, while ignoring insignificant micro-variations, compression artifacts, sensor noise, isolated reflections, and accidental pixel noise.
+
+When extracting the palette:
+- Prioritize colors from large, medium, and visually important smaller regions.
+- Preserve meaningful color distinctions when they help describe form, light, depth, and structure.
+- Merge only near-identical shades.
+- Keep the extracted palette clearly faithful to the source photo.
+- Do not invent a decorative or unrelated palette.
+- Slightly simplify the colors only as much as needed to support a clean posterized rendering.
+
+Then transform the uploaded photo into a high-detail paint-by-numbers source illustration with strong composition and subject fidelity, suitable for advanced users or expert-level coloring. Keep the original scene highly recognizable, but stylize it into a flat color-area artwork; it must not read as a near-photographic rendering.
+
+Preserve:
+- the full main composition of the original photo
+- subject placement and spatial relationships
+- foreground, middle ground, and background structure
+- horizon line, perspective, and depth cues
+- the visual identity of the scene
+- major and secondary objects
+- important shape transitions
+- recognizable internal structure in natural, architectural, human-made, or organic elements
+
+Simplify:
+- convert photographic detail into many clean posterized color regions
+- keep substantially more segmented areas than in easy or medium versions
+- preserve meaningful detail through separated flat shapes rather than texture
+- remove only insignificant micro-noise and ultra-fine texture
+- translate light, shadow, texture, and material variation into discrete matte color cells
+- maintain a high level of visual fidelity in composition and shape relationships, while making the surface treatment clearly non-photographic
+- avoid preserving detail as realistic texture; preserve it only as clean, paintable shape segmentation
+
+Style:
+- high-detail posterized paint-by-numbers illustration
+- many clean, separated color fields
+- flat matte fills
+- crisp boundaries between color regions
+- strong shape readability
+- hand-composed graphic segmentation
+- visible color-block construction
+- no black outlines
+- no dark contour lines
+- no coloring-book line art
+- no sketch effect
+- no painterly texture
+- no visible brushstrokes
+- no photorealistic rendering
+- no photographic lighting
+- no lens effects
+- minimal or no gradients
+- clear, refined, graphic poster-like appearance
+
+Color-area behavior:
+- break the image into many distinct but coherent surfaces
+- preserve visible regional variation in sky, foliage, ground, water, buildings, people, objects, shadows, highlights, and other major materials through separated color planes
+- represent detail through posterized area segmentation, not through lines
+- increase the number of visually distinct fill regions while remaining controlled and readable
+- avoid noisy fragmentation and meaningless speckling
+
+Color rules:
+- Use exactly 24 intended main colors, automatically extracted from the uploaded photo.
+- Use only those colors as the complete visual color system of the illustration.
+- Do not intentionally introduce additional colors.
+- Reuse the extracted palette intelligently across the whole image.
+- Preserve as much of the source image's color identity as possible within the 24-color limit.
+
+The final result should look like a highly faithful, expert-level paint-by-numbers source artwork based on the uploaded photo: compositionally accurate, richly segmented into many clean flat color regions, visually refined, clearly more detailed than a medium version, and unmistakably non-photographic.
+
+Negative prompt:
+black outlines, dark contour lines, sketch, ink drawing, coloring book line art, painterly brush strokes, watercolor texture, oil paint texture, photorealism, photographic rendering, camera-realistic image, lifelike lighting, realistic shadows, lens blur, depth of field, bokeh, glossy reflections, photorealistic texture, skin pores, fabric weave, noisy gradients, grain, blur, muddy colors, oversimplified shapes, too few color regions, childish simplification, unrelated palette, excessive micro-noise, meaningless speckling
+numbers, labels, text, logos, watermarks
+
+Output constraints:
+- Output a normal clean image only, not a numbered template.
+- Keep the useful image size within about 1024px on the longest edge.
+```
+
+### Neuer Prompt
+
+```text
+Create an expert-level paint-by-numbers source illustration from the uploaded photo.
+
+This is not photo enhancement. This is not a photo filter. Rebuild the whole image as a detailed flat posterized illustration made from closed paint regions.
+
+Apply the transformation uniformly to every part of the image:
+- main subject
+- background
+- foliage
+- grass
+- water
+- reflections
+- flower centers
+- sky and clouds
+- small supporting objects
+
+Required output:
+- exactly 24 intended main colors
+- many closed paintable regions
+- more detail and more regions than Medium
+- visibly non-photographic surfaces
+- crisp cell boundaries
+- flat matte fills
+- no black outlines
+- no numbers, labels, or text
+
+Preserve:
+- main composition and crop
+- main subject identity
+- object placement and pose
+- recognizable color relationships
+- important markings and structural detail
+
+Convert:
+- all photographic texture into grouped color cells
+- all gradients into stepped color regions
+- all shadows and highlights into separate flat shapes
+- all foliage into clustered leaf-mass cells
+- all grass into grouped patch cells
+- all reflections into simplified layered cells
+- all flower centers into grouped circular/radial cells
+
+Expert difference from Medium:
+- Medium has broad simplified regions.
+- Expert should have more local structure inside each object and material.
+- Expert should preserve more subject-specific detail, but as clean cells, never as raw texture.
+
+Do not leave any area looking like the original photograph. The landscape, flower, bird background, and grass must also be visibly posterized.
+
+Negative prompt:
+photo enhancement, unchanged photo, lightly filtered photo, photo filter, raw photo pixels, photorealistic image, photographic rendering, realistic lighting, realistic shadows, realistic texture, continuous gradients, lens blur, depth of field, bokeh, glossy reflection, grass blade texture, leaf texture, feather micro-detail, fur hair detail, flower seed noise, bark noise, water ripple noise, grain, sensor noise, random speckles, unpaintable micro-fragments, black outlines, dark contour lines, coloring book line art, sketch, ink, brush texture, watercolor texture, oil paint texture, generic cartoon, preschool style, decorative symbol, sparkle, star, unrelated objects, changed main subject, numbers, labels, text, logos, watermarks
+
+Output constraints:
+- Output a normal clean image only, not a numbered template.
+- Keep the useful image size within about 1024px on the longest edge.
+```

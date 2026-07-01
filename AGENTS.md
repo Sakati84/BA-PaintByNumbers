@@ -13,6 +13,9 @@ This repository has three important runtime paths:
 - `react-app-native-expo/`
   Expo + React Native port of the browser pipeline. This app is not a WebView wrapper. It uses native OpenCV bindings through `react-native-fast-opencv` and a typed artifact pipeline instead of a browser worker.
 
+- `App/`
+  Current Expo app used for the installed iPhone build in this checkout. It wraps a locally bundled React web UI from `react-app/` in `react-native-webview` and handles native host capabilities such as image picking, camera, sharing, filesystem access, and API/native bridge work.
+
 If an agent is working on parity or feature completion, the usual direction is:
 
 1. Read the Python or web implementation.
@@ -77,6 +80,24 @@ Still missing or not yet exact:
 - canvas and ImageData based previews
 
 The worker caches intermediate stage outputs and invalidates downstream stages when an earlier stage reruns.
+
+### Current Expo WebView App
+
+`App/` uses:
+
+- Expo + React Native app shell in `App/App.tsx`
+- `react-native-webview` to display the built React UI from `react-app/`
+- local WebView materialization through `App/src/features/generator/localWebViewLoader.ts`
+- generated embedded WebView assets in `App/src/features/generator/localWebViewManifest.generated.ts`
+- bridge types shared through `App/src/features/webview/appWebViewBridgeTypes.ts`
+- `App/scripts/sync-local-webview.mjs` to rebuild `react-app/dist` and embed it into the Expo app
+
+Important:
+
+- The current iPhone app is a WebView host around the React UI from `react-app/`.
+- The React UI can be tested directly in Codex without reinstalling on the phone.
+- Native-only host behavior still requires the Expo app or a browser fallback/mock.
+- The browser preview currently supports a local file-picker fallback for image selection, but camera capture, native sharing, and true Expo file URI behavior still belong to the Expo host.
 
 ### Native App
 
@@ -282,6 +303,24 @@ Typecheck:
 Build:
 
 - `npm run build --prefix ./react-app`
+
+Codex browser preview for the current WebView UI:
+
+1. Build the local WebView files:
+   - `npm run build:webview-local --prefix ./react-app`
+2. Serve the built files:
+   - `cd react-app/dist`
+   - `python3 -m http.server 5177 --bind 127.0.0.1`
+3. Open this URL in the Codex in-app browser:
+   - `http://127.0.0.1:5177/`
+4. For iPhone 13 visual checks, set the browser viewport to:
+   - `390 x 844`
+
+Use this Codex browser preview for UI layout, text, responsive checks, and the browser file-picker fallback. Do not treat it as full native parity: camera capture, native sharing, Expo filesystem behavior, and the real `ReactNativeWebView` bridge still need the Expo app on device or simulator.
+
+After changing `react-app/` and before testing inside the installed Expo app, sync the WebView bundle into `App/`:
+
+- `npm run sync:webview-local --prefix ./App`
 
 ### Expo Native App
 

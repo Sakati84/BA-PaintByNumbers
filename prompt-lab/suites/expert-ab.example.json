@@ -1,0 +1,25 @@
+{
+  "name": "expert-ab-example",
+  "model": "gemini-3.1-flash-lite-image",
+  "maxEdge": 1024,
+  "generationConfig": {
+    "seed": 1234,
+    "temperature": 0.2
+  },
+  "inputs": [
+    "../../tree.png"
+  ],
+  "cases": [
+    {
+      "id": "expert-current",
+      "difficulty": "expert",
+      "colorCount": 24
+    },
+    {
+      "id": "expert-v2",
+      "promptFile": "../prompts/expert-v2.md",
+      "difficulty": "expert",
+      "colorCount": 24
+    }
+  ]
+}

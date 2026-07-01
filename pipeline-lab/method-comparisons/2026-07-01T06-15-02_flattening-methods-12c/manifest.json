@@ -1,0 +1,2544 @@
+{
+  "createdAt": "2026-07-01T06:15:02+0200",
+  "targetColors": 12,
+  "maxEdge": 1024,
+  "sourceRun": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-06-30T19-40-19-250Z_nano-banana-2-lite-easy-medium-expert",
+  "methods": [
+    "plain-lab-kmeans",
+    "weighted-lab-kmeans",
+    "meanshift-weighted-kmeans",
+    "spatial-labxy-kmeans",
+    "region-modes-then-kmeans"
+  ],
+  "results": [
+    {
+      "sourceId": "img-1394__easy-v5",
+      "method": "plain-lab-kmeans",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/pipeline-lab/method-comparisons/2026-07-01T06-15-02_flattening-methods-12c/img-1394__easy-v5/plain-lab-kmeans/cleaned.png",
+      "durationMs": 157,
+      "paletteColors": 12,
+      "targetColors": 12,
+      "components": 2161.0,
+      "small_components_lt64": 2117.0,
+      "tiny_components_lt16": 2090.0,
+      "mean_largest_component_share_per_color": 0.8362606646754446,
+      "mean_source_lab_variance_per_color": 6.230099081993103,
+      "pixel_weighted_source_lab_variance": 4.688522416852872,
+      "center_colors": 12.0,
+      "center_dominant_share": 0.21971638997395834,
+      "center_top3_share": 0.5455678304036459,
+      "palette": [
+        {
+          "rgb": [
+            61,
+            122,
+            165
+          ],
+          "pixels": 155370,
+          "share": 0.19756317138671875
+        },
+        {
+          "rgb": [
+            85,
+            147,
+            195
+          ],
+          "pixels": 149893,
+          "share": 0.19059880574544272
+        },
+        {
+          "rgb": [
+            158,
+            191,
+            110
+          ],
+          "pixels": 126130,
+          "share": 0.1603825887044271
+        },
+        {
+          "rgb": [
+            105,
+            179,
+            77
+          ],
+          "pixels": 93591,
+          "share": 0.11900711059570312
+        },
+        {
+          "rgb": [
+            230,
+            241,
+            245
+          ],
+          "pixels": 58844,
+          "share": 0.07482401529947917
+        },
+        {
+          "rgb": [
+            50,
+            83,
+            50
+          ],
+          "pixels": 42579,
+          "share": 0.054141998291015625
+        },
+        {
+          "rgb": [
+            109,
+            169,
+            210
+          ],
+          "pixels": 40441,
+          "share": 0.05142339070638021
+        },
+        {
+          "rgb": [
+            146,
+            193,
+            223
+          ],
+          "pixels": 34708,
+          "share": 0.044133504231770836
+        },
+        {
+          "rgb": [
+            91,
+            128,
+            80
+          ],
+          "pixels": 32348,
+          "share": 0.041132609049479164
+        },
+        {
+          "rgb": [
+            176,
+            193,
+            90
+          ],
+          "pixels": 31986,
+          "share": 0.04067230224609375
+        },
+        {
+          "rgb": [
+            138,
+            114,
+            84
+          ],
+          "pixels": 12229,
+          "share": 0.015549977620442709
+        },
+        {
+          "rgb": [
+            113,
+            89,
+            61
+          ],
+          "pixels": 8313,
+          "share": 0.010570526123046875
+        }
+      ]
+    },
+    {
+      "sourceId": "img-1394__easy-v5",
+      "method": "weighted-lab-kmeans",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/pipeline-lab/method-comparisons/2026-07-01T06-15-02_flattening-methods-12c/img-1394__easy-v5/weighted-lab-kmeans/cleaned.png",
+      "durationMs": 426,
+      "paletteColors": 12,
+      "targetColors": 12,
+      "components": 2121.0,
+      "small_components_lt64": 2077.0,
+      "tiny_components_lt16": 2047.0,
+      "mean_largest_component_share_per_color": 0.8362687344761595,
+      "mean_source_lab_variance_per_color": 6.240135610103607,
+      "pixel_weighted_source_lab_variance": 4.694304459068159,
+      "center_colors": 12.0,
+      "center_dominant_share": 0.21970621744791666,
+      "center_top3_share": 0.5454864501953125,
+      "palette": [
+        {
+          "rgb": [
+            58,
+            122,
+            167
+          ],
+          "pixels": 155370,
+          "share": 0.19756317138671875
+        },
+        {
+          "rgb": [
+            85,
+            147,
+            195
+          ],
+          "pixels": 149927,
+          "share": 0.19064203898111978
+        },
+        {
+          "rgb": [
+            158,
+            191,
+            110
+          ],
+          "pixels": 126259,
+          "share": 0.16054662068684897
+        },
+        {
+          "rgb": [
+            103,
+            179,
+            75
+          ],
+          "pixels": 93455,
+          "share": 0.1188341776529948
+        },
+        {
+          "rgb": [
+            230,
+            241,
+            245
+          ],
+          "pixels": 58844,
+          "share": 0.07482401529947917
+        },
+        {
+          "rgb": [
+            51,
+            83,
+            48
+          ],
+          "pixels": 42590,
+          "share": 0.054155985514322914
+        },
+        {
+          "rgb": [
+            112,
+            168,
+            210
+          ],
+          "pixels": 40383,
+          "share": 0.051349639892578125
+        },
+        {
+          "rgb": [
+            146,
+            193,
+            223
+          ],
+          "pixels": 34733,
+          "share": 0.04416529337565104
+        },
+        {
+          "rgb": [
+            91,
+            128,
+            80
+          ],
+          "pixels": 32407,
+          "share": 0.04120763142903646
+        },
+        {
+          "rgb": [
+            176,
+            193,
+            90
+          ],
+          "pixels": 31926,
+          "share": 0.04059600830078125
+        },
+        {
+          "rgb": [
+            139,
+            114,
+            83
+          ],
+          "pixels": 12228,
+          "share": 0.0155487060546875
+        },
+        {
+          "rgb": [
+            115,
+            88,
+            61
+          ],
+          "pixels": 8310,
+          "share": 0.01056671142578125
+        }
+      ]
+    },
+    {
+      "sourceId": "img-1394__easy-v5",
+      "method": "meanshift-weighted-kmeans",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/pipeline-lab/method-comparisons/2026-07-01T06-15-02_flattening-methods-12c/img-1394__easy-v5/meanshift-weighted-kmeans/cleaned.png",
+      "durationMs": 667,
+      "paletteColors": 12,
+      "targetColors": 12,
+      "components": 1926.0,
+      "small_components_lt64": 1887.0,
+      "tiny_components_lt16": 1867.0,
+      "mean_largest_component_share_per_color": 0.8386073233552706,
+      "mean_source_lab_variance_per_color": 6.341591934363048,
+      "pixel_weighted_source_lab_variance": 4.966042765314644,
+      "center_colors": 12.0,
+      "center_dominant_share": 0.21999613444010416,
+      "center_top3_share": 0.5451812744140625,
+      "palette": [
+        {
+          "rgb": [
+            58,
+            122,
+            167
+          ],
+          "pixels": 155726,
+          "share": 0.1980158487955729
+        },
+        {
+          "rgb": [
+            85,
+            147,
+            195
+          ],
+          "pixels": 150131,
+          "share": 0.19090143839518228
+        },
+        {
+          "rgb": [
+            158,
+            191,
+            110
+          ],
+          "pixels": 125249,
+          "share": 0.15926233927408853
+        },
+        {
+          "rgb": [
+            103,
+            179,
+            75
+          ],
+          "pixels": 93805,
+          "share": 0.1192792256673177
+        },
+        {
+          "rgb": [
+            230,
+            241,
+            245
+          ],
+          "pixels": 58879,
+          "share": 0.07486852010091145
+        },
+        {
+          "rgb": [
+            51,
+            83,
+            48
+          ],
+          "pixels": 42588,
+          "share": 0.0541534423828125
+        },
+        {
+          "rgb": [
+            112,
+            168,
+            210
+          ],
+          "pixels": 40225,
+          "share": 0.05114873250325521
+        },
+        {
+          "rgb": [
+            146,
+            193,
+            223
+          ],
+          "pixels": 34589,
+          "share": 0.04398218790690104
+        },
+        {
+          "rgb": [
+            174,
+            192,
+            89
+          ],
+          "pixels": 32870,
+          "share": 0.041796366373697914
+        },
+        {
+          "rgb": [
+            91,
+            128,
+            80
+          ],
+          "pixels": 31817,
+          "share": 0.04045740763346354
+        },
+        {
+          "rgb": [
+            139,
+            114,
+            83
+          ],
+          "pixels": 12235,
+          "share": 0.015557607014973959
+        },
+        {
+          "rgb": [
+            115,
+            88,
+            61
+          ],
+          "pixels": 8318,
+          "share": 0.010576883951822916
+        }
+      ]
+    },
+    {
+      "sourceId": "img-1394__easy-v5",
+      "method": "spatial-labxy-kmeans",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/pipeline-lab/method-comparisons/2026-07-01T06-15-02_flattening-methods-12c/img-1394__easy-v5/spatial-labxy-kmeans/cleaned.png",
+      "durationMs": 196,
+      "paletteColors": 12,
+      "targetColors": 12,
+      "components": 2091.0,
+      "small_components_lt64": 2049.0,
+      "tiny_components_lt16": 2029.0,
+      "mean_largest_component_share_per_color": 0.8364702618765795,
+      "mean_source_lab_variance_per_color": 6.354319214820862,
+      "pixel_weighted_source_lab_variance": 4.710078269186852,
+      "center_colors": 11.0,
+      "center_dominant_share": 0.21969095865885416,
+      "center_top3_share": 0.545654296875,
+      "palette": [
+        {
+          "rgb": [
+            61,
+            122,
+            165
+          ],
+          "pixels": 155364,
+          "share": 0.1975555419921875
+        },
+        {
+          "rgb": [
+            85,
+            147,
+            195
+          ],
+          "pixels": 149838,
+          "share": 0.19052886962890625
+        },
+        {
+          "rgb": [
+            158,
+            191,
+            110
+          ],
+          "pixels": 125449,
+          "share": 0.15951665242513022
+        },
+        {
+          "rgb": [
+            105,
+            179,
+            77
+          ],
+          "pixels": 93617,
+          "share": 0.11904017130533855
+        },
+        {
+          "rgb": [
+            230,
+            241,
+            245
+          ],
+          "pixels": 58845,
+          "share": 0.07482528686523438
+        },
+        {
+          "rgb": [
+            50,
+            83,
+            50
+          ],
+          "pixels": 42585,
+          "share": 0.054149627685546875
+        },
+        {
+          "rgb": [
+            109,
+            169,
+            210
+          ],
+          "pixels": 40485,
+          "share": 0.051479339599609375
+        },
+        {
+          "rgb": [
+            146,
+            193,
+            223
+          ],
+          "pixels": 34695,
+          "share": 0.044116973876953125
+        },
+        {
+          "rgb": [
+            175,
+            193,
+            92
+          ],
+          "pixels": 32626,
+          "share": 0.041486104329427086
+        },
+        {
+          "rgb": [
+            91,
+            128,
+            80
+          ],
+          "pixels": 32338,
+          "share": 0.041119893391927086
+        },
+        {
+          "rgb": [
+            136,
+            114,
+            84
+          ],
+          "pixels": 12272,
+          "share": 0.015604654947916666
+        },
+        {
+          "rgb": [
+            113,
+            89,
+            61
+          ],
+          "pixels": 8318,
+          "share": 0.010576883951822916
+        }
+      ]
+    },
+    {
+      "sourceId": "img-1394__easy-v5",
+      "method": "region-modes-then-kmeans",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/pipeline-lab/method-comparisons/2026-07-01T06-15-02_flattening-methods-12c/img-1394__easy-v5/region-modes-then-kmeans/cleaned.png",
+      "durationMs": 5895,
+      "paletteColors": 12,
+      "targetColors": 12,
+      "components": 1722.0,
+      "small_components_lt64": 1683.0,
+      "tiny_components_lt16": 1665.0,
+      "mean_largest_component_share_per_color": 0.8391266329604131,
+      "mean_source_lab_variance_per_color": 6.281649659077327,
+      "pixel_weighted_source_lab_variance": 5.200240602400754,
+      "center_colors": 12.0,
+      "center_dominant_share": 0.22070821126302084,
+      "center_top3_share": 0.5463002522786459,
+      "palette": [
+        {
+          "rgb": [
+            58,
+            122,
+            167
+          ],
+          "pixels": 156185,
+          "share": 0.19859949747721353
+        },
+        {
+          "rgb": [
+            85,
+            147,
+            195
+          ],
+          "pixels": 150051,
+          "share": 0.19079971313476562
+        },
+        {
+          "rgb": [
+            156,
+            190,
+            109
+          ],
+          "pixels": 125125,
+          "share": 0.15910466512044272
+        },
+        {
+          "rgb": [
+            106,
+            179,
+            75
+          ],
+          "pixels": 94029,
+          "share": 0.11956405639648438
+        },
+        {
+          "rgb": [
+            230,
+            241,
+            245
+          ],
+          "pixels": 58850,
+          "share": 0.07483164469401042
+        },
+        {
+          "rgb": [
+            51,
+            83,
+            48
+          ],
+          "pixels": 42569,
+          "share": 0.05412928263346354
+        },
+        {
+          "rgb": [
+            112,
+            168,
+            210
+          ],
+          "pixels": 40262,
+          "share": 0.051195780436197914
+        },
+        {
+          "rgb": [
+            146,
+            193,
+            223
+          ],
+          "pixels": 34590,
+          "share": 0.04398345947265625
+        },
+        {
+          "rgb": [
+            176,
+            193,
+            90
+          ],
+          "pixels": 32907,
+          "share": 0.041843414306640625
+        },
+        {
+          "rgb": [
+            91,
+            128,
+            80
+          ],
+          "pixels": 31386,
+          "share": 0.03990936279296875
+        },
+        {
+          "rgb": [
+            139,
+            114,
+            83
+          ],
+          "pixels": 12153,
+          "share": 0.015453338623046875
+        },
+        {
+          "rgb": [
+            113,
+            89,
+            61
+          ],
+          "pixels": 8325,
+          "share": 0.010585784912109375
+        }
+      ]
+    },
+    {
+      "sourceId": "img-1681__easy-v5",
+      "method": "plain-lab-kmeans",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/pipeline-lab/method-comparisons/2026-07-01T06-15-02_flattening-methods-12c/img-1681__easy-v5/plain-lab-kmeans/cleaned.png",
+      "durationMs": 132,
+      "paletteColors": 12,
+      "targetColors": 12,
+      "components": 2757.0,
+      "small_components_lt64": 2694.0,
+      "tiny_components_lt16": 2646.0,
+      "mean_largest_component_share_per_color": 0.3961320495908942,
+      "mean_source_lab_variance_per_color": 17.834843322634697,
+      "pixel_weighted_source_lab_variance": 3.2763435228349005,
+      "horse_hoof_colors": 9.0,
+      "horse_hoof_dominant_share": 0.6526570048309178,
+      "horse_hoof_top3_share": 0.9382608695652173,
+      "palette": [
+        {
+          "rgb": [
+            158,
+            200,
+            127
+          ],
+          "pixels": 378690,
+          "share": 0.6420389811197916
+        },
+        {
+          "rgb": [
+            136,
+            92,
+            64
+          ],
+          "pixels": 53047,
+          "share": 0.08993699815538195
+        },
+        {
+          "rgb": [
+            198,
+            198,
+            198
+          ],
+          "pixels": 48226,
+          "share": 0.08176337348090278
+        },
+        {
+          "rgb": [
+            31,
+            30,
+            29
+          ],
+          "pixels": 40363,
+          "share": 0.0684322781032986
+        },
+        {
+          "rgb": [
+            162,
+            117,
+            86
+          ],
+          "pixels": 16276,
+          "share": 0.027594672309027776
+        },
+        {
+          "rgb": [
+            82,
+            109,
+            80
+          ],
+          "pixels": 15266,
+          "share": 0.025882297092013888
+        },
+        {
+          "rgb": [
+            176,
+            219,
+            251
+          ],
+          "pixels": 12583,
+          "share": 0.021333482530381944
+        },
+        {
+          "rgb": [
+            92,
+            65,
+            46
+          ],
+          "pixels": 12090,
+          "share": 0.020497639973958332
+        },
+        {
+          "rgb": [
+            172,
+            194,
+            142
+          ],
+          "pixels": 4131,
+          "share": 0.0070037841796875
+        },
+        {
+          "rgb": [
+            123,
+            94,
+            67
+          ],
+          "pixels": 3856,
+          "share": 0.006537543402777778
+        },
+        {
+          "rgb": [
+            233,
+            221,
+            99
+          ],
+          "pixels": 3701,
+          "share": 0.006274753146701389
+        },
+        {
+          "rgb": [
+            139,
+            153,
+            115
+          ],
+          "pixels": 1595,
+          "share": 0.002704196506076389
+        }
+      ]
+    },
+    {
+      "sourceId": "img-1681__easy-v5",
+      "method": "weighted-lab-kmeans",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/pipeline-lab/method-comparisons/2026-07-01T06-15-02_flattening-methods-12c/img-1681__easy-v5/weighted-lab-kmeans/cleaned.png",
+      "durationMs": 337,
+      "paletteColors": 12,
+      "targetColors": 12,
+      "components": 30100.0,
+      "small_components_lt64": 29733.0,
+      "tiny_components_lt16": 28936.0,
+      "mean_largest_component_share_per_color": 0.358551721904677,
+      "mean_source_lab_variance_per_color": 8.02790063371261,
+      "pixel_weighted_source_lab_variance": 3.9040734986539167,
+      "horse_hoof_colors": 9.0,
+      "horse_hoof_dominant_share": 0.2673429951690821,
+      "horse_hoof_top3_share": 0.686183574879227,
+      "palette": [
+        {
+          "rgb": [
+            160,
+            199,
+            127
+          ],
+          "pixels": 144230,
+          "share": 0.2445305718315972
+        },
+        {
+          "rgb": [
+            159,
+            200,
+            123
+          ],
+          "pixels": 121640,
+          "share": 0.2062310112847222
+        },
+        {
+          "rgb": [
+            159,
+            201,
+            126
+          ],
+          "pixels": 62278,
+          "share": 0.1055874294704861
+        },
+        {
+          "rgb": [
+            137,
+            92,
+            63
+          ],
+          "pixels": 56722,
+          "share": 0.09616767035590278
+        },
+        {
+          "rgb": [
+            159,
+            198,
+            126
+          ],
+          "pixels": 54722,
+          "share": 0.0927768283420139
+        },
+        {
+          "rgb": [
+            198,
+            198,
+            198
+          ],
+          "pixels": 48857,
+          "share": 0.08283318413628472
+        },
+        {
+          "rgb": [
+            30,
+            30,
+            30
+          ],
+          "pixels": 40367,
+          "share": 0.0684390597873264
+        },
+        {
+          "rgb": [
+            162,
+            117,
+            86
+          ],
+          "pixels": 17122,
+          "share": 0.029028998480902776
+        },
+        {
+          "rgb": [
+            80,
+            109,
+            80
+          ],
+          "pixels": 15503,
+          "share": 0.026284111870659724
+        },
+        {
+          "rgb": [
+            174,
+            219,
+            253
+          ],
+          "pixels": 12573,
+          "share": 0.0213165283203125
+        },
+        {
+          "rgb": [
+            93,
+            65,
+            47
+          ],
+          "pixels": 12149,
+          "share": 0.020597669813368056
+        },
+        {
+          "rgb": [
+            235,
+            221,
+            95
+          ],
+          "pixels": 3661,
+          "share": 0.006206936306423611
+        }
+      ]
+    },
+    {
+      "sourceId": "img-1681__easy-v5",
+      "method": "meanshift-weighted-kmeans",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/pipeline-lab/method-comparisons/2026-07-01T06-15-02_flattening-methods-12c/img-1681__easy-v5/meanshift-weighted-kmeans/cleaned.png",
+      "durationMs": 548,
+      "paletteColors": 12,
+      "targetColors": 12,
+      "components": 2155.0,
+      "small_components_lt64": 2001.0,
+      "tiny_components_lt16": 1956.0,
+      "mean_largest_component_share_per_color": 0.45675296450159286,
+      "mean_source_lab_variance_per_color": 8.499916632970175,
+      "pixel_weighted_source_lab_variance": 4.2063821531064605,
+      "horse_hoof_colors": 8.0,
+      "horse_hoof_dominant_share": 0.449951690821256,
+      "horse_hoof_top3_share": 0.8725603864734299,
+      "palette": [
+        {
+          "rgb": [
+            158,
+            200,
+            125
+          ],
+          "pixels": 183136,
+          "share": 0.3104926215277778
+        },
+        {
+          "rgb": [
+            160,
+            199,
+            127
+          ],
+          "pixels": 139459,
+          "share": 0.2364417182074653
+        },
+        {
+          "rgb": [
+            160,
+            199,
+            125
+          ],
+          "pixels": 60243,
+          "share": 0.10213724772135417
+        },
+        {
+          "rgb": [
+            136,
+            92,
+            64
+          ],
+          "pixels": 57027,
+          "share": 0.09668477376302083
+        },
+        {
+          "rgb": [
+            198,
+            198,
+            198
+          ],
+          "pixels": 48134,
+          "share": 0.0816073947482639
+        },
+        {
+          "rgb": [
+            31,
+            30,
+            29
+          ],
+          "pixels": 40479,
+          "share": 0.06862894694010417
+        },
+        {
+          "rgb": [
+            162,
+            117,
+            86
+          ],
+          "pixels": 16990,
+          "share": 0.028805202907986112
+        },
+        {
+          "rgb": [
+            80,
+            109,
+            80
+          ],
+          "pixels": 15348,
+          "share": 0.026021321614583332
+        },
+        {
+          "rgb": [
+            174,
+            219,
+            253
+          ],
+          "pixels": 12537,
+          "share": 0.0212554931640625
+        },
+        {
+          "rgb": [
+            93,
+            65,
+            47
+          ],
+          "pixels": 12004,
+          "share": 0.020351833767361112
+        },
+        {
+          "rgb": [
+            237,
+            222,
+            96
+          ],
+          "pixels": 3651,
+          "share": 0.006189982096354167
+        },
+        {
+          "rgb": [
+            226,
+            214,
+            188
+          ],
+          "pixels": 816,
+          "share": 0.0013834635416666667
+        }
+      ]
+    },
+    {
+      "sourceId": "img-1681__easy-v5",
+      "method": "spatial-labxy-kmeans",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/pipeline-lab/method-comparisons/2026-07-01T06-15-02_flattening-methods-12c/img-1681__easy-v5/spatial-labxy-kmeans/cleaned.png",
+      "durationMs": 124,
+      "paletteColors": 12,
+      "targetColors": 12,
+      "components": 1839.0,
+      "small_components_lt64": 1783.0,
+      "tiny_components_lt16": 1771.0,
+      "mean_largest_component_share_per_color": 0.5891317698841129,
+      "mean_source_lab_variance_per_color": 8.788033545017242,
+      "pixel_weighted_source_lab_variance": 4.261043462410372,
+      "horse_hoof_colors": 7.0,
+      "horse_hoof_dominant_share": 0.678743961352657,
+      "horse_hoof_top3_share": 0.9484057971014492,
+      "palette": [
+        {
+          "rgb": [
+            160,
+            199,
+            125
+          ],
+          "pixels": 150896,
+          "share": 0.2558322482638889
+        },
+        {
+          "rgb": [
+            158,
+            200,
+            125
+          ],
+          "pixels": 127948,
+          "share": 0.2169257269965278
+        },
+        {
+          "rgb": [
+            160,
+            199,
+            127
+          ],
+          "pixels": 103910,
+          "share": 0.1761711968315972
+        },
+        {
+          "rgb": [
+            135,
+            92,
+            64
+          ],
+          "pixels": 56745,
+          "share": 0.0962066650390625
+        },
+        {
+          "rgb": [
+            31,
+            30,
+            29
+          ],
+          "pixels": 40366,
+          "share": 0.06843736436631945
+        },
+        {
+          "rgb": [
+            199,
+            198,
+            196
+          ],
+          "pixels": 27206,
+          "share": 0.04612562391493055
+        },
+        {
+          "rgb": [
+            198,
+            197,
+            195
+          ],
+          "pixels": 21696,
+          "share": 0.036783854166666664
+        },
+        {
+          "rgb": [
+            162,
+            118,
+            87
+          ],
+          "pixels": 17237,
+          "share": 0.029223971896701388
+        },
+        {
+          "rgb": [
+            82,
+            109,
+            80
+          ],
+          "pixels": 15402,
+          "share": 0.026112874348958332
+        },
+        {
+          "rgb": [
+            176,
+            219,
+            251
+          ],
+          "pixels": 12564,
+          "share": 0.02130126953125
+        },
+        {
+          "rgb": [
+            92,
+            65,
+            46
+          ],
+          "pixels": 12165,
+          "share": 0.020624796549479168
+        },
+        {
+          "rgb": [
+            233,
+            221,
+            99
+          ],
+          "pixels": 3689,
+          "share": 0.006254408094618056
+        }
+      ]
+    },
+    {
+      "sourceId": "img-1681__easy-v5",
+      "method": "region-modes-then-kmeans",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/pipeline-lab/method-comparisons/2026-07-01T06-15-02_flattening-methods-12c/img-1681__easy-v5/region-modes-then-kmeans/cleaned.png",
+      "durationMs": 4482,
+      "paletteColors": 12,
+      "targetColors": 12,
+      "components": 1909.0,
+      "small_components_lt64": 1789.0,
+      "tiny_components_lt16": 1761.0,
+      "mean_largest_component_share_per_color": 0.49779524021901905,
+      "mean_source_lab_variance_per_color": 14.235647479693094,
+      "pixel_weighted_source_lab_variance": 4.267514120978983,
+      "horse_hoof_colors": 9.0,
+      "horse_hoof_dominant_share": 0.43777777777777777,
+      "horse_hoof_top3_share": 0.8731400966183575,
+      "palette": [
+        {
+          "rgb": [
+            160,
+            199,
+            127
+          ],
+          "pixels": 200234,
+          "share": 0.3394809299045139
+        },
+        {
+          "rgb": [
+            158,
+            200,
+            125
+          ],
+          "pixels": 182496,
+          "share": 0.3094075520833333
+        },
+        {
+          "rgb": [
+            136,
+            92,
+            64
+          ],
+          "pixels": 57134,
+          "share": 0.0968661838107639
+        },
+        {
+          "rgb": [
+            198,
+            198,
+            198
+          ],
+          "pixels": 48061,
+          "share": 0.08148362901475695
+        },
+        {
+          "rgb": [
+            31,
+            30,
+            29
+          ],
+          "pixels": 40512,
+          "share": 0.06868489583333333
+        },
+        {
+          "rgb": [
+            162,
+            117,
+            86
+          ],
+          "pixels": 17067,
+          "share": 0.028935750325520832
+        },
+        {
+          "rgb": [
+            80,
+            109,
+            80
+          ],
+          "pixels": 14378,
+          "share": 0.024376763237847224
+        },
+        {
+          "rgb": [
+            176,
+            219,
+            251
+          ],
+          "pixels": 12554,
+          "share": 0.021284315321180556
+        },
+        {
+          "rgb": [
+            93,
+            65,
+            47
+          ],
+          "pixels": 11975,
+          "share": 0.020302666558159724
+        },
+        {
+          "rgb": [
+            235,
+            221,
+            97
+          ],
+          "pixels": 3653,
+          "share": 0.006193372938368056
+        },
+        {
+          "rgb": [
+            101,
+            106,
+            101
+          ],
+          "pixels": 946,
+          "share": 0.0016038682725694445
+        },
+        {
+          "rgb": [
+            226,
+            214,
+            188
+          ],
+          "pixels": 814,
+          "share": 0.0013800726996527778
+        }
+      ]
+    },
+    {
+      "sourceId": "img-1704__easy-v5",
+      "method": "plain-lab-kmeans",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/pipeline-lab/method-comparisons/2026-07-01T06-15-02_flattening-methods-12c/img-1704__easy-v5/plain-lab-kmeans/cleaned.png",
+      "durationMs": 101,
+      "paletteColors": 12,
+      "targetColors": 12,
+      "components": 5451.0,
+      "small_components_lt64": 5350.0,
+      "tiny_components_lt16": 5258.0,
+      "mean_largest_component_share_per_color": 0.6944142990550973,
+      "mean_source_lab_variance_per_color": 10.202156578501066,
+      "pixel_weighted_source_lab_variance": 8.297398471929538,
+      "center_colors": 12.0,
+      "center_dominant_share": 0.24401770104895104,
+      "center_top3_share": 0.5223243553321678,
+      "palette": [
+        {
+          "rgb": [
+            82,
+            120,
+            69
+          ],
+          "pixels": 125382,
+          "share": 0.21406181708916083
+        },
+        {
+          "rgb": [
+            71,
+            107,
+            64
+          ],
+          "pixels": 110263,
+          "share": 0.188249494645979
+        },
+        {
+          "rgb": [
+            101,
+            149,
+            69
+          ],
+          "pixels": 89873,
+          "share": 0.15343811461975523
+        },
+        {
+          "rgb": [
+            126,
+            166,
+            100
+          ],
+          "pixels": 61331,
+          "share": 0.10470901169143357
+        },
+        {
+          "rgb": [
+            69,
+            75,
+            67
+          ],
+          "pixels": 44053,
+          "share": 0.07521067799388112
+        },
+        {
+          "rgb": [
+            240,
+            226,
+            195
+          ],
+          "pixels": 36759,
+          "share": 0.06275779884178322
+        },
+        {
+          "rgb": [
+            109,
+            152,
+            88
+          ],
+          "pixels": 32812,
+          "share": 0.05601917613636364
+        },
+        {
+          "rgb": [
+            127,
+            107,
+            82
+          ],
+          "pixels": 30364,
+          "share": 0.051839761800699304
+        },
+        {
+          "rgb": [
+            33,
+            36,
+            34
+          ],
+          "pixels": 19572,
+          "share": 0.033414827360139863
+        },
+        {
+          "rgb": [
+            236,
+            235,
+            227
+          ],
+          "pixels": 13713,
+          "share": 0.023411890843531468
+        },
+        {
+          "rgb": [
+            210,
+            56,
+            38
+          ],
+          "pixels": 11744,
+          "share": 0.020050262237762236
+        },
+        {
+          "rgb": [
+            218,
+            205,
+            178
+          ],
+          "pixels": 9862,
+          "share": 0.016837166739510488
+        }
+      ]
+    },
+    {
+      "sourceId": "img-1704__easy-v5",
+      "method": "weighted-lab-kmeans",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/pipeline-lab/method-comparisons/2026-07-01T06-15-02_flattening-methods-12c/img-1704__easy-v5/weighted-lab-kmeans/cleaned.png",
+      "durationMs": 329,
+      "paletteColors": 12,
+      "targetColors": 12,
+      "components": 6345.0,
+      "small_components_lt64": 6251.0,
+      "tiny_components_lt16": 6171.0,
+      "mean_largest_component_share_per_color": 0.7280512666492372,
+      "mean_source_lab_variance_per_color": 9.839601864417395,
+      "pixel_weighted_source_lab_variance": 8.616376077964897,
+      "center_colors": 12.0,
+      "center_dominant_share": 0.3333356097027972,
+      "center_top3_share": 0.6092930506993007,
+      "palette": [
+        {
+          "rgb": [
+            102,
+            150,
+            70
+          ],
+          "pixels": 89902,
+          "share": 0.1534876256555944
+        },
+        {
+          "rgb": [
+            84,
+            121,
+            73
+          ],
+          "pixels": 75289,
+          "share": 0.12853918542395104
+        },
+        {
+          "rgb": [
+            124,
+            167,
+            100
+          ],
+          "pixels": 61680,
+          "share": 0.10530485139860139
+        },
+        {
+          "rgb": [
+            239,
+            226,
+            198
+          ],
+          "pixels": 60006,
+          "share": 0.10244686953671328
+        },
+        {
+          "rgb": [
+            67,
+            102,
+            58
+          ],
+          "pixels": 57522,
+          "share": 0.09820599322552448
+        },
+        {
+          "rgb": [
+            74,
+            111,
+            66
+          ],
+          "pixels": 56455,
+          "share": 0.09638432856206294
+        },
+        {
+          "rgb": [
+            77,
+            119,
+            58
+          ],
+          "pixels": 47419,
+          "share": 0.08095737270541958
+        },
+        {
+          "rgb": [
+            70,
+            74,
+            68
+          ],
+          "pixels": 43546,
+          "share": 0.07434508850524475
+        },
+        {
+          "rgb": [
+            108,
+            154,
+            89
+          ],
+          "pixels": 32606,
+          "share": 0.05566747705419581
+        },
+        {
+          "rgb": [
+            130,
+            106,
+            82
+          ],
+          "pixels": 30035,
+          "share": 0.05127806763548951
+        },
+        {
+          "rgb": [
+            32,
+            36,
+            35
+          ],
+          "pixels": 19562,
+          "share": 0.03339775458916084
+        },
+        {
+          "rgb": [
+            213,
+            55,
+            37
+          ],
+          "pixels": 11706,
+          "share": 0.01998538570804196
+        }
+      ]
+    },
+    {
+      "sourceId": "img-1704__easy-v5",
+      "method": "meanshift-weighted-kmeans",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/pipeline-lab/method-comparisons/2026-07-01T06-15-02_flattening-methods-12c/img-1704__easy-v5/meanshift-weighted-kmeans/cleaned.png",
+      "durationMs": 774,
+      "paletteColors": 12,
+      "targetColors": 12,
+      "components": 2835.0,
+      "small_components_lt64": 2748.0,
+      "tiny_components_lt16": 2729.0,
+      "mean_largest_component_share_per_color": 0.7472724526855675,
+      "mean_source_lab_variance_per_color": 11.373373856147131,
+      "pixel_weighted_source_lab_variance": 10.001940955020206,
+      "center_colors": 12.0,
+      "center_dominant_share": 0.3337521853146853,
+      "center_top3_share": 0.6242966018356644,
+      "palette": [
+        {
+          "rgb": [
+            102,
+            150,
+            70
+          ],
+          "pixels": 91069,
+          "share": 0.15548001802884615
+        },
+        {
+          "rgb": [
+            84,
+            120,
+            74
+          ],
+          "pixels": 78032,
+          "share": 0.1332222465034965
+        },
+        {
+          "rgb": [
+            124,
+            167,
+            100
+          ],
+          "pixels": 61736,
+          "share": 0.10540045891608392
+        },
+        {
+          "rgb": [
+            238,
+            225,
+            197
+          ],
+          "pixels": 60092,
+          "share": 0.10259369536713286
+        },
+        {
+          "rgb": [
+            74,
+            111,
+            66
+          ],
+          "pixels": 57815,
+          "share": 0.09870622541520979
+        },
+        {
+          "rgb": [
+            65,
+            102,
+            58
+          ],
+          "pixels": 52604,
+          "share": 0.08980960445804195
+        },
+        {
+          "rgb": [
+            77,
+            119,
+            58
+          ],
+          "pixels": 45815,
+          "share": 0.07821890024038461
+        },
+        {
+          "rgb": [
+            70,
+            75,
+            67
+          ],
+          "pixels": 44639,
+          "share": 0.07621114237325174
+        },
+        {
+          "rgb": [
+            107,
+            152,
+            88
+          ],
+          "pixels": 32025,
+          "share": 0.05467554906031469
+        },
+        {
+          "rgb": [
+            129,
+            107,
+            82
+          ],
+          "pixels": 30401,
+          "share": 0.05190293105332168
+        },
+        {
+          "rgb": [
+            33,
+            36,
+            34
+          ],
+          "pixels": 19736,
+          "share": 0.03369482080419581
+        },
+        {
+          "rgb": [
+            213,
+            55,
+            37
+          ],
+          "pixels": 11764,
+          "share": 0.02008440777972028
+        }
+      ]
+    },
+    {
+      "sourceId": "img-1704__easy-v5",
+      "method": "spatial-labxy-kmeans",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/pipeline-lab/method-comparisons/2026-07-01T06-15-02_flattening-methods-12c/img-1704__easy-v5/spatial-labxy-kmeans/cleaned.png",
+      "durationMs": 106,
+      "paletteColors": 12,
+      "targetColors": 12,
+      "components": 5464.0,
+      "small_components_lt64": 5377.0,
+      "tiny_components_lt16": 5352.0,
+      "mean_largest_component_share_per_color": 0.7458230606220818,
+      "mean_source_lab_variance_per_color": 10.05937064687411,
+      "pixel_weighted_source_lab_variance": 8.771920175117993,
+      "center_colors": 12.0,
+      "center_dominant_share": 0.33352682473776224,
+      "center_top3_share": 0.616053868006993,
+      "palette": [
+        {
+          "rgb": [
+            101,
+            149,
+            69
+          ],
+          "pixels": 90646,
+          "share": 0.15475783981643357
+        },
+        {
+          "rgb": [
+            85,
+            121,
+            75
+          ],
+          "pixels": 77480,
+          "share": 0.13227982954545456
+        },
+        {
+          "rgb": [
+            126,
+            166,
+            100
+          ],
+          "pixels": 61739,
+          "share": 0.10540558074737762
+        },
+        {
+          "rgb": [
+            237,
+            225,
+            199
+          ],
+          "pixels": 60051,
+          "share": 0.10252369700611888
+        },
+        {
+          "rgb": [
+            66,
+            102,
+            60
+          ],
+          "pixels": 56777,
+          "share": 0.09693407178758741
+        },
+        {
+          "rgb": [
+            76,
+            111,
+            66
+          ],
+          "pixels": 54055,
+          "share": 0.0922868635270979
+        },
+        {
+          "rgb": [
+            79,
+            119,
+            58
+          ],
+          "pixels": 47627,
+          "share": 0.08131248634178322
+        },
+        {
+          "rgb": [
+            69,
+            75,
+            67
+          ],
+          "pixels": 43989,
+          "share": 0.07510141225961539
+        },
+        {
+          "rgb": [
+            109,
+            152,
+            88
+          ],
+          "pixels": 31890,
+          "share": 0.054445066652097904
+        },
+        {
+          "rgb": [
+            129,
+            107,
+            82
+          ],
+          "pixels": 30142,
+          "share": 0.05146074628496503
+        },
+        {
+          "rgb": [
+            33,
+            36,
+            34
+          ],
+          "pixels": 19583,
+          "share": 0.033433607408216784
+        },
+        {
+          "rgb": [
+            210,
+            56,
+            38
+          ],
+          "pixels": 11749,
+          "share": 0.020058798623251748
+        }
+      ]
+    },
+    {
+      "sourceId": "img-1704__easy-v5",
+      "method": "region-modes-then-kmeans",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/pipeline-lab/method-comparisons/2026-07-01T06-15-02_flattening-methods-12c/img-1704__easy-v5/region-modes-then-kmeans/cleaned.png",
+      "durationMs": 5169,
+      "paletteColors": 12,
+      "targetColors": 12,
+      "components": 2693.0,
+      "small_components_lt64": 2604.0,
+      "tiny_components_lt16": 2580.0,
+      "mean_largest_component_share_per_color": 0.7452878392330268,
+      "mean_source_lab_variance_per_color": 12.387010564406713,
+      "pixel_weighted_source_lab_variance": 10.60461943885686,
+      "center_colors": 12.0,
+      "center_dominant_share": 0.3335677993881119,
+      "center_top3_share": 0.6239961210664335,
+      "palette": [
+        {
+          "rgb": [
+            101,
+            149,
+            69
+          ],
+          "pixels": 91073,
+          "share": 0.15548684713723776
+        },
+        {
+          "rgb": [
+            84,
+            120,
+            74
+          ],
+          "pixels": 77992,
+          "share": 0.13315395541958042
+        },
+        {
+          "rgb": [
+            124,
+            167,
+            100
+          ],
+          "pixels": 61829,
+          "share": 0.10555923568618882
+        },
+        {
+          "rgb": [
+            238,
+            225,
+            197
+          ],
+          "pixels": 60030,
+          "share": 0.10248784418706294
+        },
+        {
+          "rgb": [
+            74,
+            111,
+            66
+          ],
+          "pixels": 58481,
+          "share": 0.09984327196241259
+        },
+        {
+          "rgb": [
+            65,
+            102,
+            58
+          ],
+          "pixels": 52800,
+          "share": 0.09014423076923077
+        },
+        {
+          "rgb": [
+            77,
+            119,
+            58
+          ],
+          "pixels": 45322,
+          "share": 0.07737721263111888
+        },
+        {
+          "rgb": [
+            71,
+            76,
+            68
+          ],
+          "pixels": 44116,
+          "share": 0.07531823645104894
+        },
+        {
+          "rgb": [
+            109,
+            152,
+            88
+          ],
+          "pixels": 32019,
+          "share": 0.05466530539772727
+        },
+        {
+          "rgb": [
+            127,
+            107,
+            82
+          ],
+          "pixels": 30427,
+          "share": 0.051947320257867136
+        },
+        {
+          "rgb": [
+            33,
+            36,
+            34
+          ],
+          "pixels": 19762,
+          "share": 0.033739210008741256
+        },
+        {
+          "rgb": [
+            211,
+            54,
+            38
+          ],
+          "pixels": 11877,
+          "share": 0.020277330091783216
+        }
+      ]
+    },
+    {
+      "sourceId": "img-1998__easy-v5",
+      "method": "plain-lab-kmeans",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/pipeline-lab/method-comparisons/2026-07-01T06-15-02_flattening-methods-12c/img-1998__easy-v5/plain-lab-kmeans/cleaned.png",
+      "durationMs": 250,
+      "paletteColors": 12,
+      "targetColors": 12,
+      "components": 1443.0,
+      "small_components_lt64": 1396.0,
+      "tiny_components_lt16": 1383.0,
+      "mean_largest_component_share_per_color": 0.7242055010555285,
+      "mean_source_lab_variance_per_color": 12.616505205631256,
+      "pixel_weighted_source_lab_variance": 4.014827677946111,
+      "flower_left_petal_colors": 4.0,
+      "flower_left_petal_dominant_share": 0.3320048309178744,
+      "flower_left_petal_top3_share": 0.982632850241546,
+      "flower_center_colors": 5.0,
+      "flower_center_dominant_share": 0.25902691511387166,
+      "flower_center_top3_share": 0.7241821946169773,
+      "palette": [
+        {
+          "rgb": [
+            233,
+            230,
+            221
+          ],
+          "pixels": 296259,
+          "share": 0.3767127990722656
+        },
+        {
+          "rgb": [
+            238,
+            195,
+            55
+          ],
+          "pixels": 140645,
+          "share": 0.17883936564127603
+        },
+        {
+          "rgb": [
+            247,
+            205,
+            62
+          ],
+          "pixels": 123633,
+          "share": 0.15720748901367188
+        },
+        {
+          "rgb": [
+            192,
+            206,
+            211
+          ],
+          "pixels": 83155,
+          "share": 0.10573705037434895
+        },
+        {
+          "rgb": [
+            115,
+            145,
+            96
+          ],
+          "pixels": 64465,
+          "share": 0.0819714864095052
+        },
+        {
+          "rgb": [
+            165,
+            201,
+            211
+          ],
+          "pixels": 18149,
+          "share": 0.023077646891276043
+        },
+        {
+          "rgb": [
+            232,
+            205,
+            196
+          ],
+          "pixels": 17177,
+          "share": 0.021841684977213543
+        },
+        {
+          "rgb": [
+            171,
+            127,
+            47
+          ],
+          "pixels": 13623,
+          "share": 0.017322540283203125
+        },
+        {
+          "rgb": [
+            199,
+            158,
+            38
+          ],
+          "pixels": 11309,
+          "share": 0.014380137125651041
+        },
+        {
+          "rgb": [
+            124,
+            90,
+            33
+          ],
+          "pixels": 6913,
+          "share": 0.008790334065755209
+        },
+        {
+          "rgb": [
+            143,
+            171,
+            134
+          ],
+          "pixels": 5942,
+          "share": 0.007555643717447917
+        },
+        {
+          "rgb": [
+            237,
+            216,
+            144
+          ],
+          "pixels": 5162,
+          "share": 0.006563822428385417
+        }
+      ]
+    },
+    {
+      "sourceId": "img-1998__easy-v5",
+      "method": "weighted-lab-kmeans",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/pipeline-lab/method-comparisons/2026-07-01T06-15-02_flattening-methods-12c/img-1998__easy-v5/weighted-lab-kmeans/cleaned.png",
+      "durationMs": 435,
+      "paletteColors": 10,
+      "targetColors": 12,
+      "components": 2063.0,
+      "small_components_lt64": 2027.0,
+      "tiny_components_lt16": 2014.0,
+      "mean_largest_component_share_per_color": 0.7665537217803283,
+      "mean_source_lab_variance_per_color": 11.481616055965423,
+      "pixel_weighted_source_lab_variance": 6.667157788800978,
+      "flower_left_petal_colors": 4.0,
+      "flower_left_petal_dominant_share": 0.33693236714975844,
+      "flower_left_petal_top3_share": 0.9975362318840579,
+      "flower_center_colors": 5.0,
+      "flower_center_dominant_share": 0.25939958592132506,
+      "flower_center_top3_share": 0.7244306418219462,
+      "palette": [
+        {
+          "rgb": [
+            233,
+            230,
+            221
+          ],
+          "pixels": 298469,
+          "share": 0.37952295939127606
+        },
+        {
+          "rgb": [
+            238,
+            195,
+            55
+          ],
+          "pixels": 141835,
+          "share": 0.18035252888997397
+        },
+        {
+          "rgb": [
+            247,
+            205,
+            62
+          ],
+          "pixels": 124795,
+          "share": 0.15868504842122397
+        },
+        {
+          "rgb": [
+            192,
+            206,
+            211
+          ],
+          "pixels": 83100,
+          "share": 0.1056671142578125
+        },
+        {
+          "rgb": [
+            115,
+            145,
+            96
+          ],
+          "pixels": 69924,
+          "share": 0.0889129638671875
+        },
+        {
+          "rgb": [
+            163,
+            201,
+            213
+          ],
+          "pixels": 18598,
+          "share": 0.023648579915364582
+        },
+        {
+          "rgb": [
+            232,
+            205,
+            196
+          ],
+          "pixels": 17888,
+          "share": 0.022745768229166668
+        },
+        {
+          "rgb": [
+            170,
+            126,
+            46
+          ],
+          "pixels": 13569,
+          "share": 0.017253875732421875
+        },
+        {
+          "rgb": [
+            198,
+            157,
+            37
+          ],
+          "pixels": 11347,
+          "share": 0.014428456624348959
+        },
+        {
+          "rgb": [
+            124,
+            90,
+            35
+          ],
+          "pixels": 6907,
+          "share": 0.008782704671223959
+        }
+      ]
+    },
+    {
+      "sourceId": "img-1998__easy-v5",
+      "method": "meanshift-weighted-kmeans",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/pipeline-lab/method-comparisons/2026-07-01T06-15-02_flattening-methods-12c/img-1998__easy-v5/meanshift-weighted-kmeans/cleaned.png",
+      "durationMs": 644,
+      "paletteColors": 11,
+      "targetColors": 12,
+      "components": 1636.0,
+      "small_components_lt64": 1602.0,
+      "tiny_components_lt16": 1591.0,
+      "mean_largest_component_share_per_color": 0.7870193575219566,
+      "mean_source_lab_variance_per_color": 8.607401685281234,
+      "pixel_weighted_source_lab_variance": 6.5386584575976485,
+      "flower_left_petal_colors": 4.0,
+      "flower_left_petal_dominant_share": 0.3372463768115942,
+      "flower_left_petal_top3_share": 0.9977294685990339,
+      "flower_center_colors": 6.0,
+      "flower_center_dominant_share": 0.24544513457556935,
+      "flower_center_top3_share": 0.6613871635610766,
+      "palette": [
+        {
+          "rgb": [
+            233,
+            230,
+            221
+          ],
+          "pixels": 298470,
+          "share": 0.37952423095703125
+        },
+        {
+          "rgb": [
+            238,
+            195,
+            55
+          ],
+          "pixels": 139424,
+          "share": 0.17728678385416666
+        },
+        {
+          "rgb": [
+            247,
+            205,
+            62
+          ],
+          "pixels": 127192,
+          "share": 0.16173299153645834
+        },
+        {
+          "rgb": [
+            192,
+            206,
+            211
+          ],
+          "pixels": 82967,
+          "share": 0.1054979960123698
+        },
+        {
+          "rgb": [
+            116,
+            146,
+            96
+          ],
+          "pixels": 70103,
+          "share": 0.0891405741373698
+        },
+        {
+          "rgb": [
+            164,
+            203,
+            214
+          ],
+          "pixels": 18724,
+          "share": 0.023808797200520832
+        },
+        {
+          "rgb": [
+            232,
+            205,
+            196
+          ],
+          "pixels": 17724,
+          "share": 0.0225372314453125
+        },
+        {
+          "rgb": [
+            171,
+            127,
+            47
+          ],
+          "pixels": 13589,
+          "share": 0.017279307047526043
+        },
+        {
+          "rgb": [
+            193,
+            151,
+            37
+          ],
+          "pixels": 7058,
+          "share": 0.008974711100260416
+        },
+        {
+          "rgb": [
+            124,
+            90,
+            35
+          ],
+          "pixels": 6934,
+          "share": 0.008817036946614584
+        },
+        {
+          "rgb": [
+            210,
+            169,
+            30
+          ],
+          "pixels": 4247,
+          "share": 0.005400339762369792
+        }
+      ]
+    },
+    {
+      "sourceId": "img-1998__easy-v5",
+      "method": "spatial-labxy-kmeans",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/pipeline-lab/method-comparisons/2026-07-01T06-15-02_flattening-methods-12c/img-1998__easy-v5/spatial-labxy-kmeans/cleaned.png",
+      "durationMs": 295,
+      "paletteColors": 12,
+      "targetColors": 12,
+      "components": 957.0,
+      "small_components_lt64": 916.0,
+      "tiny_components_lt16": 905.0,
+      "mean_largest_component_share_per_color": 0.7783367908281965,
+      "mean_source_lab_variance_per_color": 15.493582467238108,
+      "pixel_weighted_source_lab_variance": 8.065313730481648,
+      "flower_left_petal_colors": 4.0,
+      "flower_left_petal_dominant_share": 0.33118357487922706,
+      "flower_left_petal_top3_share": 0.9828743961352657,
+      "flower_center_colors": 5.0,
+      "flower_center_dominant_share": 0.3816356107660456,
+      "flower_center_top3_share": 0.857743271221532,
+      "palette": [
+        {
+          "rgb": [
+            236,
+            194,
+            53
+          ],
+          "pixels": 143058,
+          "share": 0.18190765380859375
+        },
+        {
+          "rgb": [
+            234,
+            232,
+            222
+          ],
+          "pixels": 125100,
+          "share": 0.1590728759765625
+        },
+        {
+          "rgb": [
+            188,
+            206,
+            212
+          ],
+          "pixels": 101520,
+          "share": 0.12908935546875
+        },
+        {
+          "rgb": [
+            231,
+            229,
+            220
+          ],
+          "pixels": 98257,
+          "share": 0.1249402364095052
+        },
+        {
+          "rgb": [
+            230,
+            231,
+            221
+          ],
+          "pixels": 73245,
+          "share": 0.09313583374023438
+        },
+        {
+          "rgb": [
+            246,
+            204,
+            61
+          ],
+          "pixels": 71996,
+          "share": 0.09154764811197917
+        },
+        {
+          "rgb": [
+            117,
+            147,
+            97
+          ],
+          "pixels": 69979,
+          "share": 0.08898289998372395
+        },
+        {
+          "rgb": [
+            246,
+            206,
+            62
+          ],
+          "pixels": 53167,
+          "share": 0.06760533650716145
+        },
+        {
+          "rgb": [
+            177,
+            135,
+            45
+          ],
+          "pixels": 20787,
+          "share": 0.026432037353515625
+        },
+        {
+          "rgb": [
+            232,
+            205,
+            196
+          ],
+          "pixels": 17282,
+          "share": 0.021975199381510418
+        },
+        {
+          "rgb": [
+            124,
+            90,
+            33
+          ],
+          "pixels": 6940,
+          "share": 0.008824666341145834
+        },
+        {
+          "rgb": [
+            235,
+            214,
+            140
+          ],
+          "pixels": 5101,
+          "share": 0.006486256917317708
+        }
+      ]
+    },
+    {
+      "sourceId": "img-1998__easy-v5",
+      "method": "region-modes-then-kmeans",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/pipeline-lab/method-comparisons/2026-07-01T06-15-02_flattening-methods-12c/img-1998__easy-v5/region-modes-then-kmeans/cleaned.png",
+      "durationMs": 4250,
+      "paletteColors": 12,
+      "targetColors": 12,
+      "components": 1330.0,
+      "small_components_lt64": 1288.0,
+      "tiny_components_lt16": 1249.0,
+      "mean_largest_component_share_per_color": 0.7635537023150746,
+      "mean_source_lab_variance_per_color": 9.26584741473198,
+      "pixel_weighted_source_lab_variance": 5.494446288818684,
+      "flower_left_petal_colors": 4.0,
+      "flower_left_petal_dominant_share": 0.3471256038647343,
+      "flower_left_petal_top3_share": 0.9931884057971014,
+      "flower_center_colors": 6.0,
+      "flower_center_dominant_share": 0.257536231884058,
+      "flower_center_top3_share": 0.6615942028985508,
+      "palette": [
+        {
+          "rgb": [
+            232,
+            231,
+            223
+          ],
+          "pixels": 297642,
+          "share": 0.37847137451171875
+        },
+        {
+          "rgb": [
+            238,
+            195,
+            55
+          ],
+          "pixels": 136555,
+          "share": 0.17363866170247397
+        },
+        {
+          "rgb": [
+            246,
+            204,
+            61
+          ],
+          "pixels": 129852,
+          "share": 0.1651153564453125
+        },
+        {
+          "rgb": [
+            192,
+            206,
+            211
+          ],
+          "pixels": 82917,
+          "share": 0.10543441772460938
+        },
+        {
+          "rgb": [
+            115,
+            145,
+            96
+          ],
+          "pixels": 64657,
+          "share": 0.0822156270345052
+        },
+        {
+          "rgb": [
+            232,
+            205,
+            196
+          ],
+          "pixels": 18776,
+          "share": 0.023874918619791668
+        },
+        {
+          "rgb": [
+            168,
+            202,
+            212
+          ],
+          "pixels": 18451,
+          "share": 0.023461659749348957
+        },
+        {
+          "rgb": [
+            170,
+            126,
+            46
+          ],
+          "pixels": 13584,
+          "share": 0.01727294921875
+        },
+        {
+          "rgb": [
+            193,
+            151,
+            37
+          ],
+          "pixels": 7023,
+          "share": 0.008930206298828125
+        },
+        {
+          "rgb": [
+            124,
+            90,
+            35
+          ],
+          "pixels": 6938,
+          "share": 0.008822123209635416
+        },
+        {
+          "rgb": [
+            140,
+            171,
+            133
+          ],
+          "pixels": 5813,
+          "share": 0.007391611735026042
+        },
+        {
+          "rgb": [
+            210,
+            169,
+            30
+          ],
+          "pixels": 4224,
+          "share": 0.00537109375
+        }
+      ]
+    }
+  ],
+  "overviewPath": "/Users/Basti/Projekte/BA-PaintByNumbers/pipeline-lab/method-comparisons/2026-07-01T06-15-02_flattening-methods-12c/overview.png"
+}

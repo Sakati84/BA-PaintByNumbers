@@ -1,0 +1,37 @@
+{
+  "name": "2026-07-01-subject-fidelity-focus",
+  "model": "gemini-3.1-flash-lite-image",
+  "maxEdge": 1024,
+  "generationConfig": {
+    "seed": 1234,
+    "temperature": 0.2
+  },
+  "inputs": [
+    "../inputs/2026-07-01-extra-photos/foto-1-dog.jpg",
+    "../inputs/2026-07-01-extra-photos/foto-2-frog.jpg",
+    "../inputs/2026-07-01-extra-photos/foto-3-stork.jpg"
+  ],
+  "cases": [
+    {
+      "id": "easy-v8-semantic-large-shapes",
+      "promptFile": "../prompts/easy-v8-semantic-large-shapes.md",
+      "difficulty": "easy",
+      "colorCount": 12,
+      "targetAudience": "a young child around 4 years old"
+    },
+    {
+      "id": "medium-v7-semantic-flat-regions",
+      "promptFile": "../prompts/medium-v7-semantic-flat-regions.md",
+      "difficulty": "medium",
+      "colorCount": 16,
+      "targetAudience": "teenagers"
+    },
+    {
+      "id": "expert-v8-controlled-region-plate",
+      "promptFile": "../prompts/expert-v8-controlled-region-plate.md",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "targetAudience": "advanced users or expert-level coloring"
+    }
+  ]
+}

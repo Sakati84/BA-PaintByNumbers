@@ -179,6 +179,35 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== 'string') {
+        reject(new Error('Das Bild konnte nicht gelesen werden.'));
+        return;
+      }
+      resolve(reader.result);
+    };
+    reader.onerror = () => reject(new Error('Das Bild konnte nicht gelesen werden.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function createBrowserPreviewSource(file: File): Promise<WebImageSource> {
+  const previewDataUrl = await readFileAsDataUrl(file);
+  const image = await loadImage(previewDataUrl);
+
+  return {
+    sourceToken: `browser-upload-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    kind: 'uploaded',
+    label: file.name || 'Browser-Bild',
+    previewDataUrl,
+    width: image.naturalWidth,
+    height: image.naturalHeight,
+  };
+}
+
 async function createSvgImageSource(result: GeneratorResult): Promise<{ url: string; revoke: () => void }> {
   if (result.svg.length > 0) {
     const url = URL.createObjectURL(new Blob([result.svg], { type: 'image/svg+xml' }));
@@ -353,6 +382,7 @@ function ColorCountSelector({
 }
 
 export function App() {
+  const browserFileInputRef = useRef<HTMLInputElement | null>(null);
   const [screen, setScreen] = useState<ScreenState>({ name: 'splash' });
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
   const [isBrowserPreview, setIsBrowserPreview] = useState(false);
@@ -715,9 +745,30 @@ export function App() {
     });
   }
 
+  async function handleBrowserFileSelected(event: React.ChangeEvent<HTMLInputElement>): Promise<void> {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = '';
+    if (file == null) {
+      return;
+    }
+
+    try {
+      setErrorBanner(null);
+      const source = await createBrowserPreviewSource(file);
+      setScreen((current) => ({
+        name: 'config',
+        source,
+        colorCount: current.name === 'upload' ? current.colorCount : DEFAULT_COLOR_COUNT,
+      }));
+    } catch (error) {
+      setErrorBanner(error instanceof Error ? error.message : 'Das Bild konnte in der Browser-Vorschau nicht geladen werden.');
+    }
+  }
+
   function startUploadFlow(): void {
     if (isBrowserPreview) {
-      setErrorBanner('Bildauswahl ist in der reinen Browser-Vorschau nicht verdrahtet. Bitte nutze die Expo-WebView-App.');
+      setErrorBanner(null);
+      browserFileInputRef.current?.click();
       return;
     }
     setErrorBanner(null);
@@ -732,7 +783,8 @@ export function App() {
 
   function startCameraFlow(): void {
     if (isBrowserPreview) {
-      setErrorBanner('Kameraaufnahme ist in der reinen Browser-Vorschau nicht verdrahtet. Bitte nutze die Expo-WebView-App.');
+      setErrorBanner('Kameraaufnahme braucht die Expo-WebView-App. In der Browser-Vorschau kannst du stattdessen eine Bilddatei auswählen.');
+      browserFileInputRef.current?.click();
       return;
     }
     setErrorBanner(null);
@@ -805,6 +857,16 @@ export function App() {
     <main className="app-shell">
       <section className="screen">
         <AppTopBar />
+        <input
+          ref={browserFileInputRef}
+          accept="image/*"
+          aria-label="Browser-Bilddatei auswählen"
+          onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+            void handleBrowserFileSelected(event);
+          }}
+          style={{ display: 'none' }}
+          type="file"
+        />
         {isBrowserPreview ? (
           <div className="status-banner">
             <div>

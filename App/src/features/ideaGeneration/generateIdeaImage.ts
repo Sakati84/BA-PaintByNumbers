@@ -20,7 +20,7 @@ type InlineImagePart = {
 };
 
 function getGeminiModel(): string {
-  return process.env.EXPO_PUBLIC_GEMINI_IMAGE_MODEL?.trim() || 'gemini-2.5-flash-image';
+  return process.env.EXPO_PUBLIC_GEMINI_IMAGE_MODEL?.trim() || 'gemini-3.1-flash-lite-image';
 }
 
 function resizeToFit(width: number, height: number, maxEdge: number): { width: number; height: number } {
