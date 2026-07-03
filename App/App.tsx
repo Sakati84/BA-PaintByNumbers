@@ -7,10 +7,12 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { generatePaintByNumbers } from './src/features/generator/generatePaintByNumbers';
+import type { GeneratorPipelineDebugCache } from './src/features/generator/generatePaintByNumbers';
 import { ensureLocalWebViewBundle } from './src/features/generator/localWebViewLoader';
 import { posterizeImageWithNanoBanana } from './src/features/imagePosterization/posterizeImageWithNanoBanana';
 import type {
   GeneratorSettings,
+  GeneratorStage,
   WebImageSource,
   WebViewAppRequest,
   WebViewHostEvent,
@@ -143,6 +145,7 @@ function createWebImageSource(
 export default function App() {
   const webViewRef = useRef<any>(null);
   const sourceStoreRef = useRef<Map<string, StoredSource>>(new Map());
+  const debugCacheStoreRef = useRef<Map<string, GeneratorPipelineDebugCache>>(new Map());
   const [bundleUri, setBundleUri] = useState<string | null>(null);
   const [readAccessUri, setReadAccessUri] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -321,7 +324,13 @@ export default function App() {
     );
   }
 
-  async function handleRunPaintByNumbers(requestId: string, sourceToken: string, settings: GeneratorSettings): Promise<void> {
+  async function handleRunPaintByNumbers(
+    requestId: string,
+    sourceToken: string,
+    settings: GeneratorSettings,
+    debugMode = false,
+    debugStartStage?: GeneratorStage,
+  ): Promise<void> {
     const source = sourceStoreRef.current.get(sourceToken);
     if (source == null) {
       throw new Error(`Die angeforderte Bildquelle ${sourceToken} ist in der Shell nicht mehr vorhanden.`);
@@ -339,6 +348,7 @@ export default function App() {
       },
     });
 
+    let updatedDebugCache: GeneratorPipelineDebugCache | undefined;
     const generatedResult = await generatePaintByNumbers(source.asset, settings, (progress) => {
       postEvent({
         type: 'processingProgress',
@@ -349,8 +359,25 @@ export default function App() {
           message: progress.message,
         },
       });
+    }, {
+      variantIds: debugMode ? ['classic'] : undefined,
+      debug: debugMode
+        ? {
+            enabled: true,
+            rerunFromStage: debugStartStage,
+            cache: debugCacheStoreRef.current.get(sourceToken),
+            onCacheUpdated: (cache) => {
+              updatedDebugCache = cache;
+            },
+          }
+        : undefined,
     });
-    const resultWithComparisons = await appendComparisonVariants(generatedResult, originalSource, source);
+    if (debugMode && updatedDebugCache != null) {
+      debugCacheStoreRef.current.set(sourceToken, updatedDebugCache);
+    }
+    const resultWithComparisons = debugMode
+      ? generatedResult
+      : await appendComparisonVariants(generatedResult, originalSource, source);
     const result = persistResultAssets(resultWithComparisons);
 
     postEvent({
@@ -661,7 +688,13 @@ export default function App() {
 
     if (request.type === 'runPaintByNumbers') {
       try {
-        await handleRunPaintByNumbers(request.requestId, request.payload.sourceToken, request.payload.settings);
+        await handleRunPaintByNumbers(
+          request.requestId,
+          request.payload.sourceToken,
+          request.payload.settings,
+          request.payload.debugMode === true,
+          request.payload.debugStartStage,
+        );
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Die Paint-by-Numbers-Verarbeitung ist fehlgeschlagen.';
         postError(request.requestId, 'paintByNumbers', message);

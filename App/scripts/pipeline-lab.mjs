@@ -324,8 +324,8 @@ source, target, max_width, max_height = sys.argv[1], sys.argv[2], int(sys.argv[3
 with Image.open(source) as im:
     im = ImageOps.exif_transpose(im)
     im = im.convert("RGBA")
-    scale = min(max_width / im.width, max_height / im.height, 1.0)
-    if scale < 1.0:
+    scale = min(max_width / im.width, max_height / im.height)
+    if abs(scale - 1.0) > 0.0001:
         size = (max(1, round(im.width * scale)), max(1, round(im.height * scale)))
         im = im.resize(size, Image.Resampling.LANCZOS)
     bg = Image.new("RGBA", im.size, (255, 255, 255, 255))

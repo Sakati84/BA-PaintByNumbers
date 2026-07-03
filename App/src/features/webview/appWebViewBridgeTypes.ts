@@ -1,4 +1,6 @@
 import type {
+  GeneratorDebugParameter,
+  GeneratorDebugStageSnapshot,
   GeneratorOutputVariant,
   GeneratorProgress,
   GeneratorResult,
@@ -9,6 +11,8 @@ import type {
 } from '../generator/generatorTypes';
 
 export type {
+  GeneratorDebugParameter,
+  GeneratorDebugStageSnapshot,
   GeneratorOutputVariant,
   GeneratorProgress,
   GeneratorResult,
@@ -68,6 +72,8 @@ export type WebViewAppRequest =
       payload: {
         sourceToken: string;
         settings: GeneratorSettings;
+        debugMode?: boolean;
+        debugStartStage?: GeneratorStage;
       };
     }
   | {

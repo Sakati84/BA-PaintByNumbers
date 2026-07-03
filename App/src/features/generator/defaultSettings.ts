@@ -11,8 +11,8 @@ export const DEFAULT_GENERATOR_SETTINGS: GeneratorSettings = {
   removeFacetsFromLargeToSmall: true,
   maximumNumberOfFacets: 0,
   nrOfTimesToHalveBorderSegments: 0,
-  resizeImageWidth: 1024,
-  resizeImageHeight: 1024,
+  resizeImageWidth: 2048,
+  resizeImageHeight: 2048,
   randomSeed: 7707,
 };
 

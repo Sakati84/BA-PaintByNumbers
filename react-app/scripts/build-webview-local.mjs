@@ -181,9 +181,16 @@ async function addAssetModule(filePath) {
 async function createCssBundle() {
   const chunks = [];
   for (const cssFile of cssFiles) {
-    chunks.push(await readFile(cssFile, 'utf8'));
+    chunks.push(rewriteCssAssetUrls(await readFile(cssFile, 'utf8')));
   }
   return chunks.join('\n\n');
+}
+
+function rewriteCssAssetUrls(source) {
+  return source.replaceAll(
+    "url('../../App/assets/Background.png')",
+    "url('./assets/App_assets_Background.png')",
+  );
 }
 
 function createBundleSource() {

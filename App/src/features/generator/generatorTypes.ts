@@ -28,6 +28,53 @@ export type GeneratorSettings = {
   randomSeed: number;
 };
 
+export type GeneratorDebugParameterKey = keyof GeneratorSettings;
+
+export type GeneratorDebugParameter = {
+  key: GeneratorDebugParameterKey;
+  label: string;
+  value: number | boolean;
+  input: 'number' | 'boolean';
+  min?: number;
+  max?: number;
+  step?: number;
+  unit?: string;
+  description?: string;
+};
+
+export type GeneratorDebugMetric = {
+  label: string;
+  value: string;
+};
+
+export type GeneratorDebugImage = {
+  label: string;
+  pngBase64: string;
+  width: number;
+  height: number;
+  byteLength?: number;
+};
+
+export type GeneratorDebugStageSnapshot = {
+  stage: GeneratorStage;
+  label: string;
+  description: string;
+  parameters: GeneratorDebugParameter[];
+  metrics: GeneratorDebugMetric[];
+  image?: GeneratorDebugImage;
+  timingMs?: number;
+  canRerunFromHere: boolean;
+  cacheHit?: boolean;
+};
+
+export type GeneratorDebugInfo = {
+  enabled: boolean;
+  rerunFromStage?: GeneratorStage;
+  finalVariantId: GeneratorOutputVariantId;
+  parameterConfig: GeneratorSettings;
+  stages: GeneratorDebugStageSnapshot[];
+};
+
 export type GeneratorProgress = {
   stage: GeneratorStage;
   progress: number;
@@ -112,4 +159,5 @@ export type GeneratorResult = {
   palette: PaletteStat[];
   timings: GeneratorTimings;
   preparedImage: PreparedImage;
+  debug?: GeneratorDebugInfo;
 };

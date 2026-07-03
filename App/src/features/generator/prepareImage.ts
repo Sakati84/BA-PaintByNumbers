@@ -9,7 +9,7 @@ import type { SimpleImageData } from '../../types/imageData';
 import type { GeneratorSettings, PreparedImage } from './generatorTypes';
 
 function calculateTargetSize(width: number, height: number, maxWidth: number, maxHeight: number): { width: number; height: number } {
-  if (width <= maxWidth && height <= maxHeight) {
+  if (width <= 0 || height <= 0 || maxWidth <= 0 || maxHeight <= 0) {
     return { width, height };
   }
 

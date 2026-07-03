@@ -1,385 +1,271 @@
 # Project Guidelines
 
+## Current Architecture First
+
+Before making architectural, KI/AI, prompt, bridge, pipeline, export, or parity changes, read:
+
+- `docs/technische-architektur-happy-numbers-de.md`
+
+This document is the current high-level technical architecture for the installed Happy Numbers app. Keep it up to date. Whenever a change modifies the app structure, KI call, prompt variants, complexity mapping, generator settings, pipeline stages, output variants, bridge messages, export behavior, or known parity status, update that document in the same change.
+
 ## Repository Split
 
-This repository has three important runtime paths:
-
-- `paint_by_numbers.py`
-  Python reference pipeline and batch exporter. Treat this as the highest-fidelity behavioral reference for final outputs and debug artifacts in `output/`.
-
-- `react-app/`
-  Browser React + Vite + TypeScript app. This is the interactive web reference implementation for the staged pipeline. Most porting work should compare against `react-app/src/lib/pipeline.ts` and `react-app/src/lib/worker.ts`.
-
-- `react-app-native-expo/`
-  Expo + React Native port of the browser pipeline. This app is not a WebView wrapper. It uses native OpenCV bindings through `react-native-fast-opencv` and a typed artifact pipeline instead of a browser worker.
+This repository has these important runtime and reference paths:
 
 - `App/`
-  Current Expo app used for the installed iPhone build in this checkout. It wraps a locally bundled React web UI from `react-app/` in `react-native-webview` and handles native host capabilities such as image picking, camera, sharing, filesystem access, and API/native bridge work.
+  Current Expo app used for the installed iPhone build in this checkout. It wraps a locally bundled React web UI from `react-app/` in `react-native-webview` and handles native host capabilities such as image picking, camera, filesystem access, sharing, KI/API calls, and the local generator pipeline.
 
-If an agent is working on parity or feature completion, the usual direction is:
+- `react-app/`
+  React + TypeScript UI that is embedded into `App/` as a local WebView bundle. It owns the visible app flow, color-count UI, prompt selection/building, bridge requests, progress display, result screen, and export controls. In a normal browser it can be used for UI preview, but the full flow needs the Expo WebView host.
 
-1. Read the Python or web implementation.
-2. Port the behavior into `react-app-native-expo/`.
-3. Preserve the web app unless the task explicitly asks for cross-project changes.
+- `App/src/features/generator/`
+  Current local Paint-by-Numbers generator used by the installed app. It prepares images, runs K-Means through vendored generator code, merges redundant palette colors, builds/merges regions, places labels, and renders PNG/SVG variants.
+
+- `App/src/features/imagePosterization/`
+  Current KI image-posterization integration. It prepares the upload image, calls Gemini/Nano Banana directly when an API key is present, otherwise calls a configured proxy endpoint, and registers the generated posterized image for the local generator.
+
+- `App/src/vendor/paintbynumbersgenerator/`
+  Vendored TypeScript implementation used by the current generator for color reduction, LAB conversion, settings, and supporting data structures.
+
+- `paint_by_numbers.py`
+  Python reference pipeline and batch exporter. Treat this as the highest-fidelity behavioral reference for final algorithmic/parity questions and debug artifacts in `output/`.
+
+- `docs/`
+  Human-readable project documentation. `docs/technische-architektur-happy-numbers-de.md` is the current architecture document and must be maintained continuously.
+
+- `prompt-lab/`
+  Prompt experiments, comparisons, and historical prompt context.
+
+- `pipeline-lab/`
+  Pipeline analysis and improvement notes.
+
+## Current Product Flow
+
+The installed app is a React web UI running inside an Expo React Native WebView shell:
+
+1. `App/App.tsx` materializes the generated local WebView bundle.
+2. The WebView loads `react-app/dist/index.html` from Expo cache.
+3. `react-app/src/ui/App.tsx` sends JSON bridge requests through `window.ReactNativeWebView.postMessage`.
+4. `App/App.tsx` handles native requests: pick image, capture image, posterize image with KI, run local generator, persist files, and share/export.
+5. The KI-posterized image, not the original photo, is the normal input for the local Paint-by-Numbers generator.
+
+Important bridge files:
+
+- `App/src/features/webview/appWebViewBridgeTypes.ts`
+- `react-app/src/lib/webviewBridge.ts`
+- `react-app/src/ui/App.tsx`
+- `App/App.tsx`
+
+If bridge message shapes change, update both the React UI and Expo shell together.
 
 ## Source Of Truth
 
-Use these files as the primary references before changing algorithms:
+Use these files as primary references before changing behavior:
 
-- `react-app/src/lib/pipeline.ts`
-- `react-app/src/lib/worker.ts`
-- `paint_by_numbers.py`
-- `docs/pipeline-uebersicht-de.md`
-- `output/step_quantized.png`
-- `output/step_strip_cleanup.png`
-- `output/step_protrusion_prune.png`
-- `output/template_bright_color_circles.png`
+- Current architecture: `docs/technische-architektur-happy-numbers-de.md`
+- UI and flow: `react-app/src/ui/App.tsx`
+- UI settings/complexity: `react-app/src/lib/settings.ts`
+- Prompt builder: `react-app/src/lib/promptBuilder.ts`
+- Prompt variants: `react-app/src/prompts/paintByNumbersPosterizePrompt.ts`
+- Expo shell/bridge handlers: `App/App.tsx`
+- KI call: `App/src/features/imagePosterization/posterizeImageWithNanoBanana.ts`
+- Gemini request parsing/body: `App/src/features/imagePosterization/geminiImageRequest.ts`
+- Generator entry: `App/src/features/generator/generatePaintByNumbers.ts`
+- Image preparation: `App/src/features/generator/prepareImage.ts`
+- Generator settings: `App/src/features/generator/defaultSettings.ts`
+- Palette helpers: `App/src/features/generator/pipelineCore.ts`
+- Raster/region/render pipeline: `App/src/features/generator/rasterPaintByNumbers.ts`
+- Python reference: `paint_by_numbers.py`
+- Reference outputs: `output/`
 
-Important behavioral note:
+## Prompt And KI Rules
 
-- The browser worker UI exposes fewer visible steps than the full parity plan. The full conceptual pipeline still includes strip cleanup between quantization and protrusion pruning.
+The current UI derives prompt difficulty from color count:
 
-## Current Project Status
+- 8-11 colors: `simple` UI preset, `easy` prompt variant
+- 12-17 colors: `medium` UI preset, `medium` prompt variant
+- 18-24 colors: `detailed` UI preset, `expert` prompt variant
 
-The native app has a real staged processing flow and is no longer just a scaffold.
+The three current prompt variants live in:
 
-Implemented in `react-app-native-expo/`:
+- `react-app/src/prompts/paintByNumbersPosterizePrompt.ts`
 
-- normalize / resize
-- bilateral smoothing
-- quantization with TypeScript MiniBatch K-Means over native OpenCV Lab samples
-- strip cleanup
-- protrusion pruning
-- facet-based region merging
-- Python-style bbox-local distance-transform label placement when native OpenCV bindings are available
-- bright color circles render
-- color circles render
-- numbers render
-- classic render
-- debug unlabeled render
-- typed artifact caching between stages in the controller
+The final prompt is assembled through:
 
-Still missing or not yet exact:
+- `react-app/src/lib/promptBuilder.ts`
 
-- `circlesOnly` render template is not ported yet
-- normalize still has an open parity note around alpha/transparent pixels flattening to white
-- `numbers` and `colorCircles` use a bitmap-digit renderer in native instead of browser Canvas text drawing
-- native quantization is intentionally not the same code path as the browser: the web app uses OpenCV K-Means plus oversample-and-merge, while native uses MiniBatch K-Means in TypeScript
-- exact placement parity depends on a real native Expo Development Build; fallback mode is approximate if bindings are unavailable
-- device-level parity against the browser/Python outputs has not been fully validated end to end
+The KI call is executed in:
 
-## Architecture
+- `App/src/features/imagePosterization/posterizeImageWithNanoBanana.ts`
 
-### Web App
+Model/env behavior:
 
-`react-app/` uses:
+- model env priority: `EXPO_PUBLIC_NANO_BANANA_MODEL`, then `EXPO_PUBLIC_GEMINI_IMAGE_MODEL`, fallback `gemini-3.1-flash-lite-image`
+- API key priority: `EXPO_PUBLIC_NANO_BANANA_API_KEY`, then `EXPO_PUBLIC_GEMINI_API_KEY`
+- no API key means proxy mode through `EXPO_PUBLIC_IMAGE_POSTERIZE_ENDPOINT`
+- optional seed env priority: `EXPO_PUBLIC_GEMINI_IMAGE_SEED`, then `EXPO_PUBLIC_NANO_BANANA_SEED`
 
-- React UI in `react-app/src/App.tsx`
-- browser worker orchestration in `react-app/src/lib/worker.ts`
-- OpenCV.js in the worker
-- canvas and ImageData based previews
+When changing prompts, update:
 
-The worker caches intermediate stage outputs and invalidates downstream stages when an earlier stage reruns.
+1. `react-app/src/prompts/paintByNumbersPosterizePrompt.ts`
+2. `react-app/src/lib/settings.ts` if complexity/color mapping changes
+3. `docs/technische-architektur-happy-numbers-de.md`
+4. prompt-lab notes if the change is experimental or comparative
 
-### Current Expo WebView App
+## Current Local Pipeline
 
-`App/` uses:
+The local generator stage order is:
 
-- Expo + React Native app shell in `App/App.tsx`
-- `react-native-webview` to display the built React UI from `react-app/`
-- local WebView materialization through `App/src/features/generator/localWebViewLoader.ts`
-- generated embedded WebView assets in `App/src/features/generator/localWebViewManifest.generated.ts`
-- bridge types shared through `App/src/features/webview/appWebViewBridgeTypes.ts`
-- `App/scripts/sync-local-webview.mjs` to rebuild `react-app/dist` and embed it into the Expo app
+1. `decode`
+2. `kmeans`
+3. `colorMap`
+4. `narrowCleanup`
+5. `borderSegment`
+6. `facetBuild`
+7. `facetReduce`
+8. `borderTrace`
+9. `labelPlacement`
+10. `svgRender`
 
-Important:
+Current complexity defaults:
 
-- The current iPhone app is a WebView host around the React UI from `react-app/`.
-- The React UI can be tested directly in Codex without reinstalling on the phone.
-- Native-only host behavior still requires the Expo app or a browser fallback/mock.
-- The browser preview currently supports a local file-picker fallback for image selection, but camera capture, native sharing, and true Expo file URI behavior still belong to the Expo host.
+- Easy: 8-11 colors, `removeFacetsSmallerThanImageRatio = 0.00012`
+- Medium: 12-17 colors, `removeFacetsSmallerThanImageRatio = 0.00006`
+- Expert: 18-24 colors, `removeFacetsSmallerThanImageRatio = 0.000025`
 
-### Native App
+Important current behavior:
 
-`react-app-native-expo/` uses:
+- `narrowPixelStripCleanupRuns` is currently `0` in UI presets.
+- `nrOfTimesToHalveBorderSegments` is currently `0` in UI presets.
+- These cleanup stages exist in code but are effectively disabled by the current product settings.
+- Region merging of small/thin regions is currently the main local cleanup after K-Means and palette merge.
 
-- app shell in `react-app-native-expo/src/app/App.tsx`
-- step controller in `react-app-native-expo/src/features/processing/processingController.ts`
-- per-step execution in `react-app-native-expo/src/features/processing/processImageNative.ts`
-- platform-neutral algorithm modules in `react-app-native-expo/src/lib/pipeline/`
-- native OpenCV adapter in `react-app-native-expo/src/lib/opencv/opencvNative.ts`
+When changing pipeline semantics, update:
 
-The native app does not use a worker. It carries typed stage artifacts through the controller:
+1. `App/src/features/generator/generatorTypes.ts` if stage/result types change
+2. `App/src/features/generator/defaultSettings.ts` for setting changes
+3. `App/src/features/generator/generatePaintByNumbers.ts` for stage order/progress changes
+4. `App/src/features/generator/prepareImage.ts` for decode/resize/alpha behavior
+5. `App/src/features/generator/pipelineCore.ts` for palette behavior
+6. `App/src/features/generator/rasterPaintByNumbers.ts` for region/render behavior
+7. `react-app/src/ui/App.tsx` for UI timing labels, variant display, debug rows, or export controls
+8. `docs/technische-architektur-happy-numbers-de.md`
 
-- raw indexed label maps
-- compacted palettes
-- facet results
-- merged regions
-- label placements
-- render template URIs
+## Render Outputs
 
-## Pipeline Overview
+Current generated output variants in the app pipeline:
 
-The current native step order is:
+- `brightColorCircles`
+- `colorCircles`
+- `cleanColor`
+- `coloredEdges`
+- `coloredEdgesWithDots`
+- `circlesOnly`
+- `numbers`
+- `classic`
+- `debugUnlabeled`
 
-1. normalize
-2. smooth
-3. quantize
-4. strip-cleanup
-5. protrusions
-6. region-merge
-7. render
+The default variant is `brightColorCircles`.
 
-### Step 1: Normalize
+When the source is KI-posterized, the shell also appends comparison variants:
 
-Web reference:
+- `inputImage`
+- `aiPosterizedImage`
 
-- load image into browser canvas
-- flatten alpha to white
-- resize to configured max edge
+If render outputs change, keep both generator output typing and result UI aligned.
 
-Native port:
+## Build, Sync, Run
 
-- image URI is decoded into a native Mat
-- resize is performed through native OpenCV
-- preview is saved to cache as PNG
+There is no root JavaScript package. Do not run `npm install` from the repository root.
 
-Known gap:
+Use subproject commands with `--prefix` or change into the subproject directory.
 
-- transparent pixel handling still needs exact parity verification
-
-### Step 2: Smooth
-
-Web reference:
-
-- bilateral filter over the normalized RGB image
-
-Native port:
-
-- bilateral filter through `react-native-fast-opencv`
-- uses the same tuned constants as the reference path
-
-### Step 3: Quantize
-
-Web reference:
-
-- RGB to Lab
-- OpenCV K-Means with oversampling
-- greedy center merging back to target color count
-- nearest-center reassignment
-
-Native port:
-
-- RGB to Lab via native OpenCV
-- samples extracted to typed arrays
-- MiniBatch K-Means in TypeScript
-- palette converted back with native `COLOR_Lab2RGB`
-
-Important:
-
-- this is parity by intent, not identical implementation
-
-### Step 4: Strip Cleanup
-
-Reference behavior:
-
-- remove narrow one-pixel and cross-like strip artifacts
-- compact labels and palette ordering afterward
-
-Native port:
-
-- implemented as an explicit stage in the Expo app
-- uses the hard edge Lab-distance guard before replacements
-
-### Step 5: Protrusion Pruning
-
-Reference behavior:
-
-- remove thin protrusions after strip cleanup
-
-Native port:
-
-- typed-array pruning pass with palette-distance guard
-- label compaction runs again afterward
-
-### Step 6: Region Merge
-
-Reference behavior:
-
-- facet-based merge of small regions into better neighbors
-- preserve strong contrast boundaries except for tiny edge cases
-
-Native port:
-
-- implemented in `react-app-native-expo/src/lib/pipeline/facets.ts`
-- outputs merged label map, palette, facets, and region metadata
-
-### Step 7: Label Placement
-
-Reference behavior:
-
-- for each surviving region, build a mask in its bbox
-- pad by one pixel
-- run `distanceTransform(..., DIST_L2, 5)`
-- use the max location as the label anchor
-
-Native port:
-
-- exact placement path is implemented with native OpenCV in `findRegionLabelPointForBBox`
-- fallback path uses the earlier typed-array approximation only when native bindings are unavailable
-
-### Step 8: Render Templates
-
-Web reference currently produces:
-
-- brightColorCircles
-- colorCircles
-- circlesOnly
-- numbers
-- classic
-- debugUnlabeled
-
-Native port currently produces:
-
-- brightColorCircles
-- colorCircles
-- numbers
-- classic
-- debugUnlabeled
-
-Still missing:
-
-- circlesOnly
-
-Important rendering note:
-
-- the web app uses Canvas text drawing for numbered templates
-- the native app currently uses a bitmap-digit renderer because the current OpenCV wrapper does not expose `putText`
-
-## Agent Rules For Changes
-
-When changing the native port:
-
-1. Treat `react-app/` as the immediate behavioral reference.
-2. Treat `paint_by_numbers.py` and `output/` as the final parity reference.
-3. Do not silently change algorithm semantics in only one project unless the task explicitly asks for divergence.
-4. If you add a new stage, update all of these together:
-   - `react-app-native-expo/src/features/processing/processingTypes.ts`
-   - `react-app-native-expo/src/features/processing/processingProgress.ts`
-   - `react-app-native-expo/src/features/processing/processingController.ts`
-   - `react-app-native-expo/src/features/processing/processImageNative.ts`
-   - any UI preview ordering in `react-app-native-expo/src/app/App.tsx`
-5. If you change render outputs, keep both the primary render preview and the extra template previews aligned.
-
-When changing the web app:
-
-1. Update `react-app/src/lib/pipeline.ts` first.
-2. Check whether the worker flow in `react-app/src/lib/worker.ts` also needs to expose that change.
-3. If the change affects parity, record the native impact in the Expo port as well.
-
-## Install And Run
-
-There is no root JavaScript package. Do not run npm install from the repository root.
-
-Use either:
-
-- a shell with the subproject as the current working directory
-- or npm commands with `--prefix`
-
-### Web App
-
-Install:
-
-- `npm install --prefix ./react-app`
-
-Run dev server:
-
-- `npm run dev --prefix ./react-app`
+### React WebView UI
 
 Typecheck:
 
 - `npm run typecheck --prefix ./react-app`
 
-Build:
+Build local WebView files:
 
-- `npm run build --prefix ./react-app`
+- `npm run build:webview-local --prefix ./react-app`
 
-Codex browser preview for the current WebView UI:
+Browser preview for UI/layout:
 
-1. Build the local WebView files:
+1. Build local files:
    - `npm run build:webview-local --prefix ./react-app`
-2. Serve the built files:
+2. Serve:
    - `cd react-app/dist`
    - `python3 -m http.server 5177 --bind 127.0.0.1`
-3. Open this URL in the Codex in-app browser:
+3. Open:
    - `http://127.0.0.1:5177/`
-4. For iPhone 13 visual checks, set the browser viewport to:
+4. For iPhone 13 visual checks, use:
    - `390 x 844`
 
-Use this Codex browser preview for UI layout, text, responsive checks, and the browser file-picker fallback. Do not treat it as full native parity: camera capture, native sharing, Expo filesystem behavior, and the real `ReactNativeWebView` bridge still need the Expo app on device or simulator.
+Do not treat browser preview as full native parity. Camera, native sharing, Expo filesystem behavior, KI execution through the shell, and real WebView bridge behavior require the Expo app.
+
+### Expo App
+
+Typecheck:
+
+- `npm run typecheck --prefix ./App`
+
+Run/start:
+
+- `npm run start --prefix ./App`
+- `npm run ios --prefix ./App`
+- `npm run android --prefix ./App`
 
 After changing `react-app/` and before testing inside the installed Expo app, sync the WebView bundle into `App/`:
 
 - `npm run sync:webview-local --prefix ./App`
 
-### Expo Native App
+This regenerates:
 
-Install:
+- `App/src/features/generator/localWebViewManifest.generated.ts`
 
-- change directory into `react-app-native-expo`
-- run `npm install`
-
-Typecheck:
-
-- `npm run typecheck`
-
-Important runtime constraint:
-
-- `react-native-fast-opencv` is a native module
-- Expo Go is not enough for this app
-- use an Expo Development Build
-
-Recommended native workflow:
-
-1. `cd react-app-native-expo`
-2. `npm install`
-3. `npm run prebuild`
-4. install or build a development client
-5. `npm run start:dev-client`
-
-Android local development build:
-
-- after prebuild, use `npx expo run:android`
-- once the dev client is installed, use `npm run start:dev-client`
-
-iOS development build:
-
-- local iOS builds require macOS for `npx expo run:ios`
-- on Windows, use EAS Build or another macOS-based build path for a development client
-- this repo currently does not include an `eas.json`, so add or configure EAS deliberately instead of assuming it is already wired
-
-Useful Expo files:
-
-- `react-app-native-expo/app.json`
-- `react-app-native-expo/package.json`
+That generated file should not be edited manually.
 
 ## Validation Expectations
 
-When parity work changes the pipeline, compare against these checkpoints:
+For documentation-only changes:
 
-- Stage 3 parity target: `output/step_quantized.png`
-- Stage 4 parity target: `output/step_strip_cleanup.png`
-- Stage 5 parity target: `output/step_protrusion_prune.png`
-- Stage 8 parity target: `output/template_bright_color_circles.png`
+- Check the diff for stale architecture statements.
 
-Do not assume a passing typecheck means visual parity is correct. For this repository, pixel or region-level preview comparison matters more than compile success.
+For UI changes:
+
+- Run `npm run typecheck --prefix ./react-app`.
+- Build `npm run build:webview-local --prefix ./react-app` when WebView bundle behavior is affected.
+- Use browser preview for layout, responsive checks, and text overflow.
+- Sync into `App/` before device testing.
+
+For App/shell/pipeline changes:
+
+- Run `npm run typecheck --prefix ./App`.
+- If React bridge types or UI are affected, also run `npm run typecheck --prefix ./react-app`.
+- For pipeline changes, compare visual output against relevant references in `output/` or create/inspect pipeline-lab artifacts.
+
+Do not assume a passing typecheck means visual parity is correct. For this project, pixel-level, region-level, and human visual checks are often more important than compile success.
+
+## Agent Rules For Changes
+
+1. Read `docs/technische-architektur-happy-numbers-de.md` before non-trivial changes.
+2. Keep that document current as the project evolves.
+3. Preserve the separation between `react-app/` UI and `App/` native host unless the task explicitly changes the architecture.
+4. Do not silently change algorithm semantics in only one layer when another layer depends on it.
+5. If a change affects KI prompt behavior, update prompt docs and architecture docs.
+6. If a change affects bridge messages, update both sender and receiver types/handlers.
+7. If a change affects output variants, update generator types, render code, result UI, export behavior, and docs together.
+8. Treat `paint_by_numbers.py` and `output/` as algorithmic/parity references, not as the current installed-app runtime.
+9. Never run npm install at repository root.
 
 ## Short Version For Future Agents
 
-- `react-app/` is the web reference implementation.
-- `react-app-native-expo/` is the native port target.
-- `paint_by_numbers.py` and `output/` are the final parity truth.
-- the native core pipeline is mostly ported, but not fully identical yet.
-- `circlesOnly`, exact text rendering parity, and final normalize parity are still open items.
-- Expo Go is not sufficient; use a Development Build.
-- never run npm install at repo root.
+- The installed app is `App/`: Expo shell plus local React WebView.
+- The visible UI is `react-app/`.
+- The KI posterization call runs in `App/src/features/imagePosterization/`.
+- The local generator runs in `App/src/features/generator/`.
+- Prompt variants live in `react-app/src/prompts/paintByNumbersPosterizePrompt.ts`.
+- Complexity is driven by color count: 8-11 Easy, 12-17 Medium, 18-24 Expert.
+- The main current architecture doc is `docs/technische-architektur-happy-numbers-de.md`.
+- Update that doc whenever architecture, KI, prompts, pipeline, complexity, bridge, or exports change.

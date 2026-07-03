@@ -1,14 +1,21 @@
+import { encode } from 'fast-png';
+
 import type { ColorMapResult } from '../../vendor/paintbynumbersgenerator/colorreductionmanagement';
 import type { RGB } from '../../vendor/paintbynumbersgenerator/common';
 import { rgb2lab, rgbToHsl } from '../../vendor/paintbynumbersgenerator/lib/colorconversion';
 import { uint8ToBase64 } from './base64';
 import type {
+  GeneratorDebugImage,
+  GeneratorDebugMetric,
+  GeneratorDebugParameter,
+  GeneratorDebugStageSnapshot,
   GeneratorOutputVariant,
   GeneratorOutputVariantId,
   GeneratorSettings,
   GeneratorStage,
   PaletteStat,
 } from './generatorTypes';
+import { encodeRgbaDebugImage } from './debugSnapshots';
 
 type RasterStage = Exclude<GeneratorStage, 'decode' | 'kmeans' | 'colorMap' | 'done'>;
 
@@ -21,6 +28,12 @@ type RasterPipelineOptions = {
   addTiming: AddTiming;
   nowMs: () => number;
   variantIds?: readonly GeneratorOutputVariantId[];
+  debug?: {
+    enabled: boolean;
+    rerunFromStage?: GeneratorStage;
+    cache?: RasterPipelineDebugCache | null;
+    snapshots?: GeneratorDebugStageSnapshot[];
+  };
 };
 
 type RasterData = {
@@ -48,6 +61,7 @@ type ConnectedRegions = {
 type LabelPlacement = {
   regionId: number;
   colorIndex: number;
+  area: number;
   x: number;
   y: number;
   radius: number;
@@ -72,6 +86,37 @@ type SvgRegionPath = {
   colorIndex: number;
   area: number;
   pathData: string;
+  smoothLoops: Point[][];
+};
+
+type BoundaryPath = {
+  colorIndex: number;
+  points: Point[];
+  closed: boolean;
+  pathData: string;
+};
+
+type BoundaryEdge = {
+  startKey: string;
+  endKey: string;
+  colorIndex: number;
+};
+
+export type RasterPipelineDebugCache = {
+  colorMapRaster?: RasterData;
+  afterNarrowCleanup?: RasterData;
+  afterBorderSegment?: RasterData;
+  beforeFacetReduce?: {
+    raster: RasterData;
+    connected: ConnectedRegions;
+  };
+  afterFacetReduce?: {
+    raster: RasterData;
+    connected: ConnectedRegions;
+  };
+  svgPaths?: SvgRegionPath[];
+  boundaryPaths?: BoundaryPath[];
+  placements?: LabelPlacement[];
 };
 
 type Point = {
@@ -89,6 +134,7 @@ export type RasterPaintByNumbersResult = {
   imageHeight: number;
   facetCount: number;
   palette: PaletteStat[];
+  debugCache?: RasterPipelineDebugCache;
 };
 
 const HARD_EDGE_PROTECTION_LAB_DISTANCE = 26;
@@ -104,8 +150,11 @@ const MAX_FACELET_MERGE_LAB_DISTANCE = 18;
 const THIN_REGION_AREA_MULTIPLIER = 2;
 const THIN_REGION_MAX_AVERAGE_THICKNESS = 5.5;
 const THIN_REGION_SOFT_MERGE_LAB_DISTANCE = 34;
-const EXPORT_SCALE = 2;
-const SVG_PATH_SIMPLIFY_TOLERANCE = 0.85;
+const PNG_OUTPUT_SCALE = 2;
+const PNG_RENDER_SCALE = 3;
+const SVG_PATH_SIMPLIFY_TOLERANCE = 1.45;
+const SVG_PATH_SMALL_LOOP_SIMPLIFY_TOLERANCE = 0.95;
+const SVG_PATH_SMOOTHING_MIN_PERIMETER = 18;
 const OUTLINE_R = 22;
 const OUTLINE_G = 29;
 const OUTLINE_B = 31;
@@ -1341,36 +1390,174 @@ function removeDuplicateAndCollinearPoints(points: Point[]): Point[] {
   return reduced;
 }
 
-function simplifyClosedLoop(points: Point[]): Point[] {
+function removeDuplicateAndCollinearOpenPoints(points: Point[]): Point[] {
+  const unique: Point[] = [];
+  for (const point of points) {
+    const previous = unique[unique.length - 1];
+    if (previous == null || previous.x !== point.x || previous.y !== point.y) {
+      unique.push(point);
+    }
+  }
+
+  if (unique.length <= 2) {
+    return unique;
+  }
+
+  const reduced: Point[] = [unique[0]];
+  for (let index = 1; index < unique.length - 1; index += 1) {
+    const previous = reduced[reduced.length - 1];
+    const current = unique[index];
+    const next = unique[index + 1];
+    const dx1 = current.x - previous.x;
+    const dy1 = current.y - previous.y;
+    const dx2 = next.x - current.x;
+    const dy2 = next.y - current.y;
+    if (dx1 * dy2 !== dy1 * dx2) {
+      reduced.push(current);
+    }
+  }
+  reduced.push(unique[unique.length - 1]);
+  return reduced;
+}
+
+function loopPerimeter(points: Point[]): number {
+  let perimeter = 0;
+  for (let index = 0; index < points.length; index += 1) {
+    const point = points[index];
+    const next = points[(index + 1) % points.length];
+    perimeter += Math.hypot(next.x - point.x, next.y - point.y);
+  }
+  return perimeter;
+}
+
+function openPathLength(points: Point[]): number {
+  let length = 0;
+  for (let index = 1; index < points.length; index += 1) {
+    const previous = points[index - 1];
+    const point = points[index];
+    length += Math.hypot(point.x - previous.x, point.y - previous.y);
+  }
+  return length;
+}
+
+function simplifyClosedLoop(points: Point[], tolerance: number): Point[] {
   const reduced = removeDuplicateAndCollinearPoints(points);
   if (reduced.length <= 4) {
     return reduced;
   }
 
   const open = [...reduced, reduced[0]];
-  const simplified = simplifyOpenPoints(open, SVG_PATH_SIMPLIFY_TOLERANCE);
+  const simplified = simplifyOpenPoints(open, tolerance);
   const withoutDuplicateClose = simplified.slice(0, -1);
   return withoutDuplicateClose.length >= 3 ? withoutDuplicateClose : reduced;
 }
 
-function loopToSmoothPath(points: Point[]): string {
-  const simplified = simplifyClosedLoop(points);
-  if (simplified.length === 0) {
-    return '';
+function smoothClosedLoop(points: Point[], passes: number): Point[] {
+  let current = points;
+  for (let pass = 0; pass < passes; pass += 1) {
+    if (current.length < 4) {
+      return current;
+    }
+
+    const next: Point[] = [];
+    for (let index = 0; index < current.length; index += 1) {
+      const point = current[index];
+      const following = current[(index + 1) % current.length];
+      next.push({
+        x: point.x * 0.75 + following.x * 0.25,
+        y: point.y * 0.75 + following.y * 0.25,
+      });
+      next.push({
+        x: point.x * 0.25 + following.x * 0.75,
+        y: point.y * 0.25 + following.y * 0.75,
+      });
+    }
+    current = next;
   }
-  if (simplified.length < 3) {
-    return `M ${simplified.map((point) => `${point.x} ${point.y}`).join(' L ')} Z`;
+  return current;
+}
+
+function smoothOpenPath(points: Point[], passes: number): Point[] {
+  let current = points;
+  for (let pass = 0; pass < passes; pass += 1) {
+    if (current.length < 3) {
+      return current;
+    }
+
+    const next: Point[] = [current[0]];
+    for (let index = 0; index < current.length - 1; index += 1) {
+      const point = current[index];
+      const following = current[index + 1];
+      next.push({
+        x: point.x * 0.75 + following.x * 0.25,
+        y: point.y * 0.75 + following.y * 0.25,
+      });
+      next.push({
+        x: point.x * 0.25 + following.x * 0.75,
+        y: point.y * 0.25 + following.y * 0.75,
+      });
+    }
+    next.push(current[current.length - 1]);
+    current = next;
+  }
+  return current;
+}
+
+function prepareSmoothLoop(points: Point[]): Point[] {
+  const reduced = removeDuplicateAndCollinearPoints(points);
+  if (reduced.length <= 4) {
+    return reduced;
   }
 
-  const last = simplified[simplified.length - 1];
-  const first = simplified[0];
+  const perimeter = loopPerimeter(reduced);
+  const tolerance = perimeter < SVG_PATH_SMOOTHING_MIN_PERIMETER * 2
+    ? SVG_PATH_SMALL_LOOP_SIMPLIFY_TOLERANCE
+    : SVG_PATH_SIMPLIFY_TOLERANCE;
+  const simplified = simplifyClosedLoop(reduced, tolerance);
+  if (simplified.length <= 4 || perimeter < SVG_PATH_SMOOTHING_MIN_PERIMETER) {
+    return simplified;
+  }
+
+  const passes = perimeter > 80 && simplified.length >= 8 ? 2 : 1;
+  return smoothClosedLoop(simplified, passes);
+}
+
+function prepareSmoothOpenPath(points: Point[]): Point[] {
+  const reduced = removeDuplicateAndCollinearOpenPoints(points);
+  if (reduced.length <= 2) {
+    return reduced;
+  }
+
+  const length = openPathLength(reduced);
+  const tolerance = length < SVG_PATH_SMOOTHING_MIN_PERIMETER * 2
+    ? SVG_PATH_SMALL_LOOP_SIMPLIFY_TOLERANCE
+    : SVG_PATH_SIMPLIFY_TOLERANCE;
+  const simplified = simplifyOpenPoints(reduced, tolerance);
+  if (simplified.length <= 2 || length < SVG_PATH_SMOOTHING_MIN_PERIMETER) {
+    return simplified;
+  }
+
+  const passes = length > 80 && simplified.length >= 8 ? 2 : 1;
+  return smoothOpenPath(simplified, passes);
+}
+
+function loopToSmoothPath(points: Point[]): string {
+  if (points.length === 0) {
+    return '';
+  }
+  if (points.length < 3) {
+    return `M ${points.map((point) => `${point.x} ${point.y}`).join(' L ')} Z`;
+  }
+
+  const last = points[points.length - 1];
+  const first = points[0];
   const startX = (last.x + first.x) / 2;
   const startY = (last.y + first.y) / 2;
   const parts = [`M ${startX.toFixed(2)} ${startY.toFixed(2)}`];
 
-  for (let index = 0; index < simplified.length; index += 1) {
-    const current = simplified[index];
-    const next = simplified[(index + 1) % simplified.length];
+  for (let index = 0; index < points.length; index += 1) {
+    const current = points[index];
+    const next = points[(index + 1) % points.length];
     const midX = (current.x + next.x) / 2;
     const midY = (current.y + next.y) / 2;
     parts.push(`Q ${current.x.toFixed(2)} ${current.y.toFixed(2)} ${midX.toFixed(2)} ${midY.toFixed(2)}`);
@@ -1380,12 +1567,39 @@ function loopToSmoothPath(points: Point[]): string {
   return parts.join(' ');
 }
 
+function openPointsToPath(points: Point[]): string {
+  if (points.length === 0) {
+    return '';
+  }
+  if (points.length === 1) {
+    return `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)}`;
+  }
+  if (points.length === 2) {
+    return `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)} L ${points[1].x.toFixed(2)} ${points[1].y.toFixed(2)}`;
+  }
+
+  const parts = [`M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)}`];
+  for (let index = 1; index < points.length - 1; index += 1) {
+    const current = points[index];
+    const next = points[index + 1];
+    const midX = (current.x + next.x) / 2;
+    const midY = (current.y + next.y) / 2;
+    parts.push(`Q ${current.x.toFixed(2)} ${current.y.toFixed(2)} ${midX.toFixed(2)} ${midY.toFixed(2)}`);
+  }
+  const last = points[points.length - 1];
+  parts.push(`L ${last.x.toFixed(2)} ${last.y.toFixed(2)}`);
+  return parts.join(' ');
+}
+
 function buildSvgRegionPaths(connected: ConnectedRegions, width: number, height: number): SvgRegionPath[] {
   const paths: SvgRegionPath[] = [];
   const sortedRegions = [...connected.regions].sort((left, right) => right.area - left.area || left.id - right.id);
   for (const region of sortedRegions) {
     const loops = traceRegionLoops(region, connected.regionMap, width, height);
-    const pathData = loops.map(loopToSmoothPath).filter((path) => path.length > 0).join(' ');
+    const smoothLoops = loops
+      .map(prepareSmoothLoop)
+      .filter((loop) => loop.length >= 3);
+    const pathData = smoothLoops.map(loopToSmoothPath).filter((path) => path.length > 0).join(' ');
     if (pathData.length === 0) {
       continue;
     }
@@ -1394,8 +1608,181 @@ function buildSvgRegionPaths(connected: ConnectedRegions, width: number, height:
       colorIndex: region.colorIndex,
       area: region.area,
       pathData,
+      smoothLoops,
     });
   }
+  return paths;
+}
+
+function boundaryColorIndex(regionA: number, regionB: number, colorByRegionId: Map<number, number>): number {
+  const colorA = colorByRegionId.get(regionA);
+  const colorB = colorByRegionId.get(regionB);
+  if (colorA == null) {
+    return colorB ?? 0;
+  }
+  if (colorB == null) {
+    return colorA;
+  }
+  return Math.min(colorA, colorB);
+}
+
+function addBoundaryEdge(
+  edges: BoundaryEdge[],
+  adjacency: Map<string, number[]>,
+  startX: number,
+  startY: number,
+  endX: number,
+  endY: number,
+  colorIndex: number,
+): void {
+  const startKey = pointKey(startX, startY);
+  const endKey = pointKey(endX, endY);
+  const edgeIndex = edges.length;
+  edges.push({ startKey, endKey, colorIndex });
+
+  const startEdges = adjacency.get(startKey);
+  if (startEdges == null) {
+    adjacency.set(startKey, [edgeIndex]);
+  } else {
+    startEdges.push(edgeIndex);
+  }
+
+  const endEdges = adjacency.get(endKey);
+  if (endEdges == null) {
+    adjacency.set(endKey, [edgeIndex]);
+  } else {
+    endEdges.push(edgeIndex);
+  }
+}
+
+function traceBoundaryChain(
+  firstEdgeIndex: number,
+  startKey: string,
+  edges: BoundaryEdge[],
+  adjacency: Map<string, number[]>,
+  used: Uint8Array,
+): { points: Point[]; closed: boolean; colorIndex: number } {
+  const points: Point[] = [parsePointKey(startKey)];
+  let currentKey = startKey;
+  let edgeIndex = firstEdgeIndex;
+  let colorIndex = edges[firstEdgeIndex].colorIndex;
+  let guard = 0;
+
+  while (guard < edges.length + 1) {
+    if (used[edgeIndex] === 1) {
+      break;
+    }
+    used[edgeIndex] = 1;
+    const edge = edges[edgeIndex];
+    colorIndex = edge.colorIndex;
+    const nextKey = edge.startKey === currentKey ? edge.endKey : edge.startKey;
+    points.push(parsePointKey(nextKey));
+    currentKey = nextKey;
+
+    const incident = adjacency.get(currentKey) ?? [];
+    const unusedIncident = incident.filter((candidate) => used[candidate] === 0);
+    if (unusedIncident.length === 0) {
+      break;
+    }
+    if (currentKey === startKey) {
+      break;
+    }
+    if (incident.length !== 2) {
+      break;
+    }
+
+    edgeIndex = unusedIncident[0];
+    guard += 1;
+  }
+
+  return {
+    points,
+    closed: currentKey === startKey,
+    colorIndex,
+  };
+}
+
+function buildBoundaryPaths(connected: ConnectedRegions, width: number, height: number): BoundaryPath[] {
+  const colorByRegionId = new Map(connected.regions.map((region) => [region.id, region.colorIndex]));
+  const edges: BoundaryEdge[] = [];
+  const adjacency = new Map<string, number[]>();
+  const { regionMap } = connected;
+
+  for (let y = 0; y < height; y += 1) {
+    const rowOffset = y * width;
+    for (let x = 0; x < width; x += 1) {
+      const index = rowOffset + x;
+      const regionId = regionMap[index];
+      const colorIndex = colorByRegionId.get(regionId) ?? 0;
+
+      if (y === 0) {
+        addBoundaryEdge(edges, adjacency, x, y, x + 1, y, colorIndex);
+      }
+      if (x === 0) {
+        addBoundaryEdge(edges, adjacency, x, y + 1, x, y, colorIndex);
+      }
+
+      const rightRegionId = x === width - 1 ? -1 : regionMap[index + 1];
+      if (rightRegionId !== regionId) {
+        addBoundaryEdge(
+          edges,
+          adjacency,
+          x + 1,
+          y,
+          x + 1,
+          y + 1,
+          boundaryColorIndex(regionId, rightRegionId, colorByRegionId),
+        );
+      }
+
+      const bottomRegionId = y === height - 1 ? -1 : regionMap[index + width];
+      if (bottomRegionId !== regionId) {
+        addBoundaryEdge(
+          edges,
+          adjacency,
+          x + 1,
+          y + 1,
+          x,
+          y + 1,
+          boundaryColorIndex(regionId, bottomRegionId, colorByRegionId),
+        );
+      }
+    }
+  }
+
+  const used = new Uint8Array(edges.length);
+  const paths: BoundaryPath[] = [];
+  for (let edgeIndex = 0; edgeIndex < edges.length; edgeIndex += 1) {
+    if (used[edgeIndex] === 1) {
+      continue;
+    }
+
+    const edge = edges[edgeIndex];
+    const startDegree = adjacency.get(edge.startKey)?.length ?? 0;
+    const endDegree = adjacency.get(edge.endKey)?.length ?? 0;
+    const startKey = startDegree !== 2 || endDegree === 2 ? edge.startKey : edge.endKey;
+    const traced = traceBoundaryChain(edgeIndex, startKey, edges, adjacency, used);
+    const rawPoints = traced.closed && traced.points.length > 1
+      ? traced.points.slice(0, -1)
+      : traced.points;
+    const smoothPoints = traced.closed
+      ? prepareSmoothLoop(rawPoints)
+      : prepareSmoothOpenPath(rawPoints);
+    if (smoothPoints.length < (traced.closed ? 3 : 2)) {
+      continue;
+    }
+    const pathData = traced.closed ? loopToSmoothPath(smoothPoints) : openPointsToPath(smoothPoints);
+    if (pathData.length === 0) {
+      continue;
+    }
+    paths.push({
+      colorIndex: traced.colorIndex,
+      points: smoothPoints,
+      closed: traced.closed,
+      pathData,
+    });
+  }
+
   return paths;
 }
 
@@ -1459,26 +1846,32 @@ function findRegionLabelPoint(region: RegionInfo, regionMap: Int32Array, width: 
   return {
     regionId: region.id,
     colorIndex: region.colorIndex,
+    area: region.area,
     x: region.minX + bestX - 1,
     y: region.minY + bestY - 1,
-    radius: Math.max(2, bestDistance),
+    radius: Math.max(1, bestDistance),
   };
 }
 
-function computeLabelPlacements(
-  connected: ConnectedRegions,
-  width: number,
-  minLabelArea: number,
-): LabelPlacement[] {
+function computeLabelPlacements(connected: ConnectedRegions, width: number): LabelPlacement[] {
   const placements: LabelPlacement[] = [];
   const sortedRegions = [...connected.regions].sort((left, right) => right.area - left.area || left.id - right.id);
   for (const region of sortedRegions) {
-    if (region.area < minLabelArea) {
-      continue;
-    }
     placements.push(findRegionLabelPoint(region, connected.regionMap, width));
   }
   return placements;
+}
+
+function markerRadiusForPlacement(placement: LabelPlacement, labelText: string): number {
+  const textRadius = Math.max(5, labelText.length * 3 + 3);
+  const areaRadius = Math.sqrt(Math.max(1, placement.area) / Math.PI) * 0.72;
+  const interiorRadius = Math.max(1, placement.radius * 0.88);
+  const preferredRadius = Math.max(4, Math.min(10, textRadius));
+  return Math.max(1.25, Math.min(preferredRadius, areaRadius, interiorRadius));
+}
+
+function shouldRenderMarkerText(circleRadius: number, labelText: string): boolean {
+  return circleRadius >= Math.max(3.5, labelText.length * 1.6 + 1.5);
 }
 
 function brightenColor(channel: number): number {
@@ -1592,68 +1985,148 @@ function drawCircleOutline(data: Uint8Array, width: number, height: number, cx: 
   }
 }
 
-function drawBoundaryLineBlock(
+function strokeWidthForConfig(config: RenderVariantConfig): number {
+  if (config.strokeMode === 'black') {
+    return 0.85;
+  }
+  if (config.fillMode === 'white') {
+    return 1.05;
+  }
+  return 0.85;
+}
+
+function quadraticPoint(start: Point, control: Point, end: Point, t: number): Point {
+  const inverse = 1 - t;
+  return {
+    x: inverse * inverse * start.x + 2 * inverse * t * control.x + t * t * end.x,
+    y: inverse * inverse * start.y + 2 * inverse * t * control.y + t * t * end.y,
+  };
+}
+
+function drawSmoothClosedLoopStroke(
   data: Uint8Array,
   width: number,
   height: number,
-  startX: number,
-  startY: number,
-  lineWidth: number,
-  lineHeight: number,
+  loop: Point[],
+  scale: number,
+  radius: number,
   rgb: [number, number, number],
 ): void {
-  for (let y = 0; y < lineHeight; y += 1) {
-    for (let x = 0; x < lineWidth; x += 1) {
-      setPixel(data, width, height, startX + x, startY + y, rgb);
+  if (loop.length < 3) {
+    return;
+  }
+
+  const last = loop[loop.length - 1];
+  const first = loop[0];
+  let start: Point = {
+    x: (last.x + first.x) / 2,
+    y: (last.y + first.y) / 2,
+  };
+
+  for (let index = 0; index < loop.length; index += 1) {
+    const control = loop[index];
+    const next = loop[(index + 1) % loop.length];
+    const end: Point = {
+      x: (control.x + next.x) / 2,
+      y: (control.y + next.y) / 2,
+    };
+    const approximateLength = Math.hypot(control.x - start.x, control.y - start.y) + Math.hypot(end.x - control.x, end.y - control.y);
+    const steps = Math.max(3, Math.ceil((approximateLength * scale) / Math.max(0.65, radius * 0.72)));
+
+    for (let step = 0; step <= steps; step += 1) {
+      const point = quadraticPoint(start, control, end, step / steps);
+      drawFilledCircle(data, width, height, point.x * scale, point.y * scale, radius, rgb);
     }
+
+    start = end;
   }
 }
 
-function drawBoundaryLines(
+function drawSmoothOpenPathStroke(
   data: Uint8Array,
-  outputWidth: number,
-  outputHeight: number,
-  raster: RasterData,
-  regionMap: Int32Array,
-  config: RenderVariantConfig,
+  width: number,
+  height: number,
+  points: Point[],
+  scale: number,
+  radius: number,
+  rgb: [number, number, number],
 ): void {
-  const { width, height, labelMap, paletteRgb } = raster;
-  const lineWidth = Math.max(1, Math.floor(EXPORT_SCALE / 2));
+  if (points.length < 2) {
+    return;
+  }
+  if (points.length === 2) {
+    const start = points[0];
+    const end = points[1];
+    const length = Math.hypot(end.x - start.x, end.y - start.y);
+    const steps = Math.max(2, Math.ceil((length * scale) / Math.max(0.65, radius * 0.72)));
+    for (let step = 0; step <= steps; step += 1) {
+      const t = step / steps;
+      drawFilledCircle(
+        data,
+        width,
+        height,
+        (start.x + (end.x - start.x) * t) * scale,
+        (start.y + (end.y - start.y) * t) * scale,
+        radius,
+        rgb,
+      );
+    }
+    return;
+  }
 
-  for (let y = 0; y < height; y += 1) {
-    const rowOffset = y * width;
-    for (let x = 0; x < width; x += 1) {
-      const index = rowOffset + x;
-      const regionId = regionMap[index];
-      const label = labelMap[index];
-      const fillColor = fillColorForPixel(config, label, regionId, paletteRgb);
-      const strokeColor = strokeColorForPixel(config, label, fillColor, paletteRgb);
+  let start = points[0];
+  for (let index = 1; index < points.length - 1; index += 1) {
+    const control = points[index];
+    const next = points[index + 1];
+    const end: Point = {
+      x: (control.x + next.x) / 2,
+      y: (control.y + next.y) / 2,
+    };
+    const approximateLength = Math.hypot(control.x - start.x, control.y - start.y) + Math.hypot(end.x - control.x, end.y - control.y);
+    const steps = Math.max(3, Math.ceil((approximateLength * scale) / Math.max(0.65, radius * 0.72)));
+    for (let step = 0; step <= steps; step += 1) {
+      const point = quadraticPoint(start, control, end, step / steps);
+      drawFilledCircle(data, width, height, point.x * scale, point.y * scale, radius, rgb);
+    }
+    start = end;
+  }
 
-      if (x + 1 < width && regionMap[index + 1] !== regionId) {
-        drawBoundaryLineBlock(
-          data,
-          outputWidth,
-          outputHeight,
-          (x + 1) * EXPORT_SCALE - lineWidth,
-          y * EXPORT_SCALE,
-          lineWidth,
-          EXPORT_SCALE,
-          strokeColor,
-        );
-      }
+  const last = points[points.length - 1];
+  const tailLength = Math.hypot(last.x - start.x, last.y - start.y);
+  const tailSteps = Math.max(2, Math.ceil((tailLength * scale) / Math.max(0.65, radius * 0.72)));
+  for (let step = 0; step <= tailSteps; step += 1) {
+    const t = step / tailSteps;
+    drawFilledCircle(
+      data,
+      width,
+      height,
+      (start.x + (last.x - start.x) * t) * scale,
+      (start.y + (last.y - start.y) * t) * scale,
+      radius,
+      rgb,
+    );
+  }
+}
 
-      if (y + 1 < height && regionMap[index + width] !== regionId) {
-        drawBoundaryLineBlock(
-          data,
-          outputWidth,
-          outputHeight,
-          x * EXPORT_SCALE,
-          (y + 1) * EXPORT_SCALE - lineWidth,
-          EXPORT_SCALE,
-          lineWidth,
-          strokeColor,
-        );
-      }
+function drawSmoothBoundaryLines(
+  data: Uint8Array,
+  width: number,
+  height: number,
+  raster: RasterData,
+  boundaryPaths: BoundaryPath[],
+  config: RenderVariantConfig,
+  scale: number,
+): void {
+  const { paletteRgb } = raster;
+  const radius = Math.max(0.75, (strokeWidthForConfig(config) * scale) / 2);
+
+  for (const boundaryPath of boundaryPaths) {
+    const fillColor = paletteColorForLabel(boundaryPath.colorIndex, paletteRgb);
+    const strokeColor = strokeColorForPixel(config, boundaryPath.colorIndex, fillColor, paletteRgb);
+    if (boundaryPath.closed) {
+      drawSmoothClosedLoopStroke(data, width, height, boundaryPath.points, scale, radius, strokeColor);
+    } else {
+      drawSmoothOpenPathStroke(data, width, height, boundaryPath.points, scale, radius, strokeColor);
     }
   }
 }
@@ -1729,27 +2202,80 @@ function fillPixelBlock(
   }
 }
 
+function downsampleRgba(
+  source: Uint8Array,
+  sourceWidth: number,
+  sourceHeight: number,
+  targetWidth: number,
+  targetHeight: number,
+): Uint8Array {
+  if (sourceWidth === targetWidth && sourceHeight === targetHeight) {
+    return source;
+  }
+
+  const target = new Uint8Array(targetWidth * targetHeight * 4);
+  const scaleX = sourceWidth / targetWidth;
+  const scaleY = sourceHeight / targetHeight;
+
+  for (let y = 0; y < targetHeight; y += 1) {
+    const sourceY0 = Math.floor(y * scaleY);
+    const sourceY1 = Math.max(sourceY0 + 1, Math.ceil((y + 1) * scaleY));
+
+    for (let x = 0; x < targetWidth; x += 1) {
+      const sourceX0 = Math.floor(x * scaleX);
+      const sourceX1 = Math.max(sourceX0 + 1, Math.ceil((x + 1) * scaleX));
+      let red = 0;
+      let green = 0;
+      let blue = 0;
+      let alpha = 0;
+      let count = 0;
+
+      for (let yy = sourceY0; yy < sourceY1 && yy < sourceHeight; yy += 1) {
+        for (let xx = sourceX0; xx < sourceX1 && xx < sourceWidth; xx += 1) {
+          const sourceOffset = (yy * sourceWidth + xx) * 4;
+          red += source[sourceOffset];
+          green += source[sourceOffset + 1];
+          blue += source[sourceOffset + 2];
+          alpha += source[sourceOffset + 3];
+          count += 1;
+        }
+      }
+
+      const targetOffset = (y * targetWidth + x) * 4;
+      target[targetOffset] = Math.round(red / count);
+      target[targetOffset + 1] = Math.round(green / count);
+      target[targetOffset + 2] = Math.round(blue / count);
+      target[targetOffset + 3] = Math.round(alpha / count);
+    }
+  }
+
+  return target;
+}
+
 async function renderTemplatePngBase64(
   raster: RasterData,
   connected: ConnectedRegions,
   placements: LabelPlacement[],
+  boundaryPaths: BoundaryPath[],
   config: RenderVariantConfig,
 ): Promise<{ base64: string; width: number; height: number }> {
-  const { encode } = await import('fast-png');
   const { width, height, labelMap, paletteRgb } = raster;
-  const outputWidth = width * EXPORT_SCALE;
-  const outputHeight = height * EXPORT_SCALE;
-  const data = new Uint8Array(outputWidth * outputHeight * 4);
+  const renderScale = Math.max(PNG_OUTPUT_SCALE, PNG_RENDER_SCALE);
+  const outputWidth = width * PNG_OUTPUT_SCALE;
+  const outputHeight = height * PNG_OUTPUT_SCALE;
+  const renderWidth = width * renderScale;
+  const renderHeight = height * renderScale;
+  const renderData = new Uint8Array(renderWidth * renderHeight * 4);
 
   for (let index = 0; index < labelMap.length; index += 1) {
     const x = index % width;
     const y = Math.floor(index / width);
     const label = labelMap[index];
     const fillColor = fillColorForPixel(config, label, connected.regionMap[index], paletteRgb);
-    fillPixelBlock(data, outputWidth, outputHeight, x, y, EXPORT_SCALE, fillColor);
+    fillPixelBlock(renderData, renderWidth, renderHeight, x, y, renderScale, fillColor);
   }
 
-  drawBoundaryLines(data, outputWidth, outputHeight, raster, connected.regionMap, config);
+  drawSmoothBoundaryLines(renderData, renderWidth, renderHeight, raster, boundaryPaths, config, renderScale);
 
   if (config.markerMode !== 'none') {
     for (const placement of placements) {
@@ -1760,30 +2286,35 @@ async function renderTemplatePngBase64(
         paletteRgb[paletteOffset + 2],
       ];
       const labelText = String(placement.colorIndex + 1);
-      const minTextRadius = Math.max(5, labelText.length * 3 + 3);
-      const circleRadius = Math.max(4, Math.min(Math.max(minTextRadius, 8), Math.floor(placement.radius * 0.88))) * EXPORT_SCALE;
-      const markerX = placement.x * EXPORT_SCALE + Math.floor(EXPORT_SCALE / 2);
-      const markerY = placement.y * EXPORT_SCALE + Math.floor(EXPORT_SCALE / 2);
+      const circleRadius = markerRadiusForPlacement(placement, labelText) * renderScale;
+      const markerX = placement.x * renderScale + Math.floor(renderScale / 2);
+      const markerY = placement.y * renderScale + Math.floor(renderScale / 2);
       const luminance = circleColor[0] * 0.299 + circleColor[1] * 0.587 + circleColor[2] * 0.114;
       const textColor: [number, number, number] = luminance > 145 ? [OUTLINE_R, OUTLINE_G, OUTLINE_B] : [255, 255, 255];
+      const canRenderText = shouldRenderMarkerText(circleRadius / renderScale, labelText);
 
       if (config.markerMode === 'numberedCircles' || config.markerMode === 'circlesOnly') {
-        drawFilledCircle(data, outputWidth, outputHeight, markerX, markerY, circleRadius, circleColor);
-        drawCircleOutline(data, outputWidth, outputHeight, markerX, markerY, circleRadius);
+        drawFilledCircle(renderData, renderWidth, renderHeight, markerX, markerY, circleRadius, circleColor);
+        drawCircleOutline(renderData, renderWidth, renderHeight, markerX, markerY, circleRadius);
       }
 
-      if (config.markerMode === 'numberedCircles') {
-        drawDigitText(data, outputWidth, outputHeight, labelText, markerX, markerY, circleRadius, textColor);
+      if (config.markerMode === 'numberedCircles' && canRenderText) {
+        drawDigitText(renderData, renderWidth, renderHeight, labelText, markerX, markerY, circleRadius, textColor);
       } else if (config.markerMode === 'numbersOnly') {
-        drawDigitText(data, outputWidth, outputHeight, labelText, markerX, markerY, circleRadius, [OUTLINE_R, OUTLINE_G, OUTLINE_B]);
+        if (canRenderText) {
+          drawDigitText(renderData, renderWidth, renderHeight, labelText, markerX, markerY, circleRadius, [OUTLINE_R, OUTLINE_G, OUTLINE_B]);
+        } else {
+          drawFilledCircle(renderData, renderWidth, renderHeight, markerX, markerY, Math.max(1.25, Math.min(circleRadius, 2.25 * renderScale)), [OUTLINE_R, OUTLINE_G, OUTLINE_B]);
+        }
       }
     }
   }
 
+  const outputData = downsampleRgba(renderData, renderWidth, renderHeight, outputWidth, outputHeight);
   const bytes = encode({
     width: outputWidth,
     height: outputHeight,
-    data,
+    data: outputData,
     depth: 8,
     channels: 4,
   });
@@ -1806,37 +2337,6 @@ function rgbCss(rgb: [number, number, number]): string {
   return `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
 }
 
-function buildGlobalBoundaryPath(regionMap: Int32Array, width: number, height: number): string {
-  const segments: string[] = [];
-
-  for (let y = 0; y < height; y += 1) {
-    const rowOffset = y * width;
-    for (let x = 0; x < width; x += 1) {
-      const index = rowOffset + x;
-      const regionId = regionMap[index];
-
-      if (x === 0) {
-        segments.push(`M0 ${y}L0 ${y + 1}`);
-      }
-      if (y === 0) {
-        segments.push(`M${x} 0L${x + 1} 0`);
-      }
-      if (x + 1 >= width) {
-        segments.push(`M${x + 1} ${y}L${x + 1} ${y + 1}`);
-      } else if (regionMap[index + 1] !== regionId) {
-        segments.push(`M${x + 1} ${y}L${x + 1} ${y + 1}`);
-      }
-      if (y + 1 >= height) {
-        segments.push(`M${x} ${y + 1}L${x + 1} ${y + 1}`);
-      } else if (regionMap[index + width] !== regionId) {
-        segments.push(`M${x} ${y + 1}L${x + 1} ${y + 1}`);
-      }
-    }
-  }
-
-  return segments.join('');
-}
-
 function escapeXml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -1847,13 +2347,12 @@ function escapeXml(value: string): string {
 
 function renderVectorSvg(
   raster: RasterData,
-  connected: ConnectedRegions,
   placements: LabelPlacement[],
   svgPaths: SvgRegionPath[],
+  boundaryPaths: BoundaryPath[],
   config: RenderVariantConfig,
 ): string {
   const { width, height, paletteRgb } = raster;
-  const useGlobalBlackBoundaries = config.strokeMode === 'black';
   const parts: string[] = [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
     '<rect width="100%" height="100%" fill="rgb(255,255,255)" />',
@@ -1862,26 +2361,20 @@ function renderVectorSvg(
 
   for (const regionPath of svgPaths) {
     const fillColor = fillColorForPixel(config, regionPath.colorIndex, regionPath.regionId, paletteRgb);
-    const strokeColor = strokeColorForPixel(config, regionPath.colorIndex, fillColor, paletteRgb);
-    const strokeWidth = config.strokeMode === 'black' ? 0.65 : config.fillMode === 'white' ? 0.95 : 0.75;
-    if (useGlobalBlackBoundaries) {
-      parts.push(`<path d="${regionPath.pathData}" fill="${rgbCss(fillColor)}" stroke="none" />`);
-    } else {
-      parts.push(
-        `<path d="${regionPath.pathData}" fill="${rgbCss(fillColor)}" stroke="${rgbCss(strokeColor)}" stroke-width="${strokeWidth}" stroke-linejoin="round" stroke-linecap="round" />`,
-      );
-    }
+    parts.push(`<path d="${regionPath.pathData}" fill="${rgbCss(fillColor)}" stroke="none" />`);
   }
   parts.push('</g>');
 
-  if (useGlobalBlackBoundaries) {
-    const boundaryPath = buildGlobalBoundaryPath(connected.regionMap, width, height);
-    if (boundaryPath.length > 0) {
-      parts.push(
-        `<path class="boundaries" d="${boundaryPath}" fill="none" stroke="${rgbCss([OUTLINE_R, OUTLINE_G, OUTLINE_B])}" stroke-width="0.55" stroke-linecap="square" />`,
-      );
-    }
+  const strokeWidth = strokeWidthForConfig(config);
+  parts.push('<g class="boundaries" fill="none">');
+  for (const boundaryPath of boundaryPaths) {
+    const fillColor = paletteColorForLabel(boundaryPath.colorIndex, paletteRgb);
+    const strokeColor = strokeColorForPixel(config, boundaryPath.colorIndex, fillColor, paletteRgb);
+    parts.push(
+      `<path d="${boundaryPath.pathData}" stroke="${rgbCss(strokeColor)}" stroke-width="${strokeWidth}" stroke-linejoin="round" stroke-linecap="round" />`,
+    );
   }
+  parts.push('</g>');
 
   if (config.markerMode !== 'none') {
     parts.push('<g class="markers" font-family="Arial, Helvetica, sans-serif" font-weight="700" text-anchor="middle" dominant-baseline="central">');
@@ -1893,11 +2386,11 @@ function renderVectorSvg(
         paletteRgb[paletteOffset + 2],
       ];
       const labelText = String(placement.colorIndex + 1);
-      const minTextRadius = Math.max(5, labelText.length * 3 + 3);
-      const circleRadius = Math.max(4, Math.min(Math.max(minTextRadius, 8), placement.radius * 0.88));
+      const circleRadius = markerRadiusForPlacement(placement, labelText);
       const luminance = circleColor[0] * 0.299 + circleColor[1] * 0.587 + circleColor[2] * 0.114;
       const textColor: [number, number, number] = luminance > 145 ? [OUTLINE_R, OUTLINE_G, OUTLINE_B] : [255, 255, 255];
-      const fontSize = Math.max(4, Math.min(circleRadius * 1.24, (circleRadius * 2.1) / Math.max(1, labelText.length * 0.72)));
+      const fontSize = Math.max(2.5, Math.min(circleRadius * 1.24, (circleRadius * 2.1) / Math.max(1, labelText.length * 0.72)));
+      const canRenderText = shouldRenderMarkerText(circleRadius, labelText);
 
       if (config.markerMode === 'numberedCircles' || config.markerMode === 'circlesOnly') {
         parts.push(
@@ -1905,14 +2398,20 @@ function renderVectorSvg(
         );
       }
 
-      if (config.markerMode === 'numberedCircles') {
+      if (config.markerMode === 'numberedCircles' && canRenderText) {
         parts.push(
           `<text x="${placement.x}" y="${placement.y}" font-size="${fontSize.toFixed(2)}" fill="${rgbCss(textColor)}">${escapeXml(labelText)}</text>`,
         );
       } else if (config.markerMode === 'numbersOnly') {
-        parts.push(
-          `<text x="${placement.x}" y="${placement.y}" font-size="${fontSize.toFixed(2)}" fill="${rgbCss([OUTLINE_R, OUTLINE_G, OUTLINE_B])}">${escapeXml(labelText)}</text>`,
-        );
+        if (canRenderText) {
+          parts.push(
+            `<text x="${placement.x}" y="${placement.y}" font-size="${fontSize.toFixed(2)}" fill="${rgbCss([OUTLINE_R, OUTLINE_G, OUTLINE_B])}">${escapeXml(labelText)}</text>`,
+          );
+        } else {
+          parts.push(
+            `<circle cx="${placement.x}" cy="${placement.y}" r="${Math.max(1.25, Math.min(circleRadius, 2.25)).toFixed(2)}" fill="${rgbCss([OUTLINE_R, OUTLINE_G, OUTLINE_B])}" stroke="none" />`,
+          );
+        }
       }
     }
     parts.push('</g>');
@@ -1952,78 +2451,580 @@ function buildPaletteStats(labelMap: Int32Array, paletteRgb: Uint8Array): Palett
   return stats.sort((left, right) => right.frequency - left.frequency || left.index - right.index);
 }
 
+function cloneRaster(raster: RasterData): RasterData {
+  return {
+    width: raster.width,
+    height: raster.height,
+    labelMap: new Int32Array(raster.labelMap),
+    paletteRgb: new Uint8Array(raster.paletteRgb),
+  };
+}
+
+function cloneConnected(connected: ConnectedRegions): ConnectedRegions {
+  return {
+    regionMap: new Int32Array(connected.regionMap),
+    regions: connected.regions.map((region) => ({ ...region })),
+  };
+}
+
+function clonePlacements(placements: LabelPlacement[]): LabelPlacement[] {
+  return placements.map((placement) => ({ ...placement }));
+}
+
+function cloneSvgPaths(paths: SvgRegionPath[]): SvgRegionPath[] {
+  return paths.map((path) => ({
+    ...path,
+    smoothLoops: path.smoothLoops.map((loop) => loop.map((point) => ({ ...point }))),
+  }));
+}
+
+function cloneBoundaryPaths(paths: BoundaryPath[]): BoundaryPath[] {
+  return paths.map((path) => ({
+    ...path,
+    points: path.points.map((point) => ({ ...point })),
+  }));
+}
+
+function stageIndex(stage: GeneratorStage): number {
+  const order: GeneratorStage[] = [
+    'decode',
+    'kmeans',
+    'colorMap',
+    'narrowCleanup',
+    'borderSegment',
+    'facetBuild',
+    'facetReduce',
+    'borderTrace',
+    'labelPlacement',
+    'svgRender',
+    'done',
+  ];
+  const index = order.indexOf(stage);
+  return index < 0 ? 0 : index;
+}
+
+function shouldUseCachedStage(options: RasterPipelineOptions, stage: GeneratorStage): boolean {
+  const startStage = options.debug?.rerunFromStage;
+  return options.debug?.enabled === true && startStage != null && stageIndex(stage) < stageIndex(startStage);
+}
+
+function debugNumberParameter(
+  settings: GeneratorSettings,
+  key: keyof GeneratorSettings,
+  label: string,
+  min: number,
+  max: number,
+  step: number,
+  unit?: string,
+  description?: string,
+): GeneratorDebugParameter {
+  return {
+    key,
+    label,
+    value: Number(settings[key]),
+    input: 'number',
+    min,
+    max,
+    step,
+    unit,
+    description,
+  };
+}
+
+function debugBooleanParameter(
+  settings: GeneratorSettings,
+  key: keyof GeneratorSettings,
+  label: string,
+  description?: string,
+): GeneratorDebugParameter {
+  return {
+    key,
+    label,
+    value: Boolean(settings[key]),
+    input: 'boolean',
+    description,
+  };
+}
+
+function rasterStageParameters(stage: GeneratorStage, settings: GeneratorSettings): GeneratorDebugParameter[] {
+  if (stage === 'narrowCleanup') {
+    return [
+      debugNumberParameter(
+        settings,
+        'narrowPixelStripCleanupRuns',
+        'Cleanup-Durchlaeufe',
+        0,
+        8,
+        1,
+        'Runs',
+        'Anzahl der Durchlaeufe gegen einzelne Streifen- und Inselpixel.',
+      ),
+    ];
+  }
+
+  if (stage === 'borderSegment') {
+    return [
+      debugNumberParameter(
+        settings,
+        'nrOfTimesToHalveBorderSegments',
+        'Protrusion-Pruning',
+        0,
+        8,
+        1,
+        'Runs',
+        'Entfernt schwache einzelne Auslaeuferpixel an Farbkanten.',
+      ),
+    ];
+  }
+
+  if (stage === 'facetReduce') {
+    return [
+      debugNumberParameter(
+        settings,
+        'removeFacetsSmallerThanImageRatio',
+        'Mindestflaeche',
+        0,
+        0.001,
+        0.000005,
+        'Bildanteil',
+        'Regionen unterhalb dieses Bildanteils werden Merge-Kandidaten.',
+      ),
+      debugBooleanParameter(
+        settings,
+        'mergeSimilarAdjacentRegions',
+        'Aehnliche Nachbarn mergen',
+        'Fuehrt angrenzende Regionen mit sehr aehnlicher Farbe vor der Groessenreduktion zusammen.',
+      ),
+      debugNumberParameter(
+        settings,
+        'maximumNumberOfFacets',
+        'Maximale Flaechen',
+        0,
+        12000,
+        25,
+        'Flaechen',
+        '0 bedeutet kein hartes Flaechenlimit.',
+      ),
+    ];
+  }
+
+  return [];
+}
+
+async function renderRasterDebugImage(
+  label: string,
+  raster: RasterData,
+  connected?: ConnectedRegions,
+  placements?: LabelPlacement[],
+  mode: 'color' | 'debugRegions' | 'boundaries' = 'color',
+): Promise<GeneratorDebugImage> {
+  const { width, height, labelMap, paletteRgb } = raster;
+  const data = new Uint8Array(width * height * 4);
+
+  for (let index = 0; index < labelMap.length; index += 1) {
+    const labelIndex = labelMap[index];
+    const regionId = connected?.regionMap[index] ?? -1;
+    let rgb: [number, number, number];
+    if (mode === 'debugRegions' && regionId >= 0) {
+      rgb = debugRegionColor(regionId);
+    } else {
+      rgb = paletteColorForLabel(labelIndex, paletteRgb);
+    }
+
+    const offset = index * 4;
+    data[offset] = rgb[0];
+    data[offset + 1] = rgb[1];
+    data[offset + 2] = rgb[2];
+    data[offset + 3] = 255;
+  }
+
+  if (connected != null && mode !== 'color') {
+    for (let y = 0; y < height; y += 1) {
+      const rowOffset = y * width;
+      for (let x = 0; x < width; x += 1) {
+        const index = rowOffset + x;
+        const regionId = connected.regionMap[index];
+        const isBoundary =
+          (x + 1 < width && connected.regionMap[index + 1] !== regionId) ||
+          (y + 1 < height && connected.regionMap[index + width] !== regionId) ||
+          (x > 0 && connected.regionMap[index - 1] !== regionId) ||
+          (y > 0 && connected.regionMap[index - width] !== regionId);
+        if (isBoundary) {
+          const offset = index * 4;
+          data[offset] = OUTLINE_R;
+          data[offset + 1] = OUTLINE_G;
+          data[offset + 2] = OUTLINE_B;
+        }
+      }
+    }
+  }
+
+  if (placements != null) {
+    for (const placement of placements) {
+      const radius = Math.max(2, Math.min(6, Math.round(placement.radius * 0.45)));
+      drawFilledCircle(data, width, height, placement.x, placement.y, radius, [255, 255, 255]);
+      drawCircleOutline(data, width, height, placement.x, placement.y, radius);
+    }
+  }
+
+  return encodeRgbaDebugImage(label, width, height, data);
+}
+
+async function pushRasterDebugSnapshot(
+  options: RasterPipelineOptions,
+  stage: GeneratorStage,
+  label: string,
+  description: string,
+  settings: GeneratorSettings,
+  metrics: GeneratorDebugMetric[],
+  image: GeneratorDebugImage | undefined,
+  timingMs: number | undefined,
+  cacheHit = false,
+): Promise<void> {
+  if (options.debug?.enabled !== true || options.debug.snapshots == null) {
+    return;
+  }
+
+  options.debug.snapshots.push({
+    stage,
+    label,
+    description,
+    parameters: rasterStageParameters(stage, settings),
+    metrics,
+    image,
+    timingMs,
+    canRerunFromHere: stage !== 'svgRender',
+    cacheHit,
+  });
+}
+
 export async function buildRasterPaintByNumbers(
   colorMapResult: ColorMapResult,
   settings: GeneratorSettings,
   options: RasterPipelineOptions,
 ): Promise<RasterPaintByNumbersResult> {
   const targetPaletteColors = Math.max(1, Math.floor(settings.kMeansNrOfClusters));
+  const previousCache = options.debug?.cache ?? null;
+  const nextDebugCache: RasterPipelineDebugCache = {};
   let started = options.nowMs();
-  let raster = colorMapToRaster(colorMapResult);
-  options.report('narrowCleanup', 0, 'Schmale Streifen werden geglättet.');
-  raster = cleanupNarrowPixelStrips(
-    raster,
-    Math.max(0, settings.narrowPixelStripCleanupRuns),
-    targetPaletteColors,
-    (run, runs, changedPixels) => {
-      options.report('narrowCleanup', run / runs, `${changedPixels} Streifen-Pixel geglättet.`);
-    },
-  );
-  raster = compactLabels(raster);
-  options.addTiming('narrowCleanup', options.nowMs() - started);
+  let raster =
+    shouldUseCachedStage(options, 'colorMap') && previousCache?.colorMapRaster != null
+      ? cloneRaster(previousCache.colorMapRaster)
+      : colorMapToRaster(colorMapResult);
+  nextDebugCache.colorMapRaster = cloneRaster(raster);
+
+  if (shouldUseCachedStage(options, 'narrowCleanup') && previousCache?.afterNarrowCleanup != null) {
+    raster = cloneRaster(previousCache.afterNarrowCleanup);
+    nextDebugCache.afterNarrowCleanup = cloneRaster(raster);
+    options.addTiming('narrowCleanup', 0);
+    options.report('narrowCleanup', 1, 'Schmale Streifen aus Debug-Cache übernommen.');
+    await pushRasterDebugSnapshot(
+      options,
+      'narrowCleanup',
+      'Narrow Cleanup',
+      'Labelkarte nach optionaler Streifenbereinigung.',
+      settings,
+      [
+        { label: 'Status', value: 'Aus Cache' },
+        { label: 'Palette', value: String(raster.paletteRgb.length / 3) },
+      ],
+      await renderRasterDebugImage('Narrow Cleanup', raster),
+      0,
+      true,
+    );
+  } else {
+    options.report('narrowCleanup', 0, 'Schmale Streifen werden geglättet.');
+    raster = cleanupNarrowPixelStrips(
+      raster,
+      Math.max(0, settings.narrowPixelStripCleanupRuns),
+      targetPaletteColors,
+      (run, runs, changedPixels) => {
+        options.report('narrowCleanup', run / runs, `${changedPixels} Streifen-Pixel geglättet.`);
+      },
+    );
+    raster = compactLabels(raster);
+    const timingMs = options.nowMs() - started;
+    options.addTiming('narrowCleanup', timingMs);
+    nextDebugCache.afterNarrowCleanup = cloneRaster(raster);
+    await pushRasterDebugSnapshot(
+      options,
+      'narrowCleanup',
+      'Narrow Cleanup',
+      'Labelkarte nach optionaler Streifenbereinigung.',
+      settings,
+      [
+        { label: 'Runs', value: String(Math.max(0, settings.narrowPixelStripCleanupRuns)) },
+        { label: 'Palette', value: String(raster.paletteRgb.length / 3) },
+      ],
+      await renderRasterDebugImage('Narrow Cleanup', raster),
+      timingMs,
+    );
+  }
   await nowYield();
 
   started = options.nowMs();
-  options.report('borderSegment', 0, 'Dünne Ausläufer werden bereinigt.');
-  raster = pruneWeakProtrusionPixels(raster, Math.max(0, settings.nrOfTimesToHalveBorderSegments), targetPaletteColors);
-  raster = compactLabels(raster);
-  options.report('borderSegment', 1, 'Dünne Ausläufer bereinigt.');
-  options.addTiming('borderSegment', options.nowMs() - started);
+  if (shouldUseCachedStage(options, 'borderSegment') && previousCache?.afterBorderSegment != null) {
+    raster = cloneRaster(previousCache.afterBorderSegment);
+    nextDebugCache.afterBorderSegment = cloneRaster(raster);
+    options.addTiming('borderSegment', 0);
+    options.report('borderSegment', 1, 'Ausläufer-Cleanup aus Debug-Cache übernommen.');
+    await pushRasterDebugSnapshot(
+      options,
+      'borderSegment',
+      'Protrusion Pruning',
+      'Labelkarte nach optionaler Bereinigung einzelner schwacher Auslaeuferpixel.',
+      settings,
+      [
+        { label: 'Status', value: 'Aus Cache' },
+        { label: 'Palette', value: String(raster.paletteRgb.length / 3) },
+      ],
+      await renderRasterDebugImage('Protrusion Pruning', raster),
+      0,
+      true,
+    );
+  } else {
+    options.report('borderSegment', 0, 'Dünne Ausläufer werden bereinigt.');
+    raster = pruneWeakProtrusionPixels(raster, Math.max(0, settings.nrOfTimesToHalveBorderSegments), targetPaletteColors);
+    raster = compactLabels(raster);
+    options.report('borderSegment', 1, 'Dünne Ausläufer bereinigt.');
+    const timingMs = options.nowMs() - started;
+    options.addTiming('borderSegment', timingMs);
+    nextDebugCache.afterBorderSegment = cloneRaster(raster);
+    await pushRasterDebugSnapshot(
+      options,
+      'borderSegment',
+      'Protrusion Pruning',
+      'Labelkarte nach optionaler Bereinigung einzelner schwacher Auslaeuferpixel.',
+      settings,
+      [
+        { label: 'Runs', value: String(Math.max(0, settings.nrOfTimesToHalveBorderSegments)) },
+        { label: 'Palette', value: String(raster.paletteRgb.length / 3) },
+      ],
+      await renderRasterDebugImage('Protrusion Pruning', raster),
+      timingMs,
+    );
+  }
   await nowYield();
 
   const minRegionArea = Math.max(1, Math.round(raster.width * raster.height * settings.removeFacetsSmallerThanImageRatio));
+  let connected: ConnectedRegions;
   started = options.nowMs();
-  options.report('facetBuild', 0, 'Regionen werden erkannt.');
-  if (settings.mergeSimilarAdjacentRegions) {
-    options.report('facetReduce', 0, 'Benachbarte Regionen mit sehr ähnlichen Farben werden bereinigt.');
-    raster = await mergeSimilarAdjacentRegions(raster, options.report);
-  }
-  options.report('facetReduce', 0.28, `Regionen unter ${minRegionArea} Pixeln werden zusammengeführt.`);
-  raster = await mergeSmallAndThinRegions(raster, minRegionArea, targetPaletteColors, options.report);
-  let connected = findConnectedRegions(raster.labelMap, raster.width, raster.height);
-  if (settings.maximumNumberOfFacets > 0 && connected.regions.length > settings.maximumNumberOfFacets) {
-    options.report(
-      'facetReduce',
-      0.72,
-      `Zielwert ${settings.maximumNumberOfFacets} Flächen wird kontrastgeschützt vorbereitet.`,
+  if (shouldUseCachedStage(options, 'facetBuild') && previousCache?.beforeFacetReduce != null) {
+    raster = cloneRaster(previousCache.beforeFacetReduce.raster);
+    connected = cloneConnected(previousCache.beforeFacetReduce.connected);
+    nextDebugCache.beforeFacetReduce = {
+      raster: cloneRaster(raster),
+      connected: cloneConnected(connected),
+    };
+    options.addTiming('facetBuild', 0);
+    options.report('facetBuild', 1, 'Regionen aus Debug-Cache übernommen.');
+    await pushRasterDebugSnapshot(
+      options,
+      'facetBuild',
+      'Facet Build',
+      'Zusammenhaengende Regionen vor der Reduktion.',
+      settings,
+      [
+        { label: 'Status', value: 'Aus Cache' },
+        { label: 'Regionen vor Merge', value: String(connected.regions.length) },
+        { label: 'Mindestflaeche', value: `${minRegionArea} px` },
+      ],
+      await renderRasterDebugImage('Facet Build', raster, connected, undefined, 'debugRegions'),
+      0,
+      true,
     );
-    const limited = await limitMaximumFacelets(raster, settings.maximumNumberOfFacets, options.report);
-    raster = limited.raster;
-    connected = limited.connected;
+  } else {
+    options.report('facetBuild', 0, 'Regionen werden erkannt.');
+    connected = findConnectedRegions(raster.labelMap, raster.width, raster.height);
+    const timingMs = options.nowMs() - started;
+    options.addTiming('facetBuild', timingMs);
+    options.report('facetBuild', 1, `${connected.regions.length} Regionen vor dem Merge erkannt.`);
+    nextDebugCache.beforeFacetReduce = {
+      raster: cloneRaster(raster),
+      connected: cloneConnected(connected),
+    };
+    await pushRasterDebugSnapshot(
+      options,
+      'facetBuild',
+      'Facet Build',
+      'Zusammenhaengende Regionen vor der Reduktion.',
+      settings,
+      [
+        { label: 'Regionen vor Merge', value: String(connected.regions.length) },
+        { label: 'Mindestflaeche', value: `${minRegionArea} px` },
+      ],
+      await renderRasterDebugImage('Facet Build', raster, connected, undefined, 'debugRegions'),
+      timingMs,
+    );
   }
-  options.addTiming('facetBuild', (options.nowMs() - started) * 0.45);
-  options.addTiming('facetReduce', (options.nowMs() - started) * 0.55);
-  options.report('facetBuild', 1, `${connected.regions.length} ausmalbare Flächen erkannt.`);
-  options.report('facetReduce', 1, 'Regionen zusammengeführt.');
 
   started = options.nowMs();
-  options.report('borderTrace', 0, 'Grenzen werden berechnet.');
-  buildBoundaryMask(connected.regionMap, raster.width, raster.height);
-  options.addTiming('borderTrace', options.nowMs() - started);
-  options.report('borderTrace', 1, 'Grenzen berechnet.');
+  const regionCountBeforeReduce = connected.regions.length;
+  if (shouldUseCachedStage(options, 'facetReduce') && previousCache?.afterFacetReduce != null) {
+    raster = cloneRaster(previousCache.afterFacetReduce.raster);
+    connected = cloneConnected(previousCache.afterFacetReduce.connected);
+    nextDebugCache.afterFacetReduce = {
+      raster: cloneRaster(raster),
+      connected: cloneConnected(connected),
+    };
+    options.addTiming('facetReduce', 0);
+    options.report('facetReduce', 1, 'Reduzierte Regionen aus Debug-Cache übernommen.');
+    await pushRasterDebugSnapshot(
+      options,
+      'facetReduce',
+      'Facet Reduce',
+      'Regionen nach dem Merge kleiner, duennen oder optional aehnlicher Nachbarn.',
+      settings,
+      [
+        { label: 'Status', value: 'Aus Cache' },
+        { label: 'Regionen', value: String(connected.regions.length) },
+        { label: 'Mindestflaeche', value: `${minRegionArea} px` },
+      ],
+      await renderRasterDebugImage('Facet Reduce', raster, connected, undefined, 'debugRegions'),
+      0,
+      true,
+    );
+  } else {
+    if (settings.mergeSimilarAdjacentRegions) {
+      options.report('facetReduce', 0, 'Benachbarte Regionen mit sehr ähnlichen Farben werden bereinigt.');
+      raster = await mergeSimilarAdjacentRegions(raster, options.report);
+    }
+    options.report('facetReduce', 0.28, `Regionen unter ${minRegionArea} Pixeln werden zusammengeführt.`);
+    raster = await mergeSmallAndThinRegions(raster, minRegionArea, targetPaletteColors, options.report);
+    connected = findConnectedRegions(raster.labelMap, raster.width, raster.height);
+    if (settings.maximumNumberOfFacets > 0 && connected.regions.length > settings.maximumNumberOfFacets) {
+      options.report(
+        'facetReduce',
+        0.72,
+        `Zielwert ${settings.maximumNumberOfFacets} Flächen wird kontrastgeschützt vorbereitet.`,
+      );
+      const limited = await limitMaximumFacelets(raster, settings.maximumNumberOfFacets, options.report);
+      raster = limited.raster;
+      connected = limited.connected;
+    }
+    const timingMs = options.nowMs() - started;
+    options.addTiming('facetReduce', timingMs);
+    options.report('facetReduce', 1, 'Regionen zusammengeführt.');
+    nextDebugCache.afterFacetReduce = {
+      raster: cloneRaster(raster),
+      connected: cloneConnected(connected),
+    };
+    await pushRasterDebugSnapshot(
+      options,
+      'facetReduce',
+      'Facet Reduce',
+      'Regionen nach dem Merge kleiner, duennen oder optional aehnlicher Nachbarn.',
+      settings,
+      [
+        { label: 'Regionen vor Merge', value: String(regionCountBeforeReduce) },
+        { label: 'Regionen nach Merge', value: String(connected.regions.length) },
+        { label: 'Mindestflaeche', value: `${minRegionArea} px` },
+      ],
+      await renderRasterDebugImage('Facet Reduce', raster, connected, undefined, 'debugRegions'),
+      timingMs,
+    );
+  }
+
+  started = options.nowMs();
+  let svgPaths: SvgRegionPath[];
+  let boundaryPaths: BoundaryPath[];
+  if (shouldUseCachedStage(options, 'borderTrace') && previousCache?.svgPaths != null && previousCache.boundaryPaths != null) {
+    svgPaths = cloneSvgPaths(previousCache.svgPaths);
+    boundaryPaths = cloneBoundaryPaths(previousCache.boundaryPaths);
+    nextDebugCache.svgPaths = cloneSvgPaths(svgPaths);
+    nextDebugCache.boundaryPaths = cloneBoundaryPaths(boundaryPaths);
+    options.addTiming('borderTrace', 0);
+    options.report('borderTrace', 1, 'Konturen aus Debug-Cache übernommen.');
+    await pushRasterDebugSnapshot(
+      options,
+      'borderTrace',
+      'Border Trace',
+      'Berechnete Grenzen und SVG-Pfade der finalen Regionen.',
+      settings,
+      [
+        { label: 'Status', value: 'Aus Cache' },
+        { label: 'SVG-Pfade', value: String(svgPaths.length) },
+        { label: 'Boundary-Pfade', value: String(boundaryPaths.length) },
+      ],
+      await renderRasterDebugImage('Border Trace', raster, connected, undefined, 'boundaries'),
+      0,
+      true,
+    );
+  } else {
+    options.report('borderTrace', 0, 'Grenzen werden berechnet.');
+    buildBoundaryMask(connected.regionMap, raster.width, raster.height);
+    svgPaths = buildSvgRegionPaths(connected, raster.width, raster.height);
+    boundaryPaths = buildBoundaryPaths(connected, raster.width, raster.height);
+    const timingMs = options.nowMs() - started;
+    options.addTiming('borderTrace', timingMs);
+    options.report('borderTrace', 1, 'Grenzen berechnet.');
+    nextDebugCache.svgPaths = cloneSvgPaths(svgPaths);
+    nextDebugCache.boundaryPaths = cloneBoundaryPaths(boundaryPaths);
+    await pushRasterDebugSnapshot(
+      options,
+      'borderTrace',
+      'Border Trace',
+      'Berechnete Grenzen und SVG-Pfade der finalen Regionen.',
+      settings,
+      [
+        { label: 'SVG-Pfade', value: String(svgPaths.length) },
+        { label: 'Boundary-Pfade', value: String(boundaryPaths.length) },
+        { label: 'Regionen', value: String(connected.regions.length) },
+      ],
+      await renderRasterDebugImage('Border Trace', raster, connected, undefined, 'boundaries'),
+      timingMs,
+    );
+  }
   await nowYield();
 
-  const minLabelArea = Math.max(minRegionArea, Math.round(raster.width * raster.height * MIN_LABEL_AREA_RATIO));
+  const referenceLabelArea = Math.max(minRegionArea, Math.round(raster.width * raster.height * MIN_LABEL_AREA_RATIO));
   started = options.nowMs();
-  options.report('labelPlacement', 0, 'Zahlenpositionen werden gesetzt.');
-  const placements = computeLabelPlacements(connected, raster.width, minLabelArea);
-  options.addTiming('labelPlacement', options.nowMs() - started);
-  options.report('labelPlacement', 1, `${placements.length} Zahlenpositionen gesetzt.`);
+  let placements: LabelPlacement[];
+  if (shouldUseCachedStage(options, 'labelPlacement') && previousCache?.placements != null) {
+    placements = clonePlacements(previousCache.placements);
+    nextDebugCache.placements = clonePlacements(placements);
+    options.addTiming('labelPlacement', 0);
+    options.report('labelPlacement', 1, 'Zahlenpositionen aus Debug-Cache übernommen.');
+    await pushRasterDebugSnapshot(
+      options,
+      'labelPlacement',
+      'Label Placement',
+      'Gefundene Zahl- und Punktpositionen fuer alle finalen Regionen.',
+      settings,
+      [
+        { label: 'Status', value: 'Aus Cache' },
+        { label: 'Marker', value: `${placements.length} / ${connected.regions.length}` },
+        { label: 'Referenzflaeche', value: `${referenceLabelArea} px` },
+      ],
+      await renderRasterDebugImage('Label Placement', raster, connected, placements, 'boundaries'),
+      0,
+      true,
+    );
+  } else {
+    options.report('labelPlacement', 0, 'Zahlenpositionen werden gesetzt.');
+    placements = computeLabelPlacements(connected, raster.width);
+    const timingMs = options.nowMs() - started;
+    options.addTiming('labelPlacement', timingMs);
+    options.report('labelPlacement', 1, `${placements.length} Markerpositionen gesetzt.`);
+    nextDebugCache.placements = clonePlacements(placements);
+    await pushRasterDebugSnapshot(
+      options,
+      'labelPlacement',
+      'Label Placement',
+      'Gefundene Zahl- und Punktpositionen fuer alle finalen Regionen.',
+      settings,
+      [
+        { label: 'Marker', value: `${placements.length} / ${connected.regions.length}` },
+        { label: 'Referenzflaeche', value: `${referenceLabelArea} px` },
+      ],
+      await renderRasterDebugImage('Label Placement', raster, connected, placements, 'boundaries'),
+      timingMs,
+    );
+  }
   await nowYield();
 
   started = options.nowMs();
   options.report('svgRender', 0, 'Ausgabevarianten werden gerendert.');
-  const svgPaths = buildSvgRegionPaths(connected, raster.width, raster.height);
   const renderVariants = options.variantIds == null
     ? RENDER_VARIANTS
     : RENDER_VARIANTS.filter((config) => options.variantIds?.includes(config.id));
@@ -2033,8 +3034,8 @@ export async function buildRasterPaintByNumbers(
   const variants: GeneratorOutputVariant[] = [];
   for (let index = 0; index < renderVariants.length; index += 1) {
     const config = renderVariants[index];
-    const renderedPng = await renderTemplatePngBase64(raster, connected, placements, config);
-    const svg = renderVectorSvg(raster, connected, placements, svgPaths, config);
+    const renderedPng = await renderTemplatePngBase64(raster, connected, placements, boundaryPaths, config);
+    const svg = renderVectorSvg(raster, placements, svgPaths, boundaryPaths, config);
     variants.push({
       id: config.id,
       label: config.label,
@@ -2047,7 +3048,7 @@ export async function buildRasterPaintByNumbers(
       svgWidth: raster.width,
       svgHeight: raster.height,
       svgByteLength: svg.length,
-      isDefault: config.isDefault,
+      isDefault: config.isDefault || (options.debug?.enabled === true && config.id === 'classic'),
     });
     options.report('svgRender', (index + 1) / renderVariants.length, `${config.label} gerendert.`);
     await nowYield();
@@ -2057,8 +3058,29 @@ export async function buildRasterPaintByNumbers(
   const previewPngWidth = defaultVariant.pngWidth;
   const previewPngHeight = defaultVariant.pngHeight;
   const svg = defaultVariant.svg ?? createEmbeddedPngSvg(previewPngBase64, previewPngWidth, previewPngHeight);
-  options.addTiming('svgRender', options.nowMs() - started);
+  const renderTimingMs = options.nowMs() - started;
+  options.addTiming('svgRender', renderTimingMs);
   options.report('svgRender', 1, 'Ausgabevarianten gerendert.');
+  await pushRasterDebugSnapshot(
+    options,
+    'svgRender',
+    'SVG Render',
+    'Final gerenderte Debug-Ausgabe. Im Debug Mode wird nur Classic erzeugt.',
+    settings,
+    [
+      { label: 'Varianten', value: String(variants.length) },
+      { label: 'Finale Variante', value: defaultVariant.label },
+      { label: 'Output', value: `${previewPngWidth} x ${previewPngHeight} px` },
+    ],
+    {
+      label: defaultVariant.label,
+      pngBase64: previewPngBase64,
+      width: previewPngWidth,
+      height: previewPngHeight,
+      byteLength: defaultVariant.pngByteLength,
+    },
+    renderTimingMs,
+  );
 
   return {
     svg,
@@ -2070,5 +3092,6 @@ export async function buildRasterPaintByNumbers(
     imageHeight: raster.height,
     facetCount: connected.regions.length,
     palette: buildPaletteStats(raster.labelMap, raster.paletteRgb),
+    debugCache: nextDebugCache,
   };
 }
