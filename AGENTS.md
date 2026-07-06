@@ -226,6 +226,76 @@ This regenerates:
 
 That generated file should not be edited manually.
 
+### Dev Deployment To Phones
+
+Use the Expo app in `App/` for real device tests. Browser preview is only for UI/layout; the full flow needs the native shell.
+
+Before installing on a phone:
+
+1. If `react-app/` changed, sync the WebView bundle:
+   - `npm run sync:webview-local --prefix ./App`
+2. Run the relevant checks:
+   - `npm run typecheck --prefix ./App`
+   - `npm run typecheck --prefix ./react-app` when UI or bridge code changed
+   - From `App/`: `npx expo config --type public`
+   - From `App/`: `npx expo install --check`
+3. Do not fix dependency versions, install native packages, or change Expo SDK versions without treating that as a code change.
+
+Android physical device, local install:
+
+1. Install Android Studio, Android SDK/platform-tools, and Java as required by the current Expo SDK.
+2. Enable Developer Options and USB debugging on the Android phone.
+3. Verify the phone is visible:
+   - `adb devices`
+4. Install and launch the app:
+   - `npm run android --prefix ./App -- --device`
+5. If several devices/emulators are connected, keep `--device` and select the target device from the Expo prompt.
+
+Current repository detail: `App/android/` is not checked in. `expo run:android` may generate it locally through Expo prebuild before compiling. `App/.gitignore` ignores `/android`, so treat generated native Android files as local build output unless the user explicitly asks to change native Android configuration.
+
+Android via Expo Go:
+
+- Quick smoke test:
+  - `npm run start --prefix ./App`
+  - Scan the QR code with Expo Go on Android, or press `A` in the Expo terminal UI for a connected Android target.
+- Expo Go uses a fixed native runtime. It is useful for fast smoke checks only when the installed Expo Go SDK includes the native modules used here. Do not treat Expo Go as installed-app parity for camera, file access, sharing, WebView file loading, KI calls, or performance.
+- If the flow matters end to end, prefer a local Android install with `npm run android --prefix ./App -- --device` or an APK build.
+
+Android APK for a co-founder or internal tester:
+
+- The current `App/eas.json` has APK output for `development` and `preview`.
+- EAS builds require an Expo account and EAS CLI login.
+- For a shareable APK that does not require local Android Studio, use EAS from `App/`:
+  - `eas build --platform android --profile preview`
+- Install from the EAS QR/link on the Android phone, or with `adb install path/to/app.apk`.
+- The `development` EAS profile has `developmentClient: true`. If an agent chooses that path and the build requires `expo-dev-client`, add it only after explicit user approval and update the relevant docs.
+
+iPhone local install:
+
+- Use:
+  - `npm run ios --prefix ./App`
+- A physical iPhone may require Xcode signing/provisioning. For teammate distribution, prefer the existing iOS build path or an EAS/iOS workflow chosen explicitly for that release.
+
+Android smoke-test checklist:
+
+- App starts without a WebView white screen.
+- Gallery image pick works after media permission approval.
+- Camera capture works after camera permission approval.
+- KI posterization succeeds with either configured `EXPO_PUBLIC_NANO_BANANA_API_KEY` / `EXPO_PUBLIC_GEMINI_API_KEY` or `EXPO_PUBLIC_IMAGE_POSTERIZE_ENDPOINT`.
+- Local generator reaches `runCompleted` and shows the default `brightColorCircles` variant.
+- Export/share works for at least one PNG variant and one SVG path.
+- If the source is KI-posterized, comparison variants `inputImage` and `aiPosterizedImage` are present.
+
+Known Android risk areas:
+
+- Dependency drift: `npx expo install --check` must be clean before blaming Android-specific behavior.
+- Android SDK/ADB setup: without `adb` in PATH or an authorized device, local install cannot be verified.
+- Expo Go parity: Expo Go can mask installed-build differences because it is not this app's own native binary.
+- WebView local files: if Android shows a blank UI, inspect `App/App.tsx` WebView errors and local bundle materialization before changing React UI code.
+- Permissions: Android photo/camera permission states can persist after denial; reset app permissions or reinstall before retesting.
+- Sharing/export: Android share targets and URI handling differ from iOS, so validate PNG and SVG exports on a real device.
+- Performance: lower-end Android devices may expose memory or runtime issues in KI image handling and the local generator that do not appear on iPhone or desktop preview.
+
 ## Validation Expectations
 
 For documentation-only changes:
