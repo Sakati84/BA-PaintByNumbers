@@ -70,6 +70,8 @@ type GeneratePaintByNumbersOptions = {
   variantIds?: readonly GeneratorOutputVariantId[];
 };
 
+type DebugImageSource = SimpleImageData | (() => SimpleImageData | undefined) | undefined;
+
 function nowMs(): number {
   return globalThis.performance?.now?.() ?? Date.now();
 }
@@ -208,7 +210,7 @@ async function pushDebugSnapshot(
   description: string,
   settings: GeneratorSettings,
   metrics: GeneratorDebugMetric[],
-  imageData: SimpleImageData | undefined,
+  imageData: DebugImageSource,
   timingMs: number | undefined,
   cacheHit = false,
   onStageSnapshot?: (snapshot: GeneratorDebugStageSnapshot) => void,
@@ -217,15 +219,16 @@ async function pushDebugSnapshot(
     return;
   }
 
+  const resolvedImageData = typeof imageData === 'function' ? imageData() : imageData;
   const snapshot: GeneratorDebugStageSnapshot = {
     stage,
     label,
     description,
     parameters: stageParameters(stage, settings),
     metrics,
-    image: imageData == null
+    image: resolvedImageData == null
       ? undefined
-      : await encodeRgbaDebugImage(label, imageData.width, imageData.height, imageData.data),
+      : await encodeRgbaDebugImage(label, resolvedImageData.width, resolvedImageData.height, resolvedImageData.data),
     timingMs,
     canRerunFromHere: true,
     cacheHit,
@@ -375,7 +378,7 @@ export async function generatePaintByNumbers(
         { label: 'Status', value: 'Aus Cache' },
         { label: 'Palette', value: String(colorMapResult.colorsByIndex.length) },
       ],
-      colorMapToImageData(colorMapResult),
+      () => colorMapToImageData(colorMapResult),
       0,
       true,
       options.onStageSnapshot,
@@ -402,7 +405,7 @@ export async function generatePaintByNumbers(
         { label: 'Palette nach Merge', value: String(colorMapResult.colorsByIndex.length) },
         { label: 'Merge-Distanz', value: String(settings.nearIdenticalPaletteMergeLabDistance) },
       ],
-      colorMapToImageData(colorMapResult),
+      () => colorMapToImageData(colorMapResult),
       timingMs,
       false,
       options.onStageSnapshot,

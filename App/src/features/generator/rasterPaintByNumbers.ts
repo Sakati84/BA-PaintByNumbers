@@ -37,6 +37,11 @@ type RasterPipelineOptions = {
   };
 };
 
+type RasterDebugImageSource =
+  | GeneratorDebugImage
+  | (() => Promise<GeneratorDebugImage | undefined>)
+  | undefined;
+
 type RasterData = {
   width: number;
   height: number;
@@ -2867,7 +2872,7 @@ async function pushRasterDebugSnapshot(
   description: string,
   settings: GeneratorSettings,
   metrics: GeneratorDebugMetric[],
-  image: GeneratorDebugImage | undefined,
+  image: RasterDebugImageSource,
   timingMs: number | undefined,
   cacheHit = false,
 ): Promise<void> {
@@ -2875,13 +2880,14 @@ async function pushRasterDebugSnapshot(
     return;
   }
 
+  const resolvedImage = typeof image === 'function' ? await image() : image;
   const snapshot: GeneratorDebugStageSnapshot = {
     stage,
     label,
     description,
     parameters: rasterStageParameters(stage, settings),
     metrics,
-    image,
+    image: resolvedImage,
     timingMs,
     canRerunFromHere: stage !== 'svgRender',
     cacheHit,
@@ -2923,7 +2929,7 @@ export async function buildRasterPaintByNumbers(
         { label: 'Status', value: 'Aus Cache' },
         { label: 'Palette', value: String(raster.paletteRgb.length / 3) },
       ],
-      await renderRasterDebugImage('Narrow Cleanup', raster),
+      () => renderRasterDebugImage('Narrow Cleanup', raster),
       0,
       true,
     );
@@ -2951,7 +2957,7 @@ export async function buildRasterPaintByNumbers(
         { label: 'Runs', value: String(Math.max(0, settings.narrowPixelStripCleanupRuns)) },
         { label: 'Palette', value: String(raster.paletteRgb.length / 3) },
       ],
-      await renderRasterDebugImage('Narrow Cleanup', raster),
+      () => renderRasterDebugImage('Narrow Cleanup', raster),
       timingMs,
     );
   }
@@ -2973,7 +2979,7 @@ export async function buildRasterPaintByNumbers(
         { label: 'Status', value: 'Aus Cache' },
         { label: 'Palette', value: String(raster.paletteRgb.length / 3) },
       ],
-      await renderRasterDebugImage('Protrusion Pruning', raster),
+      () => renderRasterDebugImage('Protrusion Pruning', raster),
       0,
       true,
     );
@@ -2995,7 +3001,7 @@ export async function buildRasterPaintByNumbers(
         { label: 'Runs', value: String(Math.max(0, settings.nrOfTimesToHalveBorderSegments)) },
         { label: 'Palette', value: String(raster.paletteRgb.length / 3) },
       ],
-      await renderRasterDebugImage('Protrusion Pruning', raster),
+      () => renderRasterDebugImage('Protrusion Pruning', raster),
       timingMs,
     );
   }
@@ -3024,7 +3030,7 @@ export async function buildRasterPaintByNumbers(
         { label: 'Regionen vor Merge', value: String(connected.regions.length) },
         { label: 'Mindestflaeche', value: `${minRegionArea} px` },
       ],
-      await renderRasterDebugImage('Facet Build', raster, connected, undefined, 'debugRegions'),
+      () => renderRasterDebugImage('Facet Build', raster, connected, undefined, 'debugRegions'),
       0,
       true,
     );
@@ -3048,7 +3054,7 @@ export async function buildRasterPaintByNumbers(
         { label: 'Regionen vor Merge', value: String(connected.regions.length) },
         { label: 'Mindestflaeche', value: `${minRegionArea} px` },
       ],
-      await renderRasterDebugImage('Facet Build', raster, connected, undefined, 'debugRegions'),
+      () => renderRasterDebugImage('Facet Build', raster, connected, undefined, 'debugRegions'),
       timingMs,
     );
   }
@@ -3075,7 +3081,7 @@ export async function buildRasterPaintByNumbers(
         { label: 'Regionen', value: String(connected.regions.length) },
         { label: 'Mindestflaeche', value: `${minRegionArea} px` },
       ],
-      await renderRasterDebugImage('Facet Reduce', raster, connected, undefined, 'debugRegions'),
+      () => renderRasterDebugImage('Facet Reduce', raster, connected, undefined, 'debugRegions'),
       0,
       true,
     );
@@ -3121,7 +3127,7 @@ export async function buildRasterPaintByNumbers(
         { label: 'Regionen nach Merge', value: String(connected.regions.length) },
         { label: 'Mindestflaeche', value: `${minRegionArea} px` },
       ],
-      await renderRasterDebugImage('Facet Reduce', raster, connected, undefined, 'debugRegions'),
+      () => renderRasterDebugImage('Facet Reduce', raster, connected, undefined, 'debugRegions'),
       timingMs,
     );
   }
@@ -3147,7 +3153,7 @@ export async function buildRasterPaintByNumbers(
         { label: 'SVG-Pfade', value: String(svgPaths.length) },
         { label: 'Boundary-Pfade', value: String(boundaryPaths.length) },
       ],
-      await renderRasterDebugImage('Border Trace', raster, connected, undefined, 'boundaries'),
+      () => renderRasterDebugImage('Border Trace', raster, connected, undefined, 'boundaries'),
       0,
       true,
     );
@@ -3172,7 +3178,7 @@ export async function buildRasterPaintByNumbers(
         { label: 'Boundary-Pfade', value: String(boundaryPaths.length) },
         { label: 'Regionen', value: String(connected.regions.length) },
       ],
-      await renderRasterDebugImage('Border Trace', raster, connected, undefined, 'boundaries'),
+      () => renderRasterDebugImage('Border Trace', raster, connected, undefined, 'boundaries'),
       timingMs,
     );
   }
@@ -3197,7 +3203,7 @@ export async function buildRasterPaintByNumbers(
         { label: 'Marker', value: `${placements.length} / ${connected.regions.length}` },
         { label: 'Referenzflaeche', value: `${referenceLabelArea} px` },
       ],
-      await renderRasterDebugImage('Label Placement', raster, connected, placements, 'boundaries'),
+      () => renderRasterDebugImage('Label Placement', raster, connected, placements, 'boundaries'),
       0,
       true,
     );
@@ -3218,7 +3224,7 @@ export async function buildRasterPaintByNumbers(
         { label: 'Marker', value: `${placements.length} / ${connected.regions.length}` },
         { label: 'Referenzflaeche', value: `${referenceLabelArea} px` },
       ],
-      await renderRasterDebugImage('Label Placement', raster, connected, placements, 'boundaries'),
+      () => renderRasterDebugImage('Label Placement', raster, connected, placements, 'boundaries'),
       timingMs,
     );
   }

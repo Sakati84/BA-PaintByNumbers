@@ -543,7 +543,7 @@ function ProcessingLivePreview({
     <section className="processing-live">
       <div className="processing-live__header">
         <div>
-          <span className="field-label">Live-Vorschau</span>
+          <span className="field-label">{snapshot == null ? 'Vorschau' : 'Debug-Live-Vorschau'}</span>
           <h2>{label}</h2>
           <p>{description}</p>
         </div>
@@ -559,7 +559,7 @@ function ProcessingLivePreview({
           <span>{formatDimensions(width, height)}</span>
         </button>
       ) : (
-        <div className="empty-state">Live-Vorschau wird vorbereitet...</div>
+        <div className="empty-state">Vorschau wird vorbereitet...</div>
       )}
       {metrics.length > 0 ? (
         <div className="processing-live__metrics">

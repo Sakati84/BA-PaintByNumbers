@@ -195,7 +195,7 @@ Die Shell sendet `WebViewHostEvent` zurueck:
 - `sourceReady`
 - `processingProgress`
 
-  Enthaelt Phase, Prozentwert, Statusmeldung und bei der lokalen Pipeline optional `preview`. Dieses `preview` ist ein kompakter PNG-Snapshot des zuletzt fertiggestellten Pipeline-Schritts mit Stage, Label, Beschreibung und Metriken. Die Processing-UI zeigt dadurch waehrend des Laufs immer den aktuellen sichtbaren Zwischenstand.
+  Enthaelt Phase, Prozentwert und Statusmeldung. Bei Debug-Laeufen kann die lokale Pipeline zusaetzlich `preview` liefern. Dieses `preview` ist ein kompakter PNG-Snapshot des zuletzt fertiggestellten Pipeline-Schritts mit Stage, Label, Beschreibung und Metriken. Normale Produktlaeufe senden keine Pipeline-PNGs ueber die Bridge, damit die iPhone-Laufzeit nicht durch Snapshot-Kodierung und grosse JSON-Payloads belastet wird.
 
 - `runCompleted`
 
@@ -611,7 +611,7 @@ Die Fortschrittsstufen sind:
 9. `labelPlacement`
 10. `svgRender`
 
-Bei normalen und Debug-Laeufen sendet die Shell nach fertiggestellten lokalen Stufen zusaetzlich zum Textfortschritt einen Live-Snapshot ueber `processingProgress.preview`. Diese Snapshots nutzen dieselbe kompakte PNG-Kodierung wie die Debug-Bilder und sind auf eine kleine Vorschaukante begrenzt. Der Processing-Screen ersetzt damit die statische Quellbildvorschau durch den jeweils aktuellen Pipeline-Zwischenstand. Der Debug Mode sammelt die Snapshots weiterhin als komplette Stage-Liste fuer den Ergebnis-Inspector.
+Bei normalen Laeufen sendet die Shell nur Textfortschritt und Prozentwerte. Pipeline-Snapshots ueber `processingProgress.preview` sind auf Debug-Laeufe begrenzt, weil die PNG-Kodierung und Bridge-Payloads auf dem Telefon die Laufzeit deutlich erhoehen koennen. Der Processing-Screen zeigt im normalen Lauf daher die aktuelle Quelle bzw. das KI-Bild weiter an. Im Debug Mode werden die Snapshots weiterhin live angezeigt und als komplette Stage-Liste fuer den Ergebnis-Inspector gesammelt.
 
 ### 7.0 Debug Mode und Teil-Reruns
 

@@ -351,6 +351,21 @@ export default function App() {
 
     let updatedDebugCache: GeneratorPipelineDebugCache | undefined;
     let lastRunProgress = 0;
+    const postStageSnapshot = debugMode
+      ? (preview: GeneratorDebugStageSnapshot) => {
+          postEvent({
+            type: 'processingProgress',
+            requestId,
+            payload: {
+              phase: 'paintByNumbers',
+              progress: lastRunProgress,
+              message: `${preview.label}: ${preview.description}`,
+              preview,
+            },
+          });
+        }
+      : undefined;
+
     const generatedResult = await generatePaintByNumbers(source.asset, settings, (progress) => {
       lastRunProgress = progress.progress;
       postEvent({
@@ -363,18 +378,7 @@ export default function App() {
         },
       });
     }, {
-      onStageSnapshot: (preview: GeneratorDebugStageSnapshot) => {
-        postEvent({
-          type: 'processingProgress',
-          requestId,
-          payload: {
-            phase: 'paintByNumbers',
-            progress: lastRunProgress,
-            message: `${preview.label}: ${preview.description}`,
-            preview,
-          },
-        });
-      },
+      onStageSnapshot: postStageSnapshot,
       variantIds: debugMode ? ['classic'] : undefined,
       debug: debugMode
         ? {
