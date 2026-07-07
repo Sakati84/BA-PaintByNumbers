@@ -110,7 +110,9 @@ export function settingsForColorCount(colorCount: number): GeneratorSettings {
     return {
       ...DEFAULT_SETTINGS,
       kMeansNrOfClusters,
-      removeFacetsSmallerThanImageRatio: 0.000025,
+      nearIdenticalPaletteMergeLabDistance: 2,
+      removeFacetsSmallerThanImageRatio: 0.000012,
+      maximumNumberOfFacets: 2600,
       nrOfTimesToHalveBorderSegments: 0,
     };
   }

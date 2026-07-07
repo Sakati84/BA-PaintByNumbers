@@ -1,6 +1,6 @@
 # Technische Architektur: Happy Numbers Paint-by-Numbers
 
-Stand: 2026-07-02
+Stand: 2026-07-07
 
 Dieses Dokument beschreibt den aktuellen technischen Aufbau des Projekts, den KI-gestuetzten Bildvorbereitungsschritt, die drei Prompt-Varianten und die lokale Paint-by-Numbers-Pipeline. Es ist als Arbeitsdokument fuer Entwicklung, Agenten und Projektverstaendnis gedacht. Wenn sich Architektur, KI-Call, Prompting, Pipeline-Stufen, Komplexitaetslogik oder Exportvarianten aendern, muss dieses Dokument mit aktualisiert werden.
 
@@ -564,10 +564,8 @@ Alle Presets setzen:
 
 - `kMeansNrOfClusters = colorCount`
 - `kMeansMinDeltaDifference = 1`
-- `nearIdenticalPaletteMergeLabDistance = 4.25`
 - `mergeSimilarAdjacentRegions = false`
 - `removeFacetsFromLargeToSmall = true`
-- `maximumNumberOfFacets = 0` (kein hartes Maximum)
 - `resizeImageWidth = 2048`
 - `resizeImageHeight = 2048`
 - `randomSeed = 7707`
@@ -576,15 +574,19 @@ Alle Presets setzen:
 
 Die wichtigsten Unterschiede:
 
-| Preset | `removeFacetsSmallerThanImageRatio` | Beispiel bei 2048 x 2048 |
-| --- | ---: | ---: |
-| Easy | `0.00012` | Regionen unter ca. 503 Pixeln werden Kandidaten fuer Merge |
-| Medium | `0.00006` | Regionen unter ca. 252 Pixeln werden Kandidaten fuer Merge |
-| Expert | `0.000025` | Regionen unter ca. 105 Pixeln werden Kandidaten fuer Merge |
+| Preset | `nearIdenticalPaletteMergeLabDistance` | `removeFacetsSmallerThanImageRatio` | `maximumNumberOfFacets` | Beispiel bei 2048 x 2048 |
+| --- | ---: | ---: | ---: | ---: |
+| Easy | `4.25` | `0.00012` | `0` | Regionen unter ca. 503 Pixeln werden Kandidaten fuer Merge |
+| Medium | `4.25` | `0.00006` | `0` | Regionen unter ca. 252 Pixeln werden Kandidaten fuer Merge |
+| Expert | `2` | `0.000012` | `2600` | Regionen unter ca. 50 Pixeln werden Kandidaten fuer Merge, 3000+-Ausreisser werden budgetiert |
 
 Wichtige Konsequenz:
 
 Die Code-Pipeline besitzt Schritte fuer schmale Pixelstreifen und duenne Auslaeufer, aber die aktuellen UI-Defaults setzen beide Durchlaufzahlen auf `0`. Diese Stufen werden also durchlaufen, veraendern mit den aktuellen Settings aber normalerweise nichts. Die Region-Merge-Stufe bleibt aktiv und ist aktuell der wichtigste lokale Saeuberungsschritt nach K-Means und Palette-Merge.
+
+Expert wurde am 2026-07-07 nach einem Detailerhalt-Vergleich auf acht KI-posterisierten Expert-24-Beispielbildern angepasst. Die erste Vergleichsseite liegt unter `pipeline-lab/runs/2026-07-07-expert24-detail-preservation-report/index.html`. Ergebnis: Eine niedrigere Expert-Mindestflaeche (`0.000012`) erhaelt wichtige lokale Struktur naeher am KI-Bild, ohne die Farbanzahl zu erhoehen. Reaktivierte Narrow-/Protrusion-Cleanup-Runs waren im Vergleich nicht ueberzeugend und bleiben fuer Expert deaktiviert.
+
+Am selben Tag wurde die Expert-Reduktion um adaptives Merging erweitert. Die neue Vergleichsseite liegt unter `pipeline-lab/runs/2026-07-07-adaptive-merge-report/index.html` und enthaelt auch die historische Drake-Referenz. Ergebnis: Expert nutzt jetzt `maximumNumberOfFacets = 2600`. Das Budget verhindert 3000+-Flaechen-Ausreisser, waehrend die Merge-Logik kompakte kontrastreiche Motivdetails schuetzt und ruhige farbnahe Flaechen bevorzugt zusammenlegt.
 
 ## 7. Lokale Paint-by-Numbers-Pipeline nach der KI
 
@@ -869,22 +871,38 @@ Kandidaten:
 - oder Region ist duenn:
   - Area <= `minRegionArea * 2`
   - durchschnittliche Dicke <= `5.5`
+- oder Region ist eine ruhige Merge-Flaeche:
+  - Area <= `minRegionArea * 3.6`
+  - naechster Nachbar liegt hoechstens `12` LAB entfernt
+  - ein Nachbar teilt mindestens ca. `34%` der gemeinsamen Kante
 
 Nachbarwahl:
 
 1. Region-Adjacency wird aus gemeinsamen Kanten gebaut.
 2. Kandidaten bevorzugen Nachbarn, die selbst keine schlechten Kandidaten sind.
-3. Laengere gemeinsame Grenze ist besser.
+3. Laengere gemeinsame Grenze und hoher gemeinsamer Kantenanteil sind besser.
 4. Groessere Nachbarregion ist besser.
-5. Geringerer LAB-Abstand ist besser.
+5. Geringerer LAB-Abstand ist besser, besonders bei ruhigen Merge-Flaechen.
 6. Harte Kanten werden geschuetzt:
    - normale Grenze: maximal `26` LAB-Abstand
    - duenne Region: weichere Grenze bis `34`
    - winzige Regionen bis `8` Pixel duerfen eher gemerged werden
 
+Detailschutz:
+
+- Kleine kompakte Regionen werden nicht gemerged, wenn sie wahrscheinlich ein Motivdetail sind.
+- Geschuetzt werden besonders kompakte Regionen bis `minRegionArea * 3.2`, wenn:
+  - sie nicht duenn sind,
+  - ihre Bounding-Box-Compactness mindestens ca. `0.16` betraegt,
+  - ein Nachbar mindestens ca. `34%` der gemeinsamen Kante teilt,
+  - und der Farbkontrast zur Umgebung hoch ist (`24` LAB zum naechsten Nachbarn oder ca. `30` gewichteter LAB-Kontrast).
+- Das schuetzt typische Details wie Fenster, Augen, Reifenmarkierungen, Feder-/Blueteninseln oder harte Objektkanten besser als ein reines Flaechenlimit.
+
 Aktuelle Besonderheit:
 
 `mergeSimilarAdjacentRegions` ist in den UI-Settings aktuell `false`. Die Hauptreduktion kommt daher ueber kleine/duenne Regionen, nicht ueber generelles Mergen aehnlicher Nachbarfarben.
+
+Wenn `maximumNumberOfFacets` groesser als `0` ist, folgt nach dem kleinen/duennen Merge ein kontrastgeschuetztes Flaechenbudget. Dieser Schritt sortiert Merge-Kandidaten nicht nur nach Groesse, sondern bevorzugt ruhige, farbnahe und duenne Kandidaten. Seltene Palettefarben werden nicht leichtfertig entfernt, solange dadurch die Zielpalette unterschritten wuerde. Im Expert-Default liegt dieses Budget bei `2600`.
 
 Beispiel:
 

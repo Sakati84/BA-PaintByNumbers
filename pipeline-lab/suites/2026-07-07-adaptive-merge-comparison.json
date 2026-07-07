@@ -1,0 +1,68 @@
+{
+  "name": "2026-07-07-adaptive-merge-comparison",
+  "sourceRun": "../../prompt-lab/runs/2026-07-01T05-12-25-497Z_2026-07-01-all-photos-current-easy-medium-expert",
+  "sourceCases": ["expert-i4", "expert"],
+  "variants": ["cleanColor", "classic", "brightColorCircles"],
+  "configs": [
+    {
+      "id": "expert24-adaptive-unlimited",
+      "label": "Adaptive merge, no cap",
+      "description": "Neue kantenbewusste Merge-Logik mit Balanced-Detail-Parametern, aber ohne hartes Flaechenbudget.",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "settings": {
+        "nearIdenticalPaletteMergeLabDistance": 2,
+        "removeFacetsSmallerThanImageRatio": 0.000012,
+        "maximumNumberOfFacets": 0
+      }
+    },
+    {
+      "id": "expert24-adaptive-2200",
+      "label": "Adaptive merge, 2200 cap",
+      "description": "Strengerer Expert-24-Kandidat: kantenbewusste Merge-Logik plus kontrastgeschuetztes Flaechenbudget bei 2200.",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "settings": {
+        "nearIdenticalPaletteMergeLabDistance": 2,
+        "removeFacetsSmallerThanImageRatio": 0.000012,
+        "maximumNumberOfFacets": 2200
+      }
+    },
+    {
+      "id": "expert24-adaptive-2400",
+      "label": "Adaptive merge, 2400 cap",
+      "description": "Etwas detailfreundlicheres Budget zwischen 2200 und 2600 Flaechen.",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "settings": {
+        "nearIdenticalPaletteMergeLabDistance": 2,
+        "removeFacetsSmallerThanImageRatio": 0.000012,
+        "maximumNumberOfFacets": 2400
+      }
+    },
+    {
+      "id": "expert24-adaptive-2600",
+      "label": "Adaptive merge, 2600 cap",
+      "description": "Empfohlener Expert-24-Kandidat, der 3000+ Ausreisser verhindert, aber Hochdetailbilder weniger stark zusammendrueckt.",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "settings": {
+        "nearIdenticalPaletteMergeLabDistance": 2,
+        "removeFacetsSmallerThanImageRatio": 0.000012,
+        "maximumNumberOfFacets": 2600
+      }
+    },
+    {
+      "id": "expert24-adaptive-1800",
+      "label": "Adaptive merge, 1800 cap",
+      "description": "Strengerer Paintability-Test mit gleicher Merge-Logik und Zielbudget bei 1800 Flaechen.",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "settings": {
+        "nearIdenticalPaletteMergeLabDistance": 2,
+        "removeFacetsSmallerThanImageRatio": 0.000012,
+        "maximumNumberOfFacets": 1800
+      }
+    }
+  ]
+}
