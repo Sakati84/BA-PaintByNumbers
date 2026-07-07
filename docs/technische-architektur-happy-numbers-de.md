@@ -72,10 +72,10 @@ Wichtig: Die aktuelle iPhone-App ist kein reiner Browser und keine reine native 
   Gemini-Request-Body und Extraktion von Inline-Bilddaten aus der Gemini-Antwort.
 
 - `App/src/features/generator/generatePaintByNumbers.ts`
-  Einstiegspunkt der bisherigen lokalen Paint-by-Numbers-Pipeline fuer ein `ImagePickerAsset`. Auf dem Experiment-Branch `experiment/fresh-paint-pipeline` bleibt dieser Pfad im Repository, wird von `App/App.tsx` aber nicht als aktiver Generator importiert.
+  Einstiegspunkt der bisherigen lokalen Paint-by-Numbers-Pipeline fuer ein `ImagePickerAsset`. Dieser Pfad bleibt als Legacy-Fallback im Repository und kann ueber `EXPO_PUBLIC_GENERATOR_PIPELINE=legacy` als aktiver Generator ausgewaehlt werden.
 
 - `pipeline_new/src/generatePaintByNumbersNew.ts`
-  Aktiver experimenteller TypeScript-Port der Region-First-Pipeline auf dem Branch `experiment/fresh-paint-pipeline`. `App/App.tsx` importiert diesen Generator direkt, damit die installierte React-Native-App mit der neuen Pipeline getestet werden kann.
+  Aktiver TypeScript-Port der Region-First-Fresh-Pipeline. `App/App.tsx` importiert diesen Generator und nutzt ihn standardmaessig, wenn `EXPO_PUBLIC_GENERATOR_PIPELINE` leer ist oder auf `fresh` steht.
 
 - `App/src/features/generator/prepareImage.ts`
   Resize, PNG-Normalisierung, Alpha-Flattening auf Weiss und Umwandlung in `ImageData`.
@@ -101,7 +101,7 @@ Wichtig: Die aktuelle iPhone-App ist kein reiner Browser und keine reine native 
   Materialisiert dieses generierte Manifest beim App-Start in den Expo-Cache und liefert `indexUri` und `rootUri` fuer die WebView.
 
 - `App/metro.config.js`
-  Erweitert auf dem Experiment-Branch den Metro-Watch-Scope auf das Repository-Root, damit `App/` den externen Ordner `pipeline_new/` beim Bundling importieren kann.
+  Erweitert den Metro-Watch-Scope auf das Repository-Root, damit `App/` den externen Ordner `pipeline_new/` beim Bundling importieren kann.
 
 ### Referenz- und Analysepfade
 
@@ -630,7 +630,7 @@ Expert wurde am 2026-07-07 nach einem Detailerhalt-Vergleich auf acht KI-posteri
 
 Am selben Tag wurde die Expert-Reduktion um adaptives Merging erweitert. Die neue Vergleichsseite liegt unter `pipeline-lab/runs/2026-07-07-adaptive-merge-report/index.html` und enthaelt auch die historische Drake-Referenz. Ergebnis: Expert nutzt jetzt `maximumNumberOfFacets = 2600`. Das Budget verhindert 3000+-Flaechen-Ausreisser, waehrend die Merge-Logik kompakte kontrastreiche Motivdetails schuetzt und ruhige farbnahe Flaechen bevorzugt zusammenlegt.
 
-Fresh-Port-Zusatz auf `experiment/fresh-paint-pipeline`:
+Fresh-Port-Zusatz:
 
 Der aktive TypeScript-Fresh-Port in `pipeline_new/src/generatePaintByNumbersNew.ts` liest weiterhin `kMeansNrOfClusters` und `maximumNumberOfFacets` aus den UI-Settings, nutzt fuer seine Region-First-Geometrie aber eigene farbanzahlabhaengige Mindestflaechen:
 
@@ -651,10 +651,12 @@ Im bisherigen Raster-Pfad ist der Einstieg:
 - `generatePaintByNumbers()`
 - danach `buildRasterPaintByNumbers()`
 
-Auf dem Experiment-Branch `experiment/fresh-paint-pipeline` ist der aktive App-Einstieg dagegen:
+Der aktive App-Einstieg wird in `App/App.tsx` ueber `EXPO_PUBLIC_GENERATOR_PIPELINE` gewaehlt:
 
-- `pipeline_new/src/generatePaintByNumbersNew.ts`
-- `App/App.tsx` importiert diesen Generator direkt.
+- unset oder `fresh`: `pipeline_new/src/generatePaintByNumbersNew.ts`
+- `legacy`: `App/src/features/generator/generatePaintByNumbers.ts`
+
+Damit kann `main` die neue Fresh-Pipeline standardmaessig nutzen, ohne den bisherigen Raster-Pfad zu verlieren. Beide Generatoren bleiben statisch importiert, damit der Build beide Pfade kennt; zur Laufzeit entscheidet nur die Env-Variable.
 
 Die Fortschrittsstufen sind:
 
@@ -1083,7 +1085,7 @@ Render-Details der bisherigen Raster-Pipeline:
 
 Zusaetzliche Vergleichsvarianten:
 
-Auf dem Experiment-Branch `experiment/fresh-paint-pipeline` haengt `App/App.tsx` im normalen Resultat nach den Generator-Ausgaben wieder Vergleichsbilder an:
+Im Fresh-Pipeline-Port haengt `App/App.tsx` im normalen Resultat nach den Generator-Ausgaben wieder Vergleichsbilder an:
 
 - `inputImage`: Originalbild vor KI-Vereinfachung
 - `aiPosterizedImage`: KI-Bild vor lokaler Pipeline
@@ -1103,7 +1105,7 @@ Branch-Experiment vom 2026-07-07:
 - Aktueller source-aware Vergleichslauf: `pipeline-lab/runs/2026-07-07T19-17-58-275Z_fresh-region-first-24c-source-aware-ratio-00012/`
 - Iterationsprotokoll: `pipeline-lab/2026-07-07-fresh-source-aware-merge-iterations.md`
 
-Die Pipeline begann als isolierte Lab-Parallelwelt. Auf dem Experiment-Branch ist sie zusaetzlich als TypeScript-Port in `pipeline_new/` vorhanden und wird von `App/App.tsx` als aktiver Generator importiert. Die sichtbare React-WebView-UI bleibt unveraendert; sie sendet weiterhin `runPaintByNumbers` an die Expo-Shell. Der Unterschied liegt im Shell-Handler: Statt `App/src/features/generator/generatePaintByNumbers.ts` wird `pipeline_new/src/generatePaintByNumbersNew.ts` ausgefuehrt.
+Die Pipeline begann als isolierte Lab-Parallelwelt. Sie ist zusaetzlich als TypeScript-Port in `pipeline_new/` vorhanden und wird von `App/App.tsx` standardmaessig als aktiver Generator ausgefuehrt. Die sichtbare React-WebView-UI bleibt unveraendert; sie sendet weiterhin `runPaintByNumbers` an die Expo-Shell. Der Unterschied liegt im Shell-Handler: Standardmaessig wird `pipeline_new/src/generatePaintByNumbersNew.ts` ausgefuehrt; mit `EXPO_PUBLIC_GENERATOR_PIPELINE=legacy` wird stattdessen `App/src/features/generator/generatePaintByNumbers.ts` verwendet.
 
 Die Artefakte in `pipeline-lab/runs/` sind lokale Vergleichsausgaben und bleiben wie bisher durch `.gitignore` vom normalen Commit ausgeschlossen.
 
@@ -1319,4 +1321,4 @@ Wenn Pipeline-Semantik geaendert wird:
 
 ## 13. Mentales Modell in einem Satz
 
-Die App laesst eine React-WebView-UI ein Foto auswaehlen, laesst die Expo-Shell daraus per KI ein semantisch vereinfachtes flaches Farbbild erzeugen, reduziert dieses Bild lokal entweder ueber den bisherigen LAB-K-Means-/Rasterpfad oder auf dem Experiment-Branch ueber die Region-First-Fresh-Pipeline auf ausmalbare Flaechen und rendert daraus farbige, kantenbasierte und debugbare Paint-by-Numbers-Ausgaben.
+Die App laesst eine React-WebView-UI ein Foto auswaehlen, laesst die Expo-Shell daraus per KI ein semantisch vereinfachtes flaches Farbbild erzeugen, reduziert dieses Bild lokal standardmaessig ueber die Region-First-Fresh-Pipeline oder per `EXPO_PUBLIC_GENERATOR_PIPELINE=legacy` ueber den bisherigen LAB-K-Means-/Rasterpfad auf ausmalbare Flaechen und rendert daraus farbige, kantenbasierte und debugbare Paint-by-Numbers-Ausgaben.

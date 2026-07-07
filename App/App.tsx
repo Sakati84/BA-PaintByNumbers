@@ -6,9 +6,15 @@ import { Directory, File } from 'expo-file-system';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
-import { generatePaintByNumbers } from '../pipeline_new/src/generatePaintByNumbersNew';
-import type { GeneratorPipelineDebugCache } from '../pipeline_new/src/generatePaintByNumbersNew';
+import {
+  generatePaintByNumbers as generateFreshPaintByNumbers,
+  type GeneratorPipelineDebugCache as FreshGeneratorPipelineDebugCache,
+} from '../pipeline_new/src/generatePaintByNumbersNew';
 import { ensureLocalWebViewBundle } from './src/features/generator/localWebViewLoader';
+import {
+  generatePaintByNumbers as generateLegacyPaintByNumbers,
+  type GeneratorPipelineDebugCache as LegacyGeneratorPipelineDebugCache,
+} from './src/features/generator/generatePaintByNumbers';
 import { posterizeImageWithNanoBanana } from './src/features/imagePosterization/posterizeImageWithNanoBanana';
 import type {
   GeneratorDebugStageSnapshot,
@@ -18,9 +24,67 @@ import type {
   WebViewAppRequest,
   WebViewHostEvent,
 } from './src/features/webview/appWebViewBridgeTypes';
-import type { GeneratorOutputVariant, GeneratorResult } from './src/features/generator/generatorTypes';
+import type {
+  GeneratorOutputVariant,
+  GeneratorOutputVariantId,
+  GeneratorProgress,
+  GeneratorResult,
+} from './src/features/generator/generatorTypes';
 
 const NativeWebView = require('react-native-webview').WebView;
+
+type GeneratorPipelineId = 'fresh' | 'legacy';
+type GeneratorPipelineDebugCache = FreshGeneratorPipelineDebugCache | LegacyGeneratorPipelineDebugCache;
+type ActiveGeneratorOptions = {
+  debug?: {
+    enabled: boolean;
+    rerunFromStage?: GeneratorStage;
+    cache?: GeneratorPipelineDebugCache | null;
+    onCacheUpdated?: (cache: GeneratorPipelineDebugCache) => void;
+  };
+  onStageSnapshot?: (snapshot: GeneratorDebugStageSnapshot) => void;
+  variantIds?: readonly GeneratorOutputVariantId[];
+};
+
+function getActiveGeneratorPipeline(): GeneratorPipelineId {
+  const configuredPipeline = process.env.EXPO_PUBLIC_GENERATOR_PIPELINE?.trim().toLowerCase();
+  return configuredPipeline === 'legacy' ? 'legacy' : 'fresh';
+}
+
+const ACTIVE_GENERATOR_PIPELINE = getActiveGeneratorPipeline();
+
+function runActiveGeneratorPipeline(
+  asset: ImagePicker.ImagePickerAsset,
+  settings: GeneratorSettings,
+  onProgress: (progress: GeneratorProgress) => void,
+  options: ActiveGeneratorOptions,
+): Promise<GeneratorResult> {
+  if (ACTIVE_GENERATOR_PIPELINE === 'legacy') {
+    return generateLegacyPaintByNumbers(asset, settings, onProgress, {
+      ...options,
+      debug:
+        options.debug == null
+          ? undefined
+          : {
+              ...options.debug,
+              cache: options.debug.cache as LegacyGeneratorPipelineDebugCache | null | undefined,
+              onCacheUpdated: options.debug.onCacheUpdated as ((cache: LegacyGeneratorPipelineDebugCache) => void) | undefined,
+            },
+    });
+  }
+
+  return generateFreshPaintByNumbers(asset, settings, onProgress, {
+    ...options,
+    debug:
+      options.debug == null
+        ? undefined
+        : {
+            ...options.debug,
+            cache: options.debug.cache as FreshGeneratorPipelineDebugCache | null | undefined,
+            onCacheUpdated: options.debug.onCacheUpdated as ((cache: FreshGeneratorPipelineDebugCache) => void) | undefined,
+          },
+  });
+}
 
 const WEBVIEW_ERROR_BRIDGE = `
 (() => {
@@ -366,7 +430,7 @@ export default function App() {
         }
       : undefined;
 
-    const generatedResult = await generatePaintByNumbers(source.asset, settings, (progress) => {
+    const generatedResult = await runActiveGeneratorPipeline(source.asset, settings, (progress) => {
       lastRunProgress = progress.progress;
       postEvent({
         type: 'processingProgress',
