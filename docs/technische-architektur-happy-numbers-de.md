@@ -194,6 +194,9 @@ Die Shell sendet `WebViewHostEvent` zurueck:
 - `hostReady`
 - `sourceReady`
 - `processingProgress`
+
+  Enthaelt Phase, Prozentwert, Statusmeldung und bei der lokalen Pipeline optional `preview`. Dieses `preview` ist ein kompakter PNG-Snapshot des zuletzt fertiggestellten Pipeline-Schritts mit Stage, Label, Beschreibung und Metriken. Die Processing-UI zeigt dadurch waehrend des Laufs immer den aktuellen sichtbaren Zwischenstand.
+
 - `runCompleted`
 
   Enthaelt bei normalen Laeufen das Generatorergebnis mit allen Ausgabevarianten. Bei Debug-Laeufen enthaelt `result.debug` zusaetzlich pro Stage Parameter, Metriken, Timing, Cache-Hit-Status und ein PNG-Snapshot-Bild.
@@ -607,6 +610,8 @@ Die Fortschrittsstufen sind:
 8. `borderTrace`
 9. `labelPlacement`
 10. `svgRender`
+
+Bei normalen und Debug-Laeufen sendet die Shell nach fertiggestellten lokalen Stufen zusaetzlich zum Textfortschritt einen Live-Snapshot ueber `processingProgress.preview`. Diese Snapshots nutzen dieselbe kompakte PNG-Kodierung wie die Debug-Bilder und sind auf eine kleine Vorschaukante begrenzt. Der Processing-Screen ersetzt damit die statische Quellbildvorschau durch den jeweils aktuellen Pipeline-Zwischenstand. Der Debug Mode sammelt die Snapshots weiterhin als komplette Stage-Liste fuer den Ergebnis-Inspector.
 
 ### 7.0 Debug Mode und Teil-Reruns
 

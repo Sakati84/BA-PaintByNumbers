@@ -66,6 +66,7 @@ type GeneratePaintByNumbersOptions = {
     cache?: GeneratorPipelineDebugCache | null;
     onCacheUpdated?: (cache: GeneratorPipelineDebugCache) => void;
   };
+  onStageSnapshot?: (snapshot: GeneratorDebugStageSnapshot) => void;
   variantIds?: readonly GeneratorOutputVariantId[];
 };
 
@@ -210,12 +211,13 @@ async function pushDebugSnapshot(
   imageData: SimpleImageData | undefined,
   timingMs: number | undefined,
   cacheHit = false,
+  onStageSnapshot?: (snapshot: GeneratorDebugStageSnapshot) => void,
 ): Promise<void> {
-  if (snapshots == null) {
+  if (snapshots == null && onStageSnapshot == null) {
     return;
   }
 
-  snapshots.push({
+  const snapshot: GeneratorDebugStageSnapshot = {
     stage,
     label,
     description,
@@ -227,7 +229,10 @@ async function pushDebugSnapshot(
     timingMs,
     canRerunFromHere: true,
     cacheHit,
-  });
+  };
+
+  snapshots?.push(snapshot);
+  onStageSnapshot?.(snapshot);
 }
 
 export async function generatePaintByNumbers(
@@ -270,6 +275,7 @@ export async function generatePaintByNumbers(
       imageData,
       0,
       true,
+      options.onStageSnapshot,
     );
   } else {
     report('decode', 0, 'Bild wird vorbereitet.');
@@ -293,6 +299,8 @@ export async function generatePaintByNumbers(
       ],
       imageData,
       timingMs,
+      false,
+      options.onStageSnapshot,
     );
   }
 
@@ -315,6 +323,7 @@ export async function generatePaintByNumbers(
       kmeansOutput,
       0,
       true,
+      options.onStageSnapshot,
     );
   } else {
     kmeansOutput = createEmptyImageData(imageData.width, imageData.height);
@@ -345,6 +354,8 @@ export async function generatePaintByNumbers(
       ],
       kmeansOutput,
       timingMs,
+      false,
+      options.onStageSnapshot,
     );
   }
 
@@ -367,6 +378,7 @@ export async function generatePaintByNumbers(
       colorMapToImageData(colorMapResult),
       0,
       true,
+      options.onStageSnapshot,
     );
   } else {
     const colorMapStarted = nowMs();
@@ -392,6 +404,8 @@ export async function generatePaintByNumbers(
       ],
       colorMapToImageData(colorMapResult),
       timingMs,
+      false,
+      options.onStageSnapshot,
     );
   }
 
@@ -399,6 +413,7 @@ export async function generatePaintByNumbers(
     report: (stage, localProgress, message) => report(stage, localProgress, message),
     addTiming: (stage, elapsedMs) => addTiming(timings, stage, elapsedMs),
     nowMs,
+    onStageSnapshot: options.onStageSnapshot,
     variantIds: options.variantIds,
     debug: debugEnabled
       ? {

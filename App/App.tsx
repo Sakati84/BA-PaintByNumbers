@@ -11,6 +11,7 @@ import type { GeneratorPipelineDebugCache } from './src/features/generator/gener
 import { ensureLocalWebViewBundle } from './src/features/generator/localWebViewLoader';
 import { posterizeImageWithNanoBanana } from './src/features/imagePosterization/posterizeImageWithNanoBanana';
 import type {
+  GeneratorDebugStageSnapshot,
   GeneratorSettings,
   GeneratorStage,
   WebImageSource,
@@ -349,7 +350,9 @@ export default function App() {
     });
 
     let updatedDebugCache: GeneratorPipelineDebugCache | undefined;
+    let lastRunProgress = 0;
     const generatedResult = await generatePaintByNumbers(source.asset, settings, (progress) => {
+      lastRunProgress = progress.progress;
       postEvent({
         type: 'processingProgress',
         requestId,
@@ -360,6 +363,18 @@ export default function App() {
         },
       });
     }, {
+      onStageSnapshot: (preview: GeneratorDebugStageSnapshot) => {
+        postEvent({
+          type: 'processingProgress',
+          requestId,
+          payload: {
+            phase: 'paintByNumbers',
+            progress: lastRunProgress,
+            message: `${preview.label}: ${preview.description}`,
+            preview,
+          },
+        });
+      },
       variantIds: debugMode ? ['classic'] : undefined,
       debug: debugMode
         ? {

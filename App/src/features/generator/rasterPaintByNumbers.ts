@@ -27,6 +27,7 @@ type RasterPipelineOptions = {
   report: RasterReport;
   addTiming: AddTiming;
   nowMs: () => number;
+  onStageSnapshot?: (snapshot: GeneratorDebugStageSnapshot) => void;
   variantIds?: readonly GeneratorOutputVariantId[];
   debug?: {
     enabled: boolean;
@@ -2870,11 +2871,11 @@ async function pushRasterDebugSnapshot(
   timingMs: number | undefined,
   cacheHit = false,
 ): Promise<void> {
-  if (options.debug?.enabled !== true || options.debug.snapshots == null) {
+  if ((options.debug?.enabled !== true || options.debug.snapshots == null) && options.onStageSnapshot == null) {
     return;
   }
 
-  options.debug.snapshots.push({
+  const snapshot: GeneratorDebugStageSnapshot = {
     stage,
     label,
     description,
@@ -2884,7 +2885,12 @@ async function pushRasterDebugSnapshot(
     timingMs,
     canRerunFromHere: stage !== 'svgRender',
     cacheHit,
-  });
+  };
+
+  if (options.debug?.enabled === true && options.debug.snapshots != null) {
+    options.debug.snapshots.push(snapshot);
+  }
+  options.onStageSnapshot?.(snapshot);
 }
 
 export async function buildRasterPaintByNumbers(

@@ -40,6 +40,7 @@ type ScreenState =
       progressPhase: 'posterizeImage' | 'paintByNumbers';
       progressValue: number | null;
       progressMessage: string;
+      progressPreview?: GeneratorDebugStageSnapshot;
     }
   | {
       name: 'result';
@@ -509,6 +510,71 @@ function DebugModeToggle({
   );
 }
 
+function ProcessingLivePreview({
+  source,
+  snapshot,
+  phase,
+  onOpenImage,
+}: {
+  source?: WebImageSource;
+  snapshot?: GeneratorDebugStageSnapshot;
+  phase: 'posterizeImage' | 'paintByNumbers';
+  onOpenImage: (image: ZoomImage) => void;
+}) {
+  const snapshotSrc = snapshot == null ? null : debugImageSource(snapshot);
+  const src = snapshotSrc ?? source?.previewDataUrl ?? null;
+  const label =
+    snapshot?.label ??
+    (phase === 'posterizeImage'
+      ? 'Ausgangsbild'
+      : source?.kind === 'posterized'
+        ? 'KI-Bild'
+        : 'Pipeline-Eingang');
+  const description =
+    snapshot?.description ??
+    (phase === 'posterizeImage'
+      ? 'Dieses Bild wird gerade fuer die lokale Pipeline vorbereitet.'
+      : 'Die lokale Pipeline startet mit diesem vorbereiteten Bild.');
+  const metrics = snapshot?.metrics.slice(0, 3) ?? [];
+  const width = snapshot?.image?.width ?? source?.width;
+  const height = snapshot?.image?.height ?? source?.height;
+
+  return (
+    <section className="processing-live">
+      <div className="processing-live__header">
+        <div>
+          <span className="field-label">Live-Vorschau</span>
+          <h2>{label}</h2>
+          <p>{description}</p>
+        </div>
+        <span>{phase === 'posterizeImage' ? 'KI' : 'Pipeline'}</span>
+      </div>
+      {src != null ? (
+        <button
+          className="processing-live__image"
+          onClick={() => onOpenImage({ src, label, width, height })}
+          type="button"
+        >
+          <img src={src} alt={label} />
+          <span>{formatDimensions(width, height)}</span>
+        </button>
+      ) : (
+        <div className="empty-state">Live-Vorschau wird vorbereitet...</div>
+      )}
+      {metrics.length > 0 ? (
+        <div className="processing-live__metrics">
+          {metrics.map((metric) => (
+            <div key={metric.label}>
+              <span>{metric.label}</span>
+              <strong>{metric.value}</strong>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 function DebugParameterControl({
   parameter,
   value,
@@ -963,6 +1029,7 @@ export function App() {
               progressPhase: 'paintByNumbers',
               progressValue: 0,
               progressMessage: 'Das KI-Bild ist bereit. Die lokale Malvorlage wird berechnet...',
+              progressPreview: undefined,
             };
           });
         }
@@ -985,8 +1052,9 @@ export function App() {
           return {
             ...current,
             progressPhase: event.payload.phase,
-            progressValue: event.payload.progress,
+            progressValue: event.payload.progress ?? current.progressValue,
             progressMessage: event.payload.message,
+            progressPreview: event.payload.preview ?? current.progressPreview,
           };
         });
         return;
@@ -1362,6 +1430,7 @@ export function App() {
       progressPhase: 'paintByNumbers',
       progressValue: 0,
       progressMessage: `Debug-Rerun ab ${stage} wird gestartet...`,
+      progressPreview: undefined,
     });
     bridge.send({
       type: 'runPaintByNumbers',
@@ -1424,6 +1493,7 @@ export function App() {
       progressPhase: 'posterizeImage',
       progressValue: null,
       progressMessage: `Das Bild wird mit ${clampedColorCount} Farben posterisiert...`,
+      progressPreview: undefined,
     });
     bridge.send({
       type: 'posterizeUploadedImage',
@@ -1546,11 +1616,12 @@ export function App() {
         {screen.name === 'processing' ? (
           <>
             <Hero title={UI_TEXT.processingTitle} subtitle={screen.progressMessage} />
-            {screen.source != null ? (
-              <section className="preview-frame">
-                <img src={screen.source.previewDataUrl} alt={screen.source.label} />
-              </section>
-            ) : null}
+            <ProcessingLivePreview
+              source={screen.source}
+              snapshot={screen.progressPreview}
+              phase={screen.progressPhase}
+              onOpenImage={setZoomImage}
+            />
             <section className="progress-card">
               <div className="progress-bar">
                 <div

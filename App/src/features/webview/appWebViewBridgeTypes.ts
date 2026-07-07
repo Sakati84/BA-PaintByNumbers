@@ -125,6 +125,7 @@ export type WebViewHostEvent =
         phase: 'posterizeImage' | 'paintByNumbers';
         progress: number | null;
         message: string;
+        preview?: GeneratorDebugStageSnapshot;
       };
     }
   | {
