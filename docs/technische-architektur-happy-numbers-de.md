@@ -1053,6 +1053,45 @@ Diese Vergleichsbilder helfen, die drei wichtigen Stufen visuell zu verstehen:
 2. KI-vereinfachtes Farbbild
 3. lokal berechnete Malvorlage
 
+### 7.11 Experimentelle Region-First-Parallelpipeline
+
+Branch-Experiment vom 2026-07-07:
+
+- Branch: `experiment/fresh-paint-pipeline`
+- Skript: `pipeline-lab/fresh_region_pipeline.py`
+- Suite: `pipeline-lab/suites/2026-07-07-fresh-region-first-24c.json`
+- KI-Quellbild-Suite: `prompt-lab/suites/2026-07-07-test-images-current-expert-paint-map.json`
+- Referenzlauf: `pipeline-lab/runs/2026-07-07T12-48-10-230Z_fresh-region-first-24c-final/`
+
+Diese Pipeline ist eine isolierte Lab-Parallelwelt und ersetzt die produktive App-Pipeline nicht. Es gibt keine Bridge-Aenderung, keine neue Ausgabevariante in `App/` und keine Aenderung am installierten Generatorpfad. Die Artefakte in `pipeline-lab/runs/` sind lokale Vergleichsausgaben und bleiben wie bisher durch `.gitignore` vom normalen Commit ausgeschlossen.
+
+Der Ansatz startet bewusst nicht mit der produktiven Pixel-K-Means-Pipeline. Stattdessen wird das KI-Bild zuerst als Formen-/Regionentraeger behandelt:
+
+1. KI-Output aus einem Prompt-Lab-Lauf laden.
+2. Mit OpenCV `pyrMeanShiftFiltering` und Median-Filter Farbrauschen und weiche Uebergaenge kantenbewusst glaetten.
+3. Das geglaettete Bild in eine uebersegmentierte 64-Farb-Tokenkarte clustern. Diese Token sind nicht die Zielpalette, sondern nur ein Mittel, zusammenhaengende Formbereiche zu finden.
+4. Per Connected Components aus den Tokenkarten zusammenhaengende Regionen bauen.
+5. Pro Region die mittlere Farbe berechnen und darauf eine gewichtete 24-Farb-Palette lernen. Die Gewichtung nutzt `area^0.78`, damit grosse Flaechen stabil bleiben, kleine Detailregionen aber nicht komplett gegen grosse Hintergruende verlieren.
+6. Das 24-Farb-Labelbild mit einem kleinen Mehrheitsfilter stabilisieren.
+7. Nur sehr kleine Restregionen in farblich und topologisch passende Nachbarn mergen.
+8. `clean-color.png` und `classic.png` als Lab-Ergebnis rendern.
+
+Der wichtigste Unterschied zur produktiven Pipeline:
+
+- Produktiv: Pixel zuerst auf Zielpalette per LAB-K-Means reduzieren, danach Facets bauen und bereinigen.
+- Experiment: Regionen zuerst als Formtraeger erzeugen, danach die Zielpalette auf Regionsebene lernen und lokale Restinseln bereinigen.
+
+Der Referenzlauf nutzt die vier Expert-Testbilder aus `prompt-lab/runs/2026-07-07T12-27-30-697Z_2026-07-07-test-images-current-expert-paint-map/`. Ergebnis:
+
+| Bild | Genutzte Farben | Finale Regionen | Median-Region |
+| --- | ---: | ---: | ---: |
+| `img-1394` | 24 | 692 | 431 px |
+| `img-1681` | 24 | 1065 | 474 px |
+| `img-1704` | 23 | 1568 | 90.5 px |
+| `img-1998` | 24 | 575 | 41 px |
+
+Visuelle Einschaetzung des ersten brauchbaren Stands: Die Pipeline erhaelt die groben Originalflaechen und viele Innenformen besser als eine harte direkte Posterisierung. Gleichzeitig bleiben detailreiche Naturhintergruende, vor allem beim Specht, weiterhin der schwierigste Fall und brauchen fuer eine produktive Uebernahme noch eine bessere Trennung zwischen Motivdetails und Hintergrundtextur.
+
 ## 8. Export und Persistenz
 
 Nach `runCompleted` persistiert die Shell Ergebnisdateien unter:

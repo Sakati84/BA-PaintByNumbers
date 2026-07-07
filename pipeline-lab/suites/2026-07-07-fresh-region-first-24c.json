@@ -1,0 +1,23 @@
+{
+  "id": "2026-07-07-fresh-region-first-24c",
+  "description": "Fresh region-first Paint-by-Numbers pipeline experiment on the four Expert-mode test images. The prototype starts from shape-preserving color regions, then learns a 24-color palette on region means and only merges very small remainder regions.",
+  "sourceRun": "prompt-lab/runs/2026-07-07T12-27-30-697Z_2026-07-07-test-images-current-expert-paint-map",
+  "sourceCase": "expert-current-paint-map",
+  "command": "python3 pipeline-lab/fresh_region_pipeline.py --colors 24 --max-edge 1400 --mean-shift-sp 11 --mean-shift-sr 24 --token-colors 64 --palette-weight-power 0.78 --majority-filter-runs 2 --min-region-ratio 0.00018 --min-region-pixels 160 --tiny-merge-passes 18 --post-majority-filter-runs 1 --boundary-width 2",
+  "params": {
+    "colors": 24,
+    "maxEdge": 1400,
+    "seed": 7707,
+    "meanShiftSp": 11,
+    "meanShiftSr": 24,
+    "tokenColors": 64,
+    "samplePixels": 180000,
+    "paletteWeightPower": 0.78,
+    "majorityFilterRuns": 2,
+    "minRegionRatio": 0.00018,
+    "minRegionPixels": 160,
+    "tinyMergePasses": 18,
+    "postMajorityFilterRuns": 1,
+    "boundaryWidth": 2
+  }
+}

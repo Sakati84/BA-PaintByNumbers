@@ -1,0 +1,23 @@
+{
+  "name": "2026-07-07-test-images-current-expert-paint-map",
+  "model": "gemini-3.1-flash-lite-image",
+  "maxEdge": 1024,
+  "generationConfig": {
+    "seed": 1234,
+    "temperature": 0.2
+  },
+  "inputs": [
+    "../../test_images/IMG_1394.JPG",
+    "../../test_images/IMG_1681.PNG",
+    "../../test_images/IMG_1704.JPG",
+    "../../test_images/IMG_1998.JPG"
+  ],
+  "cases": [
+    {
+      "id": "expert-current-paint-map",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "targetAudience": "advanced users or expert-level coloring"
+    }
+  ]
+}
