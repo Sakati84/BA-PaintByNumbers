@@ -121,7 +121,7 @@ Wichtig: Die aktuelle iPhone-App ist kein reiner Browser und keine reine native 
   Analysen zur Pipeline-Verbesserung.
 
 - `KI Testbilder/`
-  Lokal erzeugte KI-Zwischenbilder fuer die vier `test_images` in Easy 8, Medium 12 und Expert 24. Diese Bilder dienen als stabiler Testkorpus fuer weitere Pipeline-Refinements.
+  Lokal erzeugte KI-Zwischenbilder fuer alle aktuell enthaltenen `test_images` in Easy 8, Medium 12 und Expert 24. Diese Bilder dienen als stabiler Testkorpus fuer weitere Pipeline-Refinements.
 
 ## 3. Laufzeitarchitektur
 
