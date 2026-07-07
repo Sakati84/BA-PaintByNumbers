@@ -1061,7 +1061,7 @@ Branch-Experiment vom 2026-07-07:
 - Skript: `pipeline-lab/fresh_region_pipeline.py`
 - Suite: `pipeline-lab/suites/2026-07-07-fresh-region-first-24c.json`
 - KI-Quellbild-Suite: `prompt-lab/suites/2026-07-07-test-images-current-expert-paint-map.json`
-- Referenzlauf: `pipeline-lab/runs/2026-07-07T12-48-10-230Z_fresh-region-first-24c-final/`
+- Referenzlauf: `pipeline-lab/runs/2026-07-07T13-36-53-088Z_fresh-region-first-24c-smoothed-final/`
 
 Diese Pipeline ist eine isolierte Lab-Parallelwelt und ersetzt die produktive App-Pipeline nicht. Es gibt keine Bridge-Aenderung, keine neue Ausgabevariante in `App/` und keine Aenderung am installierten Generatorpfad. Die Artefakte in `pipeline-lab/runs/` sind lokale Vergleichsausgaben und bleiben wie bisher durch `.gitignore` vom normalen Commit ausgeschlossen.
 
@@ -1073,8 +1073,9 @@ Der Ansatz startet bewusst nicht mit der produktiven Pixel-K-Means-Pipeline. Sta
 4. Per Connected Components aus den Tokenkarten zusammenhaengende Regionen bauen.
 5. Pro Region die mittlere Farbe berechnen und darauf eine gewichtete 24-Farb-Palette lernen. Die Gewichtung nutzt `area^0.78`, damit grosse Flaechen stabil bleiben, kleine Detailregionen aber nicht komplett gegen grosse Hintergruende verlieren.
 6. Das 24-Farb-Labelbild mit einem kleinen Mehrheitsfilter stabilisieren.
-7. Nur sehr kleine Restregionen in farblich und topologisch passende Nachbarn mergen.
-8. `clean-color.png` und `classic.png` als Lab-Ergebnis rendern.
+7. Sehr kleine Restregionen in farblich und topologisch passende Nachbarn mergen. Kleine, aber groessere und stark kontrastierende Details koennen geschuetzt bleiben, damit Blütenzentren, Fell-/Federkanten und aehnliche Binnenformen nicht pauschal verschwinden.
+8. Echte Speckles unter `48 px` in einem finalen Cleanup bevorzugt entfernen.
+9. `clean-color.png` als Farbflächenbild und `classic.png` mit einem geglaetteten Boundary-Layer rendern. Der Boundary-Layer ersetzt im Lab-Prototyp das langsamere Kontur-pro-Region-Rendering und erzeugt ruhigere schwarze Linien.
 
 Der wichtigste Unterschied zur produktiven Pipeline:
 
@@ -1085,12 +1086,14 @@ Der Referenzlauf nutzt die vier Expert-Testbilder aus `prompt-lab/runs/2026-07-0
 
 | Bild | Genutzte Farben | Finale Regionen | Median-Region |
 | --- | ---: | ---: | ---: |
-| `img-1394` | 24 | 692 | 431 px |
-| `img-1681` | 24 | 1065 | 474 px |
-| `img-1704` | 23 | 1568 | 90.5 px |
-| `img-1998` | 24 | 575 | 41 px |
+| `img-1394` | 24 | 759 | 382.5 px |
+| `img-1681` | 24 | 1089 | 450 px |
+| `img-1704` | 23 | 1464 | 184 px |
+| `img-1998` | 24 | 478 | 160.5 px |
 
-Visuelle Einschaetzung des ersten brauchbaren Stands: Die Pipeline erhaelt die groben Originalflaechen und viele Innenformen besser als eine harte direkte Posterisierung. Gleichzeitig bleiben detailreiche Naturhintergruende, vor allem beim Specht, weiterhin der schwierigste Fall und brauchen fuer eine produktive Uebernahme noch eine bessere Trennung zwischen Motivdetails und Hintergrundtextur.
+Laufzeiten im Referenzlauf: `img-1394` ca. 11.8s, `img-1681` ca. 16.0s, `img-1704` ca. 27.5s, `img-1998` ca. 10.3s auf dem lokalen Entwicklungsrechner.
+
+Visuelle Einschaetzung des aktuellen Lab-Stands: Die Pipeline erhaelt die groben Originalflaechen und viele Innenformen besser als eine harte direkte Posterisierung. Der geglaettete Boundary-Layer beruhigt die Classic-Ausgabe sichtbar, ohne die Farbflächen neu zu zerstoeren. Detailreiche Naturhintergruende, vor allem beim Specht, bleiben weiterhin der schwierigste Fall und brauchen fuer eine produktive Uebernahme noch eine bessere Trennung zwischen Motivdetails und Hintergrundtextur.
 
 ## 8. Export und Persistenz
 

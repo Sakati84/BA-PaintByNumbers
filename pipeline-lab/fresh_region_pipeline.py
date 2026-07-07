@@ -58,9 +58,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--majority-filter-runs", type=int, default=2)
     parser.add_argument("--min-region-ratio", type=float, default=0.00018)
     parser.add_argument("--min-region-pixels", type=int, default=160)
-    parser.add_argument("--tiny-merge-passes", type=int, default=18)
+    parser.add_argument("--tiny-merge-passes", type=int, default=12)
     parser.add_argument("--post-majority-filter-runs", type=int, default=1)
+    parser.add_argument("--speckle-region-pixels", type=int, default=48)
+    parser.add_argument("--final-speckle-passes", type=int, default=8)
+    parser.add_argument("--final-majority-filter-runs", type=int, default=1)
+    parser.add_argument("--detail-protect-min-pixels", type=int, default=80)
+    parser.add_argument("--detail-protect-lab-distance", type=float, default=26.0)
     parser.add_argument("--boundary-width", type=int, default=2)
+    parser.add_argument("--boundary-smoothing", type=float, default=0.9)
     return parser.parse_args()
 
 
@@ -252,11 +258,16 @@ def merge_tiny_palette_components(
     palette_rgb: np.ndarray,
     min_area: int,
     max_passes: int = 18,
-) -> tuple[np.ndarray, int, int]:
+    force_merge_below: int = 24,
+    protect_min_area: int = 36,
+    protect_lab_distance: float = 18.0,
+) -> tuple[np.ndarray, int, int, int, int]:
     labels = label_map.copy()
     palette_lab = rgb_to_lab(np.clip(palette_rgb, 0, 255).astype(np.uint8).reshape(1, -1, 3)).reshape(-1, 3)
     total_merges = 0
     final_components = 0
+    final_small_components = 0
+    protected_components = 0
 
     for _pass_index in range(max_passes):
         component_map, component_labels, component_areas = connected_components_for_labels(labels, palette_rgb.shape[0])
@@ -268,33 +279,62 @@ def merge_tiny_palette_components(
         changed = 0
         for component_id in small_components[np.argsort(component_areas[small_components])]:
             source_label = int(component_labels[component_id])
+            component_mask = component_map == int(component_id)
+            if not np.all(labels[component_mask] == source_label):
+                continue
             neighbors = adjacency.get(int(component_id), {})
             if not neighbors:
                 continue
             best_label = source_label
             best_score = math.inf
+            nearest_neighbor_distance = math.inf
             for neighbor_id, border_count in neighbors.items():
                 target_label = int(component_labels[neighbor_id])
                 if target_label == source_label:
                     continue
                 delta = palette_lab[source_label] - palette_lab[target_label]
                 color_distance = float(np.sqrt(np.sum(delta * delta)))
+                nearest_neighbor_distance = min(nearest_neighbor_distance, color_distance)
                 border_bonus = min(8.0, math.log1p(border_count) * 1.4)
                 target_area_bonus = min(12.0, math.log1p(int(component_areas[neighbor_id])) * 0.8)
                 score = color_distance - border_bonus - target_area_bonus
                 if score < best_score:
                     best_score = score
                     best_label = target_label
+            if (
+                int(component_areas[component_id]) >= protect_min_area
+                and nearest_neighbor_distance >= protect_lab_distance
+            ):
+                continue
             if best_label != source_label:
-                labels[component_map == int(component_id)] = best_label
+                labels[component_mask] = best_label
                 changed += 1
         total_merges += changed
         if changed == 0:
             break
 
-    component_map, _component_labels, _component_areas = connected_components_for_labels(labels, palette_rgb.shape[0])
+    component_map, component_labels, component_areas = connected_components_for_labels(labels, palette_rgb.shape[0])
     final_components = int(component_map.max()) + 1
-    return labels, total_merges, final_components
+    adjacency = adjacency_counts(component_map)
+    for component_id in np.where(component_areas < min_area)[0]:
+        source_label = int(component_labels[component_id])
+        nearest_neighbor_distance = math.inf
+        for neighbor_id in adjacency.get(int(component_id), {}):
+            target_label = int(component_labels[neighbor_id])
+            if target_label == source_label:
+                continue
+            delta = palette_lab[source_label] - palette_lab[target_label]
+            nearest_neighbor_distance = min(nearest_neighbor_distance, float(np.sqrt(np.sum(delta * delta))))
+        if (
+            int(component_areas[component_id]) >= protect_min_area
+            and nearest_neighbor_distance >= protect_lab_distance
+        ):
+            protected_components += 1
+        elif int(component_areas[component_id]) < force_merge_below:
+            final_small_components += 1
+        else:
+            final_small_components += 1
+    return labels, total_merges, final_components, final_small_components, protected_components
 
 
 def recompute_palette(rgb: np.ndarray, label_map: np.ndarray, colors: int) -> np.ndarray:
@@ -309,21 +349,35 @@ def recompute_palette(rgb: np.ndarray, label_map: np.ndarray, colors: int) -> np
     return palette
 
 
-def render_classic(clean_rgb: np.ndarray, region_map: np.ndarray, boundary_width: int) -> np.ndarray:
-    canvas = cv2.cvtColor(clean_rgb.astype(np.uint8), cv2.COLOR_RGB2BGR)
-    for region_id in range(int(region_map.max()) + 1):
-        mask = (region_map == region_id).astype(np.uint8) * 255
-        contours, _hierarchy = cv2.findContours(mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
-        if contours:
-            cv2.drawContours(
-                canvas,
-                contours,
-                -1,
-                (0, 0, 0),
-                thickness=boundary_width,
-                lineType=cv2.LINE_AA,
-            )
-    return cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB)
+def render_classic(
+    clean_rgb: np.ndarray,
+    region_map: np.ndarray,
+    boundary_width: int,
+    boundary_smoothing: float,
+) -> np.ndarray:
+    boundary = np.zeros(region_map.shape, dtype=np.uint8)
+    boundary[:, 1:] |= region_map[:, 1:] != region_map[:, :-1]
+    boundary[:, :-1] |= region_map[:, 1:] != region_map[:, :-1]
+    boundary[1:, :] |= region_map[1:, :] != region_map[:-1, :]
+    boundary[:-1, :] |= region_map[1:, :] != region_map[:-1, :]
+
+    kernel_size = max(1, boundary_width * 2 - 1)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel_size, kernel_size))
+    if boundary_width > 1:
+        boundary = cv2.dilate(boundary, kernel, iterations=1)
+    if boundary_smoothing > 0:
+        boundary = cv2.morphologyEx(boundary, cv2.MORPH_CLOSE, kernel)
+        alpha = cv2.GaussianBlur(
+            boundary.astype(np.float32),
+            (0, 0),
+            sigmaX=boundary_smoothing,
+            sigmaY=boundary_smoothing,
+        )
+        alpha = np.clip(alpha, 0.0, 1.0)[..., None]
+    else:
+        alpha = boundary.astype(np.float32)[..., None]
+
+    return np.clip(clean_rgb.astype(np.float32) * (1.0 - alpha), 0, 255).astype(np.uint8)
 
 
 def process_case(case_dir: Path, args: argparse.Namespace, out_dir: Path) -> CaseResult:
@@ -376,22 +430,60 @@ def process_case(case_dir: Path, args: argparse.Namespace, out_dir: Path) -> Cas
         args.colors,
         args.majority_filter_runs,
     )
-    palette_label_map, tiny_merges, final_region_count = merge_tiny_palette_components(
+    (
+        palette_label_map,
+        tiny_merges,
+        final_region_count,
+        small_regions_remaining,
+        protected_small_regions,
+    ) = merge_tiny_palette_components(
         palette_label_map,
         palette_rgb,
         min_region_area,
         args.tiny_merge_passes,
+        args.speckle_region_pixels,
+        args.detail_protect_min_pixels,
+        args.detail_protect_lab_distance,
     )
     palette_label_map = majority_filter_labels(
         palette_label_map,
         args.colors,
         args.post_majority_filter_runs,
     )
-    palette_label_map, post_tiny_merges, final_region_count = merge_tiny_palette_components(
+    (
+        palette_label_map,
+        post_tiny_merges,
+        final_region_count,
+        post_small_regions_remaining,
+        post_protected_small_regions,
+    ) = merge_tiny_palette_components(
         palette_label_map,
         palette_rgb,
         min_region_area,
         max(4, args.tiny_merge_passes // 2),
+        args.speckle_region_pixels,
+        args.detail_protect_min_pixels,
+        args.detail_protect_lab_distance,
+    )
+    (
+        palette_label_map,
+        forced_speckle_merges,
+        final_region_count,
+        final_speckles_remaining,
+        _final_protected_speckles,
+    ) = merge_tiny_palette_components(
+        palette_label_map,
+        palette_rgb,
+        args.speckle_region_pixels,
+        args.final_speckle_passes,
+        args.speckle_region_pixels,
+        1_000_000_000,
+        math.inf,
+    )
+    palette_label_map = majority_filter_labels(
+        palette_label_map,
+        args.colors,
+        args.final_majority_filter_runs,
     )
     palette_rgb = recompute_palette(smoothed_rgb, palette_label_map, args.colors)
     clean_rgb = np.clip(palette_rgb[palette_label_map], 0, 255).astype(np.uint8)
@@ -399,7 +491,12 @@ def process_case(case_dir: Path, args: argparse.Namespace, out_dir: Path) -> Cas
         palette_label_map,
         args.colors,
     )
-    classic_rgb = render_classic(clean_rgb, final_region_map, args.boundary_width)
+    classic_rgb = render_classic(
+        clean_rgb,
+        final_region_map,
+        args.boundary_width,
+        args.boundary_smoothing,
+    )
 
     case_out = out_dir / source_id
     case_out.mkdir(parents=True, exist_ok=True)
@@ -418,10 +515,23 @@ def process_case(case_dir: Path, args: argparse.Namespace, out_dir: Path) -> Cas
         "initialComponents": component_count,
         "finalRegions": final_region_count,
         "minRegionArea": min_region_area,
+        "speckleRegionPixels": args.speckle_region_pixels,
+        "finalSpecklePasses": args.final_speckle_passes,
+        "finalMajorityFilterRuns": args.final_majority_filter_runs,
+        "detailProtectMinPixels": args.detail_protect_min_pixels,
+        "detailProtectLabDistance": args.detail_protect_lab_distance,
         "tinyRegionMerges": tiny_merges,
+        "smallRegionsRemainingAfterFirstMerge": small_regions_remaining,
+        "protectedSmallRegionsAfterFirstMerge": protected_small_regions,
         "postTinyRegionMerges": post_tiny_merges,
+        "smallRegionsRemaining": post_small_regions_remaining,
+        "protectedSmallRegions": post_protected_small_regions,
+        "forcedSpeckleMerges": forced_speckle_merges,
+        "finalSpecklesRemaining": final_speckles_remaining,
         "smallestFinalRegion": int(final_areas.min()) if final_areas.size else 0,
         "medianFinalRegion": float(np.median(final_areas)) if final_areas.size else 0.0,
+        "boundaryRender": "smoothed-boundary-layer",
+        "boundarySmoothing": args.boundary_smoothing,
         "runtimeMs": round((time.perf_counter() - start) * 1000),
     }
 
@@ -537,7 +647,13 @@ def build_html(out_dir: Path, results: list[CaseResult], overview_path: Path, ar
         "minRegionPixels": args.min_region_pixels,
         "tinyMergePasses": args.tiny_merge_passes,
         "postMajorityFilterRuns": args.post_majority_filter_runs,
+        "speckleRegionPixels": args.speckle_region_pixels,
+        "finalSpecklePasses": args.final_speckle_passes,
+        "finalMajorityFilterRuns": args.final_majority_filter_runs,
+        "detailProtectMinPixels": args.detail_protect_min_pixels,
+        "detailProtectLabDistance": args.detail_protect_lab_distance,
         "boundaryWidth": args.boundary_width,
+        "boundarySmoothing": args.boundary_smoothing,
         "seed": args.seed,
     }
     html_text = f"""<!doctype html>
@@ -597,7 +713,13 @@ def write_manifest(out_dir: Path, results: list[CaseResult], args: argparse.Name
             "minRegionPixels": args.min_region_pixels,
             "tinyMergePasses": args.tiny_merge_passes,
             "postMajorityFilterRuns": args.post_majority_filter_runs,
+            "speckleRegionPixels": args.speckle_region_pixels,
+            "finalSpecklePasses": args.final_speckle_passes,
+            "finalMajorityFilterRuns": args.final_majority_filter_runs,
+            "detailProtectMinPixels": args.detail_protect_min_pixels,
+            "detailProtectLabDistance": args.detail_protect_lab_distance,
             "boundaryWidth": args.boundary_width,
+            "boundarySmoothing": args.boundary_smoothing,
         },
         "results": [
             {
