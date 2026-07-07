@@ -1,0 +1,384 @@
+{
+  "name": "2026-07-07-ki-testbilder-easy8-medium12-expert24",
+  "createdAt": "2026-07-07T17:27:33.358Z",
+  "dryRun": false,
+  "model": "gemini-3.1-flash-lite-image",
+  "maxEdge": 1024,
+  "runDir": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24",
+  "inputs": [
+    {
+      "id": "img-1394",
+      "originalPath": "/Users/Basti/Projekte/BA-PaintByNumbers/test_images/IMG_1394.JPG",
+      "originalCopyPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1394/input.original.jpg",
+      "originalSha256": "5ac7df9d80aa12c379a6dcc549c8312ec362435a3c8ce205f22aa0dc1482dc0f",
+      "originalByteLength": 4801887,
+      "preparedPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1394/input.prepared.jpg",
+      "preparedSha256": "4104b0890d5fd3802dd8cc651da0be90472e9a4b0595721929f01ad4baf7645a",
+      "preparedByteLength": 303553,
+      "width": 1024,
+      "height": 768,
+      "mimeType": "image/jpeg"
+    },
+    {
+      "id": "img-1681",
+      "originalPath": "/Users/Basti/Projekte/BA-PaintByNumbers/test_images/IMG_1681.PNG",
+      "originalCopyPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1681/input.original.png",
+      "originalSha256": "c2a9998b78e674ff6052a29fb77294dc27826f62335bd1ed515b220df73d4d38",
+      "originalByteLength": 6075858,
+      "preparedPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1681/input.prepared.jpg",
+      "preparedSha256": "22f4b80de0a83e4c283028b324189e09e25c635d8b969cd7975b0c9c66e6000c",
+      "preparedByteLength": 240491,
+      "width": 1024,
+      "height": 576,
+      "mimeType": "image/jpeg"
+    },
+    {
+      "id": "img-1704",
+      "originalPath": "/Users/Basti/Projekte/BA-PaintByNumbers/test_images/IMG_1704.JPG",
+      "originalCopyPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1704/input.original.jpg",
+      "originalSha256": "0257f8bdc4e620a056ecd1ee6c82518414800711ead6ce73223bbe29d1f814a2",
+      "originalByteLength": 897443,
+      "preparedPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1704/input.prepared.jpg",
+      "preparedSha256": "72986fb38509581eae5381866799ba52575700bf2b0ac0c4d58d3338f454f509",
+      "preparedByteLength": 206482,
+      "width": 572,
+      "height": 1024,
+      "mimeType": "image/jpeg"
+    },
+    {
+      "id": "img-1998",
+      "originalPath": "/Users/Basti/Projekte/BA-PaintByNumbers/test_images/IMG_1998.JPG",
+      "originalCopyPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1998/input.original.jpg",
+      "originalSha256": "cd1c79b5a472033947ef0bfa9c54baf2628e50c6eb1cd1671231abb89348b188",
+      "originalByteLength": 1660480,
+      "preparedPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1998/input.prepared.jpg",
+      "preparedSha256": "a418637e7526a49228fa52332a73ee51c7d1fe574e9e9f7746bcf595891e58fc",
+      "preparedByteLength": 155988,
+      "width": 768,
+      "height": 1024,
+      "mimeType": "image/jpeg"
+    }
+  ],
+  "cases": [
+    {
+      "id": "easy-8-current",
+      "difficulty": "easy",
+      "colorCount": 8,
+      "promptFile": null,
+      "model": "gemini-3.1-flash-lite-image",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      }
+    },
+    {
+      "id": "medium-12-current",
+      "difficulty": "medium",
+      "colorCount": 12,
+      "promptFile": null,
+      "model": "gemini-3.1-flash-lite-image",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      }
+    },
+    {
+      "id": "expert-24-current",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "promptFile": null,
+      "model": "gemini-3.1-flash-lite-image",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      }
+    }
+  ],
+  "results": [
+    {
+      "inputId": "img-1394",
+      "caseId": "easy-8-current",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1394/easy-8-current/prompt.txt",
+      "promptSha256": "20b69ca0c91b7dea0fee7f56189ffef07085a363bf9e79b720bad41b37a25a2b",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1394/easy-8-current/request.json",
+      "requestSha256": "02e968cc167e0a0df0d87f513dcf4732b35f25b5627cc1206b0d59296d1461b9",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1394/easy-8-current/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1394/easy-8-current/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "b7121c5e94dd46f5237d249a95daff64f72387f17d9e2c5c657527f94cb0e4ed",
+      "outputByteLength": 361686,
+      "durationMs": 4534
+    },
+    {
+      "inputId": "img-1394",
+      "caseId": "medium-12-current",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1394/medium-12-current/prompt.txt",
+      "promptSha256": "a3a486ae0594586b9b031f369ab20b7e4689fad0f3d36ca74b35375e359791e7",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1394/medium-12-current/request.json",
+      "requestSha256": "217d46ae6b3004187215f840970654d067b3176f8a3d4535033c44d9bb966847",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1394/medium-12-current/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1394/medium-12-current/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "afcefe65d57d59725ca59f55ca672aa0f7bd1edb23c4ca0a6502715c62ead0ad",
+      "outputByteLength": 516697,
+      "durationMs": 3718
+    },
+    {
+      "inputId": "img-1394",
+      "caseId": "expert-24-current",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1394/expert-24-current/prompt.txt",
+      "promptSha256": "f3c86a4181f93b59985f0be1d65649d8bbb9c7872d88926fbd7500953992417b",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1394/expert-24-current/request.json",
+      "requestSha256": "a2dd8d064e3f4ebcabf50ae4e45b03d552306023d467c5317544fd08c740934c",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1394/expert-24-current/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1394/expert-24-current/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "db9e243d776a7dc13a670e5dba4a44120821eab110db22de6397048a6ab438b0",
+      "outputByteLength": 667347,
+      "durationMs": 4418
+    },
+    {
+      "inputId": "img-1681",
+      "caseId": "easy-8-current",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1681/easy-8-current/prompt.txt",
+      "promptSha256": "20b69ca0c91b7dea0fee7f56189ffef07085a363bf9e79b720bad41b37a25a2b",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1681/easy-8-current/request.json",
+      "requestSha256": "4ee586e9e0e9c13de9a0d56f08c7f62da217c5a8e83a9fdb06e6e3e3d38c0603",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1681/easy-8-current/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1681/easy-8-current/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "13c18375255174b60684f161f8e6e9e12d3ec9e30d70702c830c11e4d0603ed3",
+      "outputByteLength": 339548,
+      "durationMs": 3870
+    },
+    {
+      "inputId": "img-1681",
+      "caseId": "medium-12-current",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1681/medium-12-current/prompt.txt",
+      "promptSha256": "a3a486ae0594586b9b031f369ab20b7e4689fad0f3d36ca74b35375e359791e7",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1681/medium-12-current/request.json",
+      "requestSha256": "228a8e32f638e6de441331ea64a2a3099773363c0c5aa3d5e04d2147a44f253b",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1681/medium-12-current/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1681/medium-12-current/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "e439e4cbf2d2f7bc3ae12fc747615599d08c50738bcfba579f0a5a81ca81b989",
+      "outputByteLength": 527028,
+      "durationMs": 3984
+    },
+    {
+      "inputId": "img-1681",
+      "caseId": "expert-24-current",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1681/expert-24-current/prompt.txt",
+      "promptSha256": "f3c86a4181f93b59985f0be1d65649d8bbb9c7872d88926fbd7500953992417b",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1681/expert-24-current/request.json",
+      "requestSha256": "08cfcc75bfcc6a9536cad464571cb68f084316f9f1e9b1141b43965cae7028c6",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1681/expert-24-current/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1681/expert-24-current/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "013baa5942fd3aaf307d44ec16df06abeed6e814250e2a8fea4715105b871da8",
+      "outputByteLength": 732508,
+      "durationMs": 4149
+    },
+    {
+      "inputId": "img-1704",
+      "caseId": "easy-8-current",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1704/easy-8-current/prompt.txt",
+      "promptSha256": "20b69ca0c91b7dea0fee7f56189ffef07085a363bf9e79b720bad41b37a25a2b",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1704/easy-8-current/request.json",
+      "requestSha256": "a654d8c2ffe6c1233cac39ca8cce966a4f06149cc06baba5d1e344069dc05c8c",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1704/easy-8-current/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1704/easy-8-current/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "95028c4d3610a73fa557ff10c868de7b1cfd50443d993f0229396ba8dde4cc49",
+      "outputByteLength": 506744,
+      "durationMs": 3992
+    },
+    {
+      "inputId": "img-1704",
+      "caseId": "medium-12-current",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1704/medium-12-current/prompt.txt",
+      "promptSha256": "a3a486ae0594586b9b031f369ab20b7e4689fad0f3d36ca74b35375e359791e7",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1704/medium-12-current/request.json",
+      "requestSha256": "2b2af0f5beb3d91ee56ec6e286a7f226ed4b097f613425657a330acf8816fc70",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1704/medium-12-current/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1704/medium-12-current/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "337250c7ac69efda0a75069ca901f8a3acf58e66e537c70f221cb91838ce0aa0",
+      "outputByteLength": 518233,
+      "durationMs": 4336
+    },
+    {
+      "inputId": "img-1704",
+      "caseId": "expert-24-current",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1704/expert-24-current/prompt.txt",
+      "promptSha256": "f3c86a4181f93b59985f0be1d65649d8bbb9c7872d88926fbd7500953992417b",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1704/expert-24-current/request.json",
+      "requestSha256": "330825f3b52e7190a1b6b7d321bf0008b926814f02963e43de5b8368fbea594c",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1704/expert-24-current/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1704/expert-24-current/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "467c444c9aa27a4d22af4fced3f229923e28a892d6ed975303275f9de1635c47",
+      "outputByteLength": 723177,
+      "durationMs": 4667
+    },
+    {
+      "inputId": "img-1998",
+      "caseId": "easy-8-current",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1998/easy-8-current/prompt.txt",
+      "promptSha256": "20b69ca0c91b7dea0fee7f56189ffef07085a363bf9e79b720bad41b37a25a2b",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1998/easy-8-current/request.json",
+      "requestSha256": "72894a7fb4e439bb19c3c56f8c7452e9c9c5302be61abef2dead005dcde40b73",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1998/easy-8-current/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1998/easy-8-current/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "4385ef3895bd7730e29e3ab2e5ffcee9e1ca6b57b2c3bdf5514dfbedd0b9ecbe",
+      "outputByteLength": 333582,
+      "durationMs": 4245
+    },
+    {
+      "inputId": "img-1998",
+      "caseId": "medium-12-current",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1998/medium-12-current/prompt.txt",
+      "promptSha256": "a3a486ae0594586b9b031f369ab20b7e4689fad0f3d36ca74b35375e359791e7",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1998/medium-12-current/request.json",
+      "requestSha256": "426fc885fbe838d643a7f102fd5cc132002daabfaf7a9c1e9c855c2415600cb9",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1998/medium-12-current/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1998/medium-12-current/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "302fa7d483e1e7f90a76168d417fa22a127d375835b692fa4db27c90a7d14e67",
+      "outputByteLength": 411494,
+      "durationMs": 3528
+    },
+    {
+      "inputId": "img-1998",
+      "caseId": "expert-24-current",
+      "model": "gemini-3.1-flash-lite-image",
+      "promptPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1998/expert-24-current/prompt.txt",
+      "promptSha256": "f3c86a4181f93b59985f0be1d65649d8bbb9c7872d88926fbd7500953992417b",
+      "requestPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1998/expert-24-current/request.json",
+      "requestSha256": "a26864a61314a0c01454ddb46e6e8bcc13c9404c43f74659737b5084a7b6e28e",
+      "generationConfig": {
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "temperature": 0.2,
+        "seed": 1234
+      },
+      "status": "ok",
+      "responsePath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1998/expert-24-current/response.summary.json",
+      "outputPath": "/Users/Basti/Projekte/BA-PaintByNumbers/prompt-lab/runs/2026-07-07T17-27-33-357Z_2026-07-07-ki-testbilder-easy8-medium12-expert24/img-1998/expert-24-current/output.jpg",
+      "outputMimeType": "image/jpeg",
+      "outputSha256": "bf72f55ac07e5e5b1c03df7ca616ced6eb9fc9f62f1aa998a410dcea46ab3968",
+      "outputByteLength": 473692,
+      "durationMs": 3654
+    }
+  ]
+}

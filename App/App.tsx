@@ -6,8 +6,8 @@ import { Directory, File } from 'expo-file-system';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
-import { generatePaintByNumbers } from './src/features/generator/generatePaintByNumbers';
-import type { GeneratorPipelineDebugCache } from './src/features/generator/generatePaintByNumbers';
+import { generatePaintByNumbers } from '../pipeline_new/src/generatePaintByNumbersNew';
+import type { GeneratorPipelineDebugCache } from '../pipeline_new/src/generatePaintByNumbersNew';
 import { ensureLocalWebViewBundle } from './src/features/generator/localWebViewLoader';
 import { posterizeImageWithNanoBanana } from './src/features/imagePosterization/posterizeImageWithNanoBanana';
 import type {

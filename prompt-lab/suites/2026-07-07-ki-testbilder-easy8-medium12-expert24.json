@@ -1,0 +1,35 @@
+{
+  "name": "2026-07-07-ki-testbilder-easy8-medium12-expert24",
+  "model": "gemini-3.1-flash-lite-image",
+  "maxEdge": 1024,
+  "generationConfig": {
+    "seed": 1234,
+    "temperature": 0.2
+  },
+  "inputs": [
+    "../../test_images/IMG_1394.JPG",
+    "../../test_images/IMG_1681.PNG",
+    "../../test_images/IMG_1704.JPG",
+    "../../test_images/IMG_1998.JPG"
+  ],
+  "cases": [
+    {
+      "id": "easy-8-current",
+      "difficulty": "easy",
+      "colorCount": 8,
+      "targetAudience": "beginners or children"
+    },
+    {
+      "id": "medium-12-current",
+      "difficulty": "medium",
+      "colorCount": 12,
+      "targetAudience": "intermediate coloring users"
+    },
+    {
+      "id": "expert-24-current",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "targetAudience": "advanced users or expert-level coloring"
+    }
+  ]
+}

@@ -2,6 +2,11 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
-    "lib": ["ESNext", "DOM"]
+    "lib": ["ESNext", "DOM"],
+    "baseUrl": ".",
+    "paths": {
+      "expo-image-picker": ["node_modules/expo-image-picker"],
+      "fast-png": ["node_modules/fast-png/lib/index.d.ts"]
+    }
   }
 }

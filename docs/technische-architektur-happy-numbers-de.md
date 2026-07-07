@@ -72,7 +72,10 @@ Wichtig: Die aktuelle iPhone-App ist kein reiner Browser und keine reine native 
   Gemini-Request-Body und Extraktion von Inline-Bilddaten aus der Gemini-Antwort.
 
 - `App/src/features/generator/generatePaintByNumbers.ts`
-  Einstiegspunkt der lokalen Paint-by-Numbers-Pipeline fuer ein `ImagePickerAsset`.
+  Einstiegspunkt der bisherigen lokalen Paint-by-Numbers-Pipeline fuer ein `ImagePickerAsset`. Auf dem Experiment-Branch `experiment/fresh-paint-pipeline` bleibt dieser Pfad im Repository, wird von `App/App.tsx` aber nicht als aktiver Generator importiert.
+
+- `pipeline_new/src/generatePaintByNumbersNew.ts`
+  Aktiver experimenteller TypeScript-Port der Region-First-Pipeline auf dem Branch `experiment/fresh-paint-pipeline`. `App/App.tsx` importiert diesen Generator direkt, damit die installierte React-Native-App mit der neuen Pipeline getestet werden kann.
 
 - `App/src/features/generator/prepareImage.ts`
   Resize, PNG-Normalisierung, Alpha-Flattening auf Weiss und Umwandlung in `ImageData`.
@@ -97,6 +100,9 @@ Wichtig: Die aktuelle iPhone-App ist kein reiner Browser und keine reine native 
 - `App/src/features/generator/localWebViewLoader.ts`
   Materialisiert dieses generierte Manifest beim App-Start in den Expo-Cache und liefert `indexUri` und `rootUri` fuer die WebView.
 
+- `App/metro.config.js`
+  Erweitert auf dem Experiment-Branch den Metro-Watch-Scope auf das Repository-Root, damit `App/` den externen Ordner `pipeline_new/` beim Bundling importieren kann.
+
 ### Referenz- und Analysepfade
 
 - `paint_by_numbers.py`
@@ -113,6 +119,9 @@ Wichtig: Die aktuelle iPhone-App ist kein reiner Browser und keine reine native 
 
 - `pipeline-lab/`
   Analysen zur Pipeline-Verbesserung.
+
+- `KI Testbilder/`
+  Lokal erzeugte KI-Zwischenbilder fuer die vier `test_images` in Easy 8, Medium 12 und Expert 24. Diese Bilder dienen als stabiler Testkorpus fuer weitere Pipeline-Refinements.
 
 ## 3. Laufzeitarchitektur
 
@@ -1058,24 +1067,35 @@ Diese Vergleichsbilder helfen, die drei wichtigen Stufen visuell zu verstehen:
 Branch-Experiment vom 2026-07-07:
 
 - Branch: `experiment/fresh-paint-pipeline`
-- Skript: `pipeline-lab/fresh_region_pipeline.py`
+- Python-Lab-Skript: `pipeline-lab/fresh_region_pipeline.py`
+- App-Port: `pipeline_new/src/generatePaintByNumbersNew.ts`
 - Suite: `pipeline-lab/suites/2026-07-07-fresh-region-first-24c.json`
 - KI-Quellbild-Suite: `prompt-lab/suites/2026-07-07-test-images-current-expert-paint-map.json`
 - Referenzlauf: `pipeline-lab/runs/2026-07-07T13-36-53-088Z_fresh-region-first-24c-smoothed-final/`
 
-Diese Pipeline ist eine isolierte Lab-Parallelwelt und ersetzt die produktive App-Pipeline nicht. Es gibt keine Bridge-Aenderung, keine neue Ausgabevariante in `App/` und keine Aenderung am installierten Generatorpfad. Die Artefakte in `pipeline-lab/runs/` sind lokale Vergleichsausgaben und bleiben wie bisher durch `.gitignore` vom normalen Commit ausgeschlossen.
+Die Pipeline begann als isolierte Lab-Parallelwelt. Auf dem Experiment-Branch ist sie zusaetzlich als TypeScript-Port in `pipeline_new/` vorhanden und wird von `App/App.tsx` als aktiver Generator importiert. Die sichtbare React-WebView-UI bleibt unveraendert; sie sendet weiterhin `runPaintByNumbers` an die Expo-Shell. Der Unterschied liegt im Shell-Handler: Statt `App/src/features/generator/generatePaintByNumbers.ts` wird `pipeline_new/src/generatePaintByNumbersNew.ts` ausgefuehrt.
+
+Die Artefakte in `pipeline-lab/runs/` sind lokale Vergleichsausgaben und bleiben wie bisher durch `.gitignore` vom normalen Commit ausgeschlossen.
 
 Der Ansatz startet bewusst nicht mit der produktiven Pixel-K-Means-Pipeline. Stattdessen wird das KI-Bild zuerst als Formen-/Regionentraeger behandelt:
 
 1. KI-Output aus einem Prompt-Lab-Lauf laden.
-2. Mit OpenCV `pyrMeanShiftFiltering` und Median-Filter Farbrauschen und weiche Uebergaenge kantenbewusst glaetten.
-3. Das geglaettete Bild in eine uebersegmentierte 64-Farb-Tokenkarte clustern. Diese Token sind nicht die Zielpalette, sondern nur ein Mittel, zusammenhaengende Formbereiche zu finden.
+2. Im Python-Lab mit OpenCV `pyrMeanShiftFiltering` und Median-Filter Farbrauschen und weiche Uebergaenge kantenbewusst glaetten. Im App-Port wird dieser Schritt durch eine schnelle lokale kantenbewusste Glaettung ersetzt, weil OpenCV in der Expo-JS-Laufzeit nicht verfuegbar ist.
+3. Das geglaettete Bild in eine uebersegmentierte 64-Farb-Tokenkarte aufteilen. Im Python-Lab passiert das per K-Means-Tokenkarte, im App-Port per 4x4x4-RGB-Binning fuer bessere Laufzeit.
 4. Per Connected Components aus den Tokenkarten zusammenhaengende Regionen bauen.
 5. Pro Region die mittlere Farbe berechnen und darauf eine gewichtete 24-Farb-Palette lernen. Die Gewichtung nutzt `area^0.78`, damit grosse Flaechen stabil bleiben, kleine Detailregionen aber nicht komplett gegen grosse Hintergruende verlieren.
 6. Das 24-Farb-Labelbild mit einem kleinen Mehrheitsfilter stabilisieren.
 7. Sehr kleine Restregionen in farblich und topologisch passende Nachbarn mergen. Kleine, aber groessere und stark kontrastierende Details koennen geschuetzt bleiben, damit Blütenzentren, Fell-/Federkanten und aehnliche Binnenformen nicht pauschal verschwinden.
 8. Echte Speckles unter `48 px` in einem finalen Cleanup bevorzugt entfernen.
 9. `clean-color.png` als Farbflächenbild und `classic.png` mit einem geglaetteten Boundary-Layer rendern. Der Boundary-Layer ersetzt im Lab-Prototyp das langsamere Kontur-pro-Region-Rendering und erzeugt ruhigere schwarze Linien.
+
+Aktuelle App-Ausgabevarianten des TypeScript-Ports:
+
+- `classic`: farbige Region-First-Ausgabe mit geglaetteten schwarzen Grenzen; Default im neuen Port.
+- `cleanColor`: farbige Region-First-Ausgabe ohne Grenzen.
+- `brightColorCircles`: kompatibler Alias auf die Classic-Ausgabe, damit bestehende UI-/Exportannahmen nicht brechen.
+
+Nummern, Labelplatzierung, Farbpunkte und die vollstaendige alte Variantenliste sind im TypeScript-Port noch nicht implementiert.
 
 Der wichtigste Unterschied zur produktiven Pipeline:
 
