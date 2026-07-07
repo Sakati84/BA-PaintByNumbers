@@ -52,7 +52,14 @@ First, imagine a young child drawing this exact photo from memory: make a child-
 
 Then turn that child-friendly drawing into a very easy paint-by-numbers source image.
 
-The image should look like a simple child-friendly flat illustration made from a few big paint regions. It should be clearly transformed from the photo, not a filtered photo, but a viewer should still understand which photo it came from.
+The image should look like an unnumbered paint-by-numbers color plate: a simple child-friendly flat illustration made from a few big closed paint regions. It should be clearly transformed from the photo, not a filtered photo, but a viewer should still understand which photo it came from.
+
+Paint-by-numbers priority:
+- The final image must read as a color-only paint-by-numbers reference before anything else.
+- Every visible form should be made from closed, fillable paint areas with clean color-to-color boundaries.
+- Prefer paintable symbolic shapes over ordinary poster art, painterly rendering, or photographic smoothing.
+- Make the region structure obvious enough that a later algorithm can trace and number the areas.
+- Do not rely on texture, gradients, soft shading, or brush effects to describe the subject.
 
 Preserve:
 - the main subject or scene type
@@ -92,6 +99,7 @@ Subject rules:
 
 Style:
 - simple faithful paint-by-numbers reference
+- unnumbered paint-by-numbers color plate
 - simple flat matte colors
 - large closed paintable areas
 - friendly simplified shapes
@@ -107,7 +115,7 @@ Style:
 The final result should be a child-friendly paint-by-numbers reference for {{TARGET_AUDIENCE}}: simple, recognizable, strongly simplified, easy to paint, and still clearly tied to the uploaded photo.
 `.trim(),
     negativePrompt:
-      'unchanged photo, photo filter, photorealistic image, realistic rendering, realistic lighting, realistic shadow, lens blur, depth of field, bokeh, glossy reflection, complex reflection detail, texture detail, grass blade detail, leaf detail, feather detail, fur detail, flower seed detail, tiny pattern, grain, noise, tiny speckles, many small regions, many repeated patches, thin slivers, amorphous green blobs, abstract color fields, meaningless facets, black outlines, dark contour lines, coloring book line art, sketch, ink drawing, hatching, brush texture, watercolor texture, oil paint texture, adult illustration, unrelated object, invented scene, changed crop, changed viewpoint, changed main subject, wrong subject placement, any digit, numeral, number, label, letter, caption, signature, text-like mark, numbered template, numbers, labels, text, logos, watermarks',
+      'unchanged photo, photo filter, ordinary poster art, painterly illustration, photorealistic image, realistic rendering, realistic lighting, realistic shadow, soft shading, smooth gradients, lens blur, depth of field, bokeh, glossy reflection, complex reflection detail, texture detail, grass blade detail, leaf detail, feather detail, fur detail, flower seed detail, tiny pattern, grain, noise, tiny speckles, many small regions, many repeated patches, thin slivers, unclosed regions, unpaintable regions, amorphous green blobs, abstract color fields, meaningless facets, black outlines, dark contour lines, coloring book line art, sketch, ink drawing, hatching, brush texture, watercolor texture, oil paint texture, adult illustration, unrelated object, invented scene, changed crop, changed viewpoint, changed main subject, wrong subject placement, any digit, numeral, number, label, letter, caption, signature, text-like mark, numbered template, numbers, labels, text, logos, watermarks',
   },
   medium: {
     difficulty: 'medium',
@@ -118,7 +126,14 @@ The final result should be a child-friendly paint-by-numbers reference for {{TAR
     positivePromptTemplate: `
 Transform the uploaded photo into a medium-difficulty paint-by-numbers source image.
 
-Make a visibly stylized flat posterized illustration. The output must be clearly different from the photo and should look intentionally prepared for paint-by-numbers.
+Make a visibly stylized flat paint-by-numbers color plate. The output must be clearly different from the photo and should look intentionally prepared for tracing, numbering, and coloring.
+
+Paint-by-numbers priority:
+- The final image must read as an unnumbered paint-by-numbers color reference, not as ordinary poster art.
+- Every important object and background area should be rebuilt as closed, fillable paint cells.
+- Use crisp color-to-color boundaries so the later local generator can trace practical regions.
+- Favor deliberate paint regions over aesthetic painterly surfaces, gradients, or texture.
+- Each shadow, highlight, marking, and material change should become a bounded flat color cell or a small group of cells.
 
 Core requirement:
 - Redraw the image as clean flat color regions.
@@ -164,6 +179,7 @@ Keep medium detail:
 
 Style:
 - clean medium-level paint-by-numbers color reference
+- unnumbered paint-by-numbers color plate
 - visibly posterized image
 - deliberate flat paintable regions
 - vivid but source-faithful flat colors
@@ -186,7 +202,7 @@ Style:
 The result should look like a clean medium-level paint-by-numbers color reference for {{TARGET_AUDIENCE}}: recognizably based on the uploaded photo, visibly posterized, made from deliberate flat paintable regions, and noticeably more colorful and contrasted than a muted photo filter.
 `.trim(),
     negativePrompt:
-      'unchanged photo, lightly filtered photo, photo filter, photorealistic image, camera-realistic rendering, realistic lighting, realistic shadows, photographic texture, natural micro-detail, grass blade detail, leaf detail, leaf micro-detail, feather detail, fur detail, flower seed detail, detailed flower center, bark detail, water ripple detail, noisy gradients, grain, noise, speckles, tiny color cells, thin slivers, amorphous green blobs, abstract color fields, meaningless facets, black outlines, dark contour lines, coloring book line art, sketch, ink drawing, brush strokes, watercolor texture, oil paint texture, decorative symbol, sparkle, star, icon, unrelated objects, changed main subject, desaturated colors, graywashed palette, faded palette, pastel wash, low contrast, muddy middle tones, any digit, numeral, number, label, letter, caption, signature, text-like mark, numbered template, numbers, labels, text, logos, watermarks',
+      'unchanged photo, lightly filtered photo, photo filter, ordinary poster art, painterly illustration, photorealistic image, camera-realistic rendering, realistic lighting, realistic shadows, photographic texture, natural micro-detail, soft shading, smooth gradients, grass blade detail, leaf detail, leaf micro-detail, feather detail, fur detail, flower seed detail, detailed flower center, bark detail, water ripple detail, noisy gradients, grain, noise, speckles, tiny color cells, thin slivers, unclosed regions, unpaintable regions, amorphous green blobs, abstract color fields, meaningless facets, black outlines, dark contour lines, coloring book line art, sketch, ink drawing, brush strokes, watercolor texture, oil paint texture, decorative symbol, sparkle, star, icon, unrelated objects, changed main subject, desaturated colors, graywashed palette, faded palette, pastel wash, low contrast, muddy middle tones, any digit, numeral, number, label, letter, caption, signature, text-like mark, numbered template, numbers, labels, text, logos, watermarks',
   },
   expert: {
     difficulty: 'expert',
@@ -197,9 +213,16 @@ The result should look like a clean medium-level paint-by-numbers color referenc
     positivePromptTemplate: `
 Create an expert-level paint-by-numbers source illustration from the uploaded photo.
 
-This is not photo enhancement and not a photo filter. Rebuild the whole image as a detailed flat posterized illustration made from closed solid-color paint regions.
+This is not photo enhancement and not a photo filter. Rebuild the whole image as an unnumbered expert paint-by-numbers color plate made from closed solid-color paint regions.
 
-This is not photo enhancement. This is not a photo filter. Rebuild the whole image as a detailed flat posterized illustration made from closed paint regions.
+The output should feel like the colored reference sheet used before numbers and outlines are added, not like ordinary poster art or a stylized photo.
+
+Paint-by-numbers priority:
+- Every major and secondary form must be represented as traceable, closed, fillable paint cells.
+- Make boundaries between neighboring cells crisp through color changes, not black outlines.
+- Convert detail into controlled cell structure instead of leaving texture, gradients, or photographic surfaces.
+- Preserve expert-level subject detail only when it remains practical as bounded paint regions.
+- Make the region structure obvious enough that a later algorithm can trace and number the areas.
 
 Apply the transformation uniformly to every part of the image:
 - main subject
@@ -249,6 +272,7 @@ Expert difference from Medium:
 
 Style:
 - detailed flat posterized illustration
+- unnumbered expert paint-by-numbers color plate
 - many closed paintable regions
 - visibly non-photographic surfaces
 - crisp cell boundaries
@@ -261,7 +285,7 @@ Style:
 The final result should be an expert-level paint-by-numbers reference for {{TARGET_AUDIENCE}}: more detailed than Medium, uniformly transformed, visibly posterized, and made from clean paintable cells.
 `.trim(),
     negativePrompt:
-      'photo enhancement, unchanged photo, lightly filtered photo, photo filter, raw photo pixels, photorealistic image, photographic rendering, realistic lighting, realistic shadows, realistic texture, continuous gradients, lens blur, depth of field, bokeh, glossy reflection, grass blade texture, leaf texture, feather micro-detail, fur hair detail, flower seed noise, bark noise, water ripple noise, grain, sensor noise, random speckles, unpaintable micro-fragments, black outlines, dark contour lines, coloring book line art, sketch, ink, brush texture, watercolor texture, oil paint texture, generic cartoon, preschool style, decorative symbol, sparkle, star, unrelated objects, changed main subject, any digit, numeral, number, label, letter, caption, signature, text-like mark, numbered template, numbers, labels, text, logos, watermarks',
+      'photo enhancement, unchanged photo, lightly filtered photo, photo filter, ordinary poster art, painterly illustration, raw photo pixels, photorealistic image, photographic rendering, realistic lighting, realistic shadows, realistic texture, continuous gradients, soft shading, lens blur, depth of field, bokeh, glossy reflection, grass blade texture, leaf texture, feather micro-detail, fur hair detail, flower seed noise, bark noise, water ripple noise, grain, sensor noise, random speckles, unclosed regions, unpaintable regions, unpaintable micro-fragments, black outlines, dark contour lines, coloring book line art, sketch, ink, brush texture, watercolor texture, oil paint texture, generic cartoon, preschool style, decorative symbol, sparkle, star, unrelated objects, changed main subject, any digit, numeral, number, label, letter, caption, signature, text-like mark, numbered template, numbers, labels, text, logos, watermarks',
   },
 };
 
@@ -329,6 +353,8 @@ export function buildPaintByNumbersPosterizePrompt(input: PosterizePromptInput):
     '',
     'Output constraints:',
     '- Output a normal clean image only, not a numbered template.',
+    '- Treat the output as an unnumbered paint-by-numbers color plate with closed, fillable paint regions.',
+    '- Prioritize traceable paint-cell structure over ordinary posterization, painterly style, or photographic smoothing.',
     '- Never include digits, numerals, numbers, labels, letters, captions, signatures, watermarks, or text-like marks.',
     `- Keep the useful image size within about ${input.maxEdge}px on the longest edge.`,
   ].join('\n');

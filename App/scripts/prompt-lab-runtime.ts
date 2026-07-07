@@ -45,6 +45,8 @@ export function buildPromptLabPosterizePrompt(input: PromptLabBuildPromptInput):
     '',
     'Output constraints:',
     '- Output a normal clean image only, not a numbered template.',
+    '- Treat the output as an unnumbered paint-by-numbers color plate with closed, fillable paint regions.',
+    '- Prioritize traceable paint-cell structure over ordinary posterization, painterly style, or photographic smoothing.',
     `- Keep the useful image size within about ${maxEdge}px on the longest edge.`,
   ].join('\n');
 }

@@ -206,7 +206,7 @@ Die Shell sendet `WebViewHostEvent` zurueck:
 
 Die Bridge ist request-ID-basiert. Die UI merkt sich aktive Request-IDs fuer Pick, Posterize, Run und Share, damit nur relevante Events den aktuellen Screen veraendern.
 
-## 4. KI-Call und Bildposterisierung
+## 4. KI-Call und KI-Bildvorbereitung
 
 ### 4.1 Wo der KI-Call gestartet wird
 
@@ -378,6 +378,8 @@ Das lokale Paint-by-Numbers-Verfahren arbeitet also nicht auf dem Originalfoto, 
 
 Die Prompt-Quelle ist `react-app/src/prompts/paintByNumbersPosterizePrompt.ts`.
 
+Die Prompts sind bewusst nicht nur als einfache Posterisierung formuliert. Das Ziel ist ein unnummeriertes Paint-by-Numbers-Farbplattenbild: ein sauberes farbiges Referenzbild aus geschlossenen, spaeter trace- und nummerierbaren Malflaechen. Nummern, Buchstaben, Labels und schwarze Konturen bleiben weiterhin verboten, weil die lokale Generator-Pipeline danach selbst Grenzen, Labels und Ausgabevarianten erzeugt.
+
 Die UI bietet keinen separaten Difficulty-Dropdown. Die Difficulty ergibt sich aus der Farbanzahl:
 
 | Farbanzahl | Preset in UI | Prompt-Difficulty | Label im Prompt-Code |
@@ -393,8 +395,10 @@ Der finale Prompt besteht immer aus:
 3. Negative Prompt der Variante
 4. zusaetzlich: `numbers, labels, text, logos, watermarks`
 5. Abschnitt `Output constraints:`
-6. Bild darf keine Nummern, Buchstaben, Labels oder Wasserzeichen enthalten
-7. laengste nutzbare Bildkante soll ungefaehr innerhalb von `1024 px` bleiben
+6. Bild muss als unnummerierte Paint-by-Numbers-Farbplatte mit geschlossenen, fuellbaren Malregionen gedacht sein
+7. tracebare Paint-Cell-Struktur hat Vorrang vor normaler Poster-Art, malerischem Stil oder fotografischer Glaettung
+8. Bild darf keine Nummern, Buchstaben, Labels oder Wasserzeichen enthalten
+9. laengste nutzbare Bildkante soll ungefaehr innerhalb von `1024 px` bleiben
 
 ### 5.1 Easy
 
@@ -414,6 +418,8 @@ Wichtige positive Anforderungen:
 
 - Hauptmotiv, Komposition, Crop und Objektplatzierung beibehalten
 - Vordergrund, Mittelgrund, Hintergrund und Horizontstruktur grob erhalten
+- Ausgabe als unnummerierte Paint-by-Numbers-Farbplatte priorisieren
+- alle sichtbaren Formen als geschlossene, fuellbare Malflaechen mit klaren Farbkanten anlegen
 - Foto stark vereinfachen
 - realistische Textur, Licht, Schatten und Reflexionen entfernen
 - wenige grosse Regionen pro Material oder Objekt
@@ -432,8 +438,10 @@ Motivregeln:
 Negative Prompt verhindert insbesondere:
 
 - unveraendertes Foto oder Fotofilter
+- normale Poster-Art oder malerische Illustration ohne klare Malregionen
 - Fotorealismus
 - realistische Beleuchtung/Schatten
+- weiche Schattierung, glatte Gradienten und ungeschlossene/unmalbare Regionen
 - kleine Texturen wie Gras, Blaetter, Federn, Fell, Bluetensamen
 - viele kleine Regionen und wiederholte Patches
 - amorphe gruene Flecken
@@ -463,6 +471,9 @@ Medium soll eine sichtbar stilisierte, flache, posterisierte Illustration erzeug
 Wichtige positive Anforderungen:
 
 - Bild als klare flache Farbregionen neu zeichnen
+- Ausgabe als unnummerierte Paint-by-Numbers-Farbplatte statt als normale Poster-Art anlegen
+- wichtige Objekte und Hintergrundbereiche als geschlossene, fuellbare Paint-Cells aufbauen
+- klare Farbkanten fuer die spaetere lokale Tracing- und Nummerierungsstufe erzeugen
 - Hauptmotiv, Crop und Komposition wiedererkennbar erhalten
 - Originale Farbidentitaet und wichtige Kontraste erhalten
 - natuerliche Hintergrundmassen als erkennbare stilisierte Objekte vereinfachen
@@ -476,7 +487,9 @@ Wichtige positive Anforderungen:
 Negative Prompt verhindert insbesondere:
 
 - leicht gefiltertes Foto
+- normale Poster-Art oder malerische Illustration ohne Paint-Cell-Struktur
 - photorealistische Oberflaechen
+- weiche Schattierung, glatte Gradienten und ungeschlossene/unmalbare Regionen
 - Gras-/Blatt-/Feder-/Fell-Mikrodetails
 - winzige Zellen und duenne Splitter
 - graue, blasse, pastellige oder kontrastarme Palette
@@ -505,6 +518,8 @@ Expert soll ein detailliertes flaches Zellbild erzeugen. Es soll mehr lokale Str
 Wichtige positive Anforderungen:
 
 - ganzes Bild als detaillierte flache posterisierte Illustration neu aufbauen
+- Ergebnis als unnummerierte Expert-Paint-by-Numbers-Farbplatte aus tracebaren, geschlossenen Malzellen erzeugen
+- Detail nur behalten, wenn es als klar begrenzte Paint-Cell-Struktur praktisch malbar bleibt
 - Transformation gleichmaessig auf Hauptmotiv, Hintergrund, Gras, Wasser, Reflexionen, Himmel, Wolken und Nebenobjekte anwenden
 - viele geschlossene malbare Regionen
 - mehr Detail und mehr Regionen als Medium
@@ -518,8 +533,10 @@ Negative Prompt verhindert insbesondere:
 
 - Photo enhancement
 - unveraendertes oder leicht gefiltertes Foto
+- normale Poster-Art oder malerische Illustration ohne Paint-Cell-Struktur
 - raw photo pixels
 - kontinuierliche Gradienten
+- weiche Schattierung und ungeschlossene/unmalbare Regionen
 - realistische Texturen
 - Mikrodetails wie Grasblaetter, Fellhaare, Federn, Samen, Rindenrauschen
 - unmalbare Mikrofragmente
