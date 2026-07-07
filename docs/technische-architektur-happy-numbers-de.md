@@ -74,7 +74,7 @@ Wichtig: Die aktuelle iPhone-App ist kein reiner Browser und keine reine native 
 - `App/src/features/generator/generatePaintByNumbers.ts`
   Einstiegspunkt der bisherigen lokalen Paint-by-Numbers-Pipeline fuer ein `ImagePickerAsset`. Dieser Pfad bleibt als Legacy-Fallback im Repository und kann ueber `EXPO_PUBLIC_GENERATOR_PIPELINE=legacy` als aktiver Generator ausgewaehlt werden.
 
-- `pipeline_new/src/generatePaintByNumbersNew.ts`
+- `App/src/features/generator/fresh/generatePaintByNumbersFresh.ts`
   Aktiver TypeScript-Port der Region-First-Fresh-Pipeline. `App/App.tsx` importiert diesen Generator und nutzt ihn standardmaessig, wenn `EXPO_PUBLIC_GENERATOR_PIPELINE` leer ist oder auf `fresh` steht.
 
 - `App/src/features/generator/prepareImage.ts`
@@ -100,18 +100,15 @@ Wichtig: Die aktuelle iPhone-App ist kein reiner Browser und keine reine native 
 - `App/src/features/generator/localWebViewLoader.ts`
   Materialisiert dieses generierte Manifest beim App-Start in den Expo-Cache und liefert `indexUri` und `rootUri` fuer die WebView.
 
-- `App/metro.config.js`
-  Erweitert den Metro-Watch-Scope auf das Repository-Root, damit `App/` den externen Ordner `pipeline_new/` beim Bundling importieren kann.
-
 ### Referenz- und Analysepfade
 
-- `paint_by_numbers.py`
+- `reference/python-pipeline/paint_by_numbers.py`
   Python-Referenzpipeline und Batch-Exporter. Relevant fuer algorithmische Paritaet, Debug-Artefakte und Vergleichsbilder.
 
 - `docs/pipeline-uebersicht-de.md`
   Aeltere, pipelinefokussierte Uebersicht. Sie beschreibt besonders den Python/Web-Referenzkontext und ist nicht vollstaendig identisch mit dem aktuellen `App/`-Produktivpfad.
 
-- `output/`
+- `reference/python-pipeline/output/`
   Referenz- und Debugbilder der Python-Pipeline.
 
 - `prompt-lab/`
@@ -120,8 +117,14 @@ Wichtig: Die aktuelle iPhone-App ist kein reiner Browser und keine reine native 
 - `pipeline-lab/`
   Analysen zur Pipeline-Verbesserung.
 
-- `KI Testbilder/`
-  Lokal erzeugte KI-Zwischenbilder fuer alle aktuell enthaltenen `test_images` in Easy 8, Medium 12 und Expert 24. Diese Bilder dienen als stabiler Testkorpus fuer weitere Pipeline-Refinements.
+- `test-assets/source-photos/`
+  Kuratierte Original-Testfotos fuer Prompt- und Pipeline-Suites.
+
+- `test-assets/ai-posterized/`
+  Lokal erzeugte KI-Zwischenbilder fuer alle aktuell enthaltenen Source-Fotos in Easy 8, Medium 12 und Expert 24. Diese Bilder dienen als stabiler Testkorpus fuer weitere Pipeline-Refinements.
+
+- `test-assets/legacy-samples/`
+  Aeltere Einzelbilder, die frueher lose im Repository-Root lagen.
 
 ## 3. Laufzeitarchitektur
 
@@ -632,7 +635,7 @@ Am selben Tag wurde die Expert-Reduktion um adaptives Merging erweitert. Die neu
 
 Fresh-Port-Zusatz:
 
-Der aktive TypeScript-Fresh-Port in `pipeline_new/src/generatePaintByNumbersNew.ts` liest weiterhin `kMeansNrOfClusters` und `maximumNumberOfFacets` aus den UI-Settings, nutzt fuer seine Region-First-Geometrie aber eigene farbanzahlabhaengige Mindestflaechen:
+Der aktive TypeScript-Fresh-Port in `App/src/features/generator/fresh/generatePaintByNumbersFresh.ts` liest weiterhin `kMeansNrOfClusters` und `maximumNumberOfFacets` aus den UI-Settings, nutzt fuer seine Region-First-Geometrie aber eigene farbanzahlabhaengige Mindestflaechen:
 
 | Farbanzahl | Fresh-Min-Ratio | Fresh-Min-Pixel | Detailschutz ab |
 | ---: | ---: | ---: | ---: |
@@ -653,7 +656,7 @@ Im bisherigen Raster-Pfad ist der Einstieg:
 
 Der aktive App-Einstieg wird in `App/App.tsx` ueber `EXPO_PUBLIC_GENERATOR_PIPELINE` gewaehlt:
 
-- unset oder `fresh`: `pipeline_new/src/generatePaintByNumbersNew.ts`
+- unset oder `fresh`: `App/src/features/generator/fresh/generatePaintByNumbersFresh.ts`
 - `legacy`: `App/src/features/generator/generatePaintByNumbers.ts`
 
 Damit kann `main` die neue Fresh-Pipeline standardmaessig nutzen, ohne den bisherigen Raster-Pfad zu verlieren. Beide Generatoren bleiben statisch importiert, damit der Build beide Pfade kennt; zur Laufzeit entscheidet nur die Env-Variable.
@@ -1098,14 +1101,14 @@ Branch-Experiment vom 2026-07-07:
 
 - Branch: `experiment/fresh-paint-pipeline`
 - Python-Lab-Skript: `pipeline-lab/fresh_region_pipeline.py`
-- App-Port: `pipeline_new/src/generatePaintByNumbersNew.ts`
+- App-Port: `App/src/features/generator/fresh/generatePaintByNumbersFresh.ts`
 - Suite: `pipeline-lab/suites/2026-07-07-fresh-region-first-24c.json`
 - KI-Quellbild-Suite: `prompt-lab/suites/2026-07-07-test-images-current-expert-paint-map.json`
 - Basis-Referenzlauf: `pipeline-lab/runs/2026-07-07T13-36-53-088Z_fresh-region-first-24c-smoothed-final/`
 - Aktueller source-aware Vergleichslauf: `pipeline-lab/runs/2026-07-07T19-17-58-275Z_fresh-region-first-24c-source-aware-ratio-00012/`
 - Iterationsprotokoll: `pipeline-lab/2026-07-07-fresh-source-aware-merge-iterations.md`
 
-Die Pipeline begann als isolierte Lab-Parallelwelt. Sie ist zusaetzlich als TypeScript-Port in `pipeline_new/` vorhanden und wird von `App/App.tsx` standardmaessig als aktiver Generator ausgefuehrt. Die sichtbare React-WebView-UI bleibt unveraendert; sie sendet weiterhin `runPaintByNumbers` an die Expo-Shell. Der Unterschied liegt im Shell-Handler: Standardmaessig wird `pipeline_new/src/generatePaintByNumbersNew.ts` ausgefuehrt; mit `EXPO_PUBLIC_GENERATOR_PIPELINE=legacy` wird stattdessen `App/src/features/generator/generatePaintByNumbers.ts` verwendet.
+Die Pipeline begann als isolierte Lab-Parallelwelt. Der TypeScript-Port ist inzwischen unter `App/src/features/generator/fresh/` in den App-Generatorbereich einsortiert und wird von `App/App.tsx` standardmaessig als aktiver Generator ausgefuehrt. Die sichtbare React-WebView-UI bleibt unveraendert; sie sendet weiterhin `runPaintByNumbers` an die Expo-Shell. Der Unterschied liegt im Shell-Handler: Standardmaessig wird `App/src/features/generator/fresh/generatePaintByNumbersFresh.ts` ausgefuehrt; mit `EXPO_PUBLIC_GENERATOR_PIPELINE=legacy` wird stattdessen `App/src/features/generator/generatePaintByNumbers.ts` verwendet.
 
 Die Artefakte in `pipeline-lab/runs/` sind lokale Vergleichsausgaben und bleiben wie bisher durch `.gitignore` vom normalen Commit ausgeschlossen.
 
@@ -1281,7 +1284,7 @@ Die Codepfade existieren, aber die UI-Settings setzen die Durchlaufzahlen auf `0
 
 ### 11.4 Python bleibt Referenz fuer Paritaetsfragen
 
-`paint_by_numbers.py` und die Artefakte in `output/` sind weiterhin wichtig, wenn algorithmische Qualitaet oder Paritaet bewertet wird. Der aktuelle produktive App-Pfad verwendet aber die WebView-Shell-Architektur in `App/` und nicht direkt die aeltere native OpenCV-Portbeschreibung.
+`reference/python-pipeline/paint_by_numbers.py` und die Artefakte in `reference/python-pipeline/output/` sind weiterhin wichtig, wenn algorithmische Qualitaet oder Paritaet bewertet wird. Der aktuelle produktive App-Pfad verwendet aber die WebView-Shell-Architektur in `App/` und nicht direkt die aeltere native OpenCV-Portbeschreibung.
 
 ## 12. Praktische Entwicklungsregeln
 

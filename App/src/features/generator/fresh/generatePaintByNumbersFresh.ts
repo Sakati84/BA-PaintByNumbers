@@ -1,9 +1,9 @@
 import type { ImagePickerAsset } from 'expo-image-picker';
-import '../../App/src/features/generator/textDecoderCompatibility';
+import '../textDecoderCompatibility';
 import { encode } from 'fast-png';
 
-import type { SimpleImageData } from '../../App/src/types/imageData';
-import { uint8ToBase64 } from '../../App/src/features/generator/base64';
+import type { SimpleImageData } from '../../../types/imageData';
+import { uint8ToBase64 } from '../base64';
 import type {
   GeneratorDebugStageSnapshot,
   GeneratorOutputVariant,
@@ -14,8 +14,8 @@ import type {
   GeneratorStage,
   GeneratorTimings,
   PaletteStat,
-} from '../../App/src/features/generator/generatorTypes';
-import { preparePickedImageForGenerator } from '../../App/src/features/generator/prepareImage';
+} from '../generatorTypes';
+import { preparePickedImageForGenerator } from '../prepareImage';
 
 const WORK_MAX_EDGE = 1400;
 const TOKEN_BINS_PER_CHANNEL = 4;

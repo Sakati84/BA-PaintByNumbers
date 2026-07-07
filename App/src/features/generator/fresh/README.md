@@ -1,18 +1,14 @@
-# pipeline_new
+# Fresh Generator
 
-Experimenteller TypeScript-Port der Region-First-Paint-by-Numbers-Pipeline.
+App-integrierter TypeScript-Port der Region-First-Paint-by-Numbers-Pipeline.
 
-Dieser Ordner ist absichtlich getrennt vom bisherigen Generator unter `App/src/features/generator/`.
-`App/App.tsx` importiert auf diesem Branch den neuen Generator direkt aus:
+Dieser Ordner gehoert zum aktuellen Expo-Runtime-Code unter `App/`. `App/App.tsx`
+waehlt diesen Generator standardmaessig fuer `runPaintByNumbers`. Der alte
+Generator bleibt parallel unter `App/src/features/generator/generatePaintByNumbers.ts`
+erhalten und kann mit `EXPO_PUBLIC_GENERATOR_PIPELINE=legacy` aktiviert werden.
 
-```text
-pipeline_new/src/generatePaintByNumbersNew.ts
-```
-
-Damit Expo/Metro den externen Ordner beim App-Bundling sieht, erweitert `App/metro.config.js`
-den Watch-Scope auf das Repository-Root.
-
-Der Port ist eine app-taugliche Annäherung an den Python-Prototyp:
+Der Port ist eine app-taugliche Annaeherung an die Python-Referenz in
+`reference/python-pipeline/paint_by_numbers.py`:
 
 1. Bild auf maximal 1400 px Kantenlaenge vorbereiten.
 2. Kantenbewusst lokal glaetten.

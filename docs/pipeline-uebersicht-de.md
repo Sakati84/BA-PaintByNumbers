@@ -2,12 +2,14 @@
 
 ## Ziel dieses Dokuments
 
-Dieses Dokument beschreibt die aktuelle Paint-by-Numbers-Pipeline im Repository so, wie sie heute implementiert ist. Es trennt sauber zwischen:
+Dieses Dokument ist eine pipelinefokussierte Referenz und beschreibt vor allem den aelteren
+Python-/Browser-Paritaetskontext. Fuer die aktuelle installierte App-Architektur ist
+`docs/technische-architektur-happy-numbers-de.md` massgeblich. Dieses Dokument trennt sauber zwischen:
 
 - dem interaktiven Browser-Pfad in `react-app`
-- dem Python-Referenzpfad in `paint_by_numbers.py`
+- dem Python-Referenzpfad in `reference/python-pipeline/paint_by_numbers.py`
 - den Paritaetszielen aus `react-app/src/lib/parityPlan.ts`
-- den derzeit tatsächlich erzeugten Artefakten in `output/`
+- den derzeit tatsächlich erzeugten Artefakten in `reference/python-pipeline/output/`
 
 Wichtig: Im Repository existieren im Moment nicht nur unterschiedliche Laufzeitumgebungen, sondern auch unterschiedliche fachliche Zuschnitte derselben Pipeline. Der Python-CLI-Pfad ist die vollstaendige Referenz fuer den Batch-Export. Die React-App ist ein interaktiver, schrittweiser Debug- und Visualisierungspfad. Beide ueberlappen stark, sind aber nicht pixelgenau identisch.
 
@@ -38,7 +40,7 @@ Die aktuelle React-UI exponiert davon nur sechs sichtbare Schritte. Der explizit
   Bildverarbeitung, Regionensegmentierung, Merge-Logik, Label-Platzierung, Template-Rendering.
 - `react-app/src/lib/parityPlan.ts`
   Soll-Abbildung Browser gegen Python-Referenz in acht Stufen.
-- `paint_by_numbers.py`
+- `reference/python-pipeline/paint_by_numbers.py`
   Python-Referenzpipeline inklusive CLI, Debug-Outputs, JSON-Reports und Template-Export.
 
 ### Historischer/sekundärer Pfad
@@ -80,7 +82,7 @@ flowchart TD
 | --- | --- | --- | --- |
 | Interaktive UI-Pipeline | `App.tsx` + `worker.ts` | Schrittweise Analyse im Browser | 6 Schritte |
 | Monolithische Browser-Referenz | `runCurrentStage()` in `pipeline.ts` | Vollstaendige 8-Stufen-Abfolge mit Debug-Captures | 8 Schritte, derzeit nicht verdrahtet |
-| Python-Referenz | `paint_by_numbers.py` | Batch-Erzeugung der finalen Outputs | Vollstaendige Referenz |
+| Python-Referenz | `reference/python-pipeline/paint_by_numbers.py` | Batch-Erzeugung der finalen Outputs | Vollstaendige Referenz |
 
 ## Steuerfluss in der React-App
 
@@ -505,7 +507,7 @@ Die Browser-Renderlogik verwendet aktuell fuer Label-Platzierung nicht den UI-We
 
 ## Ausgabeartefakte
 
-## Python-Hauptartefakte in `output/`
+## Python-Hauptartefakte in `reference/python-pipeline/output/`
 
 - `cleanup.png`
 - `template_classic.png`
@@ -531,7 +533,7 @@ Die Browser-Renderlogik verwendet aktuell fuer Label-Platzierung nicht den UI-We
 
 Diese Debug-Dateien sind entscheidend fuer die Paritaetsarbeit, weil sie genau die Zwischenstufen sichtbar machen, die die Browser-Implementierung Schritt fuer Schritt nachbauen soll.
 
-## Beispiel: Aktueller Report in `output/`
+## Beispiel: Aktueller Report in `reference/python-pipeline/output/`
 
 Der aktuell vorliegende `paintability_report.json` beschreibt fuer das Beispielbild folgende Kennzahlen:
 
@@ -589,14 +591,14 @@ Enthaelt:
 
 Die wichtigsten Validierungsziele sind:
 
-1. Normalize gegen `output/step_normalized.png`
-2. Smooth gegen `output/step_smooth.png`
-3. Quantize gegen `output/step_quantized.png`
-4. Strip Cleanup gegen `output/step_strip_cleanup.png`
-5. Protrusion Prune gegen `output/step_protrusion_prune.png`
-6. Region Merge gegen `output/cleanup.png` plus Reportdaten
-7. Label Placement gegen `output/template_bright_color_circles.png`
-8. Final Render gegen `output/template_bright_color_circles.png`
+1. Normalize gegen `reference/python-pipeline/output/step_normalized.png`
+2. Smooth gegen `reference/python-pipeline/output/step_smooth.png`
+3. Quantize gegen `reference/python-pipeline/output/step_quantized.png`
+4. Strip Cleanup gegen `reference/python-pipeline/output/step_strip_cleanup.png`
+5. Protrusion Prune gegen `reference/python-pipeline/output/step_protrusion_prune.png`
+6. Region Merge gegen `reference/python-pipeline/output/cleanup.png` plus Reportdaten
+7. Label Placement gegen `reference/python-pipeline/output/template_bright_color_circles.png`
+8. Final Render gegen `reference/python-pipeline/output/template_bright_color_circles.png`
 
 ### Was heute bereits gut deckungsgleich ist
 

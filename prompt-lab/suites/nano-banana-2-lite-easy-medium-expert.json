@@ -7,10 +7,10 @@
     "temperature": 0.2
   },
   "inputs": [
-    "../../test_images/IMG_1394.JPG",
-    "../../test_images/IMG_1681.PNG",
-    "../../test_images/IMG_1704.JPG",
-    "../../test_images/IMG_1998.JPG"
+    "../../test-assets/source-photos/IMG_1394.JPG",
+    "../../test-assets/source-photos/IMG_1681.PNG",
+    "../../test-assets/source-photos/IMG_1704.JPG",
+    "../../test-assets/source-photos/IMG_1998.JPG"
   ],
   "cases": [
     {

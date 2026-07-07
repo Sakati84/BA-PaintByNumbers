@@ -7,7 +7,7 @@
     "temperature": 0.2
   },
   "inputs": [
-    "../../tree.png"
+    "../../test-assets/legacy-samples/tree.png"
   ],
   "cases": [
     {

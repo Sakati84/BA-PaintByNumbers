@@ -9,7 +9,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import {
   generatePaintByNumbers as generateFreshPaintByNumbers,
   type GeneratorPipelineDebugCache as FreshGeneratorPipelineDebugCache,
-} from '../pipeline_new/src/generatePaintByNumbersNew';
+} from './src/features/generator/fresh/generatePaintByNumbersFresh';
 import { ensureLocalWebViewBundle } from './src/features/generator/localWebViewLoader';
 import {
   generatePaintByNumbers as generateLegacyPaintByNumbers,

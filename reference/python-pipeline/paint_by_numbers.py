@@ -173,7 +173,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         description="Turn a flat-color AI/cartoon image into a paint-by-number template.",
     )
     parser.add_argument("image", type=Path, help="Input image path")
-    parser.add_argument("--out-dir", type=Path, default=Path("output"), help="Output directory. It is cleared before each run.")
+    parser.add_argument(
+        "--out-dir",
+        type=Path,
+        default=Path(__file__).resolve().parent / "output",
+        help="Output directory. It is cleared before each run.",
+    )
 
     parser.add_argument(
         "--color-count",

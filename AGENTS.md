@@ -19,7 +19,7 @@ This repository has these important runtime and reference paths:
   React + TypeScript UI that is embedded into `App/` as a local WebView bundle. It owns the visible app flow, color-count UI, prompt selection/building, bridge requests, progress display, result screen, and export controls. In a normal browser it can be used for UI preview, but the full flow needs the Expo WebView host.
 
 - `App/src/features/generator/`
-  Current local Paint-by-Numbers generator used by the installed app. It prepares images, runs K-Means through vendored generator code, merges redundant palette colors, builds/merges regions, places labels, and renders PNG/SVG variants.
+  Current local Paint-by-Numbers generator area used by the installed app. The default Fresh generator lives in `App/src/features/generator/fresh/`; the previous generator remains in `App/src/features/generator/generatePaintByNumbers.ts` as the `EXPO_PUBLIC_GENERATOR_PIPELINE=legacy` fallback.
 
 - `App/src/features/imagePosterization/`
   Current KI image-posterization integration. It prepares the upload image, calls Gemini/Nano Banana directly when an API key is present, otherwise calls a configured proxy endpoint, and registers the generated posterized image for the local generator.
@@ -27,8 +27,8 @@ This repository has these important runtime and reference paths:
 - `App/src/vendor/paintbynumbersgenerator/`
   Vendored TypeScript implementation used by the current generator for color reduction, LAB conversion, settings, and supporting data structures.
 
-- `paint_by_numbers.py`
-  Python reference pipeline and batch exporter. Treat this as the highest-fidelity behavioral reference for final algorithmic/parity questions and debug artifacts in `output/`.
+- `reference/python-pipeline/paint_by_numbers.py`
+  Python reference pipeline and batch exporter. Treat this as the highest-fidelity behavioral reference for final algorithmic/parity questions and debug artifacts in `reference/python-pipeline/output/`.
 
 - `docs/`
   Human-readable project documentation. `docs/technische-architektur-happy-numbers-de.md` is the current architecture document and must be maintained continuously.
@@ -38,6 +38,9 @@ This repository has these important runtime and reference paths:
 
 - `pipeline-lab/`
   Pipeline analysis and improvement notes.
+
+- `test-assets/`
+  Curated source photos, AI-posterized test images, and older loose sample files.
 
 ## Current Product Flow
 
@@ -70,13 +73,14 @@ Use these files as primary references before changing behavior:
 - Expo shell/bridge handlers: `App/App.tsx`
 - KI call: `App/src/features/imagePosterization/posterizeImageWithNanoBanana.ts`
 - Gemini request parsing/body: `App/src/features/imagePosterization/geminiImageRequest.ts`
-- Generator entry: `App/src/features/generator/generatePaintByNumbers.ts`
+- Fresh generator entry: `App/src/features/generator/fresh/generatePaintByNumbersFresh.ts`
+- Legacy generator entry: `App/src/features/generator/generatePaintByNumbers.ts`
 - Image preparation: `App/src/features/generator/prepareImage.ts`
 - Generator settings: `App/src/features/generator/defaultSettings.ts`
 - Palette helpers: `App/src/features/generator/pipelineCore.ts`
 - Raster/region/render pipeline: `App/src/features/generator/rasterPaintByNumbers.ts`
-- Python reference: `paint_by_numbers.py`
-- Reference outputs: `output/`
+- Python reference: `reference/python-pipeline/paint_by_numbers.py`
+- Reference outputs: `reference/python-pipeline/output/`
 
 ## Prompt And KI Rules
 
@@ -313,7 +317,7 @@ For App/shell/pipeline changes:
 
 - Run `npm run typecheck --prefix ./App`.
 - If React bridge types or UI are affected, also run `npm run typecheck --prefix ./react-app`.
-- For pipeline changes, compare visual output against relevant references in `output/` or create/inspect pipeline-lab artifacts.
+- For pipeline changes, compare visual output against relevant references in `reference/python-pipeline/output/` or create/inspect pipeline-lab artifacts.
 
 Do not assume a passing typecheck means visual parity is correct. For this project, pixel-level, region-level, and human visual checks are often more important than compile success.
 
@@ -326,7 +330,7 @@ Do not assume a passing typecheck means visual parity is correct. For this proje
 5. If a change affects KI prompt behavior, update prompt docs and architecture docs.
 6. If a change affects bridge messages, update both sender and receiver types/handlers.
 7. If a change affects output variants, update generator types, render code, result UI, export behavior, and docs together.
-8. Treat `paint_by_numbers.py` and `output/` as algorithmic/parity references, not as the current installed-app runtime.
+8. Treat `reference/python-pipeline/paint_by_numbers.py` and `reference/python-pipeline/output/` as algorithmic/parity references, not as the current installed-app runtime.
 9. Never run npm install at repository root.
 
 ## Short Version For Future Agents

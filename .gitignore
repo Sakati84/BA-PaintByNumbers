@@ -60,8 +60,8 @@ ios/build/
 # Project-specific generated files
 react-app-native-expo/expo-*.log
 react-app-native-expo_2/expo-*.log
-output/*_pipeline_*/
-output/*_pipeline_comparison.png
+reference/python-pipeline/output/*_pipeline_*/
+reference/python-pipeline/output/*_pipeline_comparison.png
 prompt-lab/runs/
 App/.prompt-lab-cache/
 pipeline-lab/runs/

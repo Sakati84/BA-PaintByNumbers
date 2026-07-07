@@ -20,8 +20,8 @@ const defaultTemperature = 0.2;
 function printUsage() {
   console.log(`Usage:
   npm run prompt:lab -- --suite ./prompt-lab/suites/expert-ab.example.json
-  npm run prompt:lab -- --image ./dog.jpg --variant expert --colors 24 --seed 1234
-  npm run prompt:lab -- --image ./dog.jpg --prompt ./prompt-lab/prompts/expert-v2.md --seed 1234
+  npm run prompt:lab -- --image ./test-assets/legacy-samples/dog.jpg --variant expert --colors 24 --seed 1234
+  npm run prompt:lab -- --image ./test-assets/legacy-samples/dog.jpg --prompt ./prompt-lab/prompts/expert-v2.md --seed 1234
 
 Options:
   --suite <file>       Run a JSON suite.
