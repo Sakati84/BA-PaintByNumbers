@@ -1011,7 +1011,7 @@ Datei:
 
 - `App/src/features/generator/rasterPaintByNumbers.ts`
 
-Die Pipeline rendert derzeit mehrere Varianten. Jede Variante bekommt:
+Die bisherige Raster-Pipeline rendert mehrere Varianten. Jede Variante bekommt:
 
 - PNG-Base64
 - PNG-Breite/Hoehe
@@ -1033,7 +1033,7 @@ Aktuelle Varianten:
 | `classic` | Klassisch farbig | posterisiertes Farbbild mit schwarzen Grenzen |
 | `debugUnlabeled` | Debug-Regionen | Region-IDs sichtbar eingefaerbt, keine Marker |
 
-Default-Variante:
+Default-Variante der bisherigen Raster-Pipeline:
 
 - `brightColorCircles`
 
@@ -1042,7 +1042,7 @@ Debug-Mode-Variante:
 - Im Debug Mode rendert die Pipeline als finales Ergebnis nur `classic`.
 - Vergleichsvarianten `inputImage` und `aiPosterizedImage` werden im Debug Mode nicht an das Ergebnis angehaengt, weil die Stage-Snapshots die Pipeline-Diagnose uebernehmen und die Bridge-Payload kleiner bleiben soll.
 
-Render-Details:
+Render-Details der bisherigen Raster-Pipeline:
 
 - PNG-Ausgaben werden intern hoeher gerendert und danach auf die Ausgabeaufloesung heruntergerechnet (`PNG_RENDER_SCALE = 3`, `PNG_OUTPUT_SCALE = 2`). Dadurch werden Kanten und Marker lokal antialiasiert.
 - PNG-Umrisse werden entlang des globalen Single-Boundary-Layers gezeichnet. Die alte Block-Linie aus direkten Pixelnachbarschaften wird nicht mehr als sichtbarer Umriss gerendert.
@@ -1051,16 +1051,7 @@ Render-Details:
 
 Zusaetzliche Vergleichsvarianten:
 
-`App/App.tsx` haengt nach dem Generatorlauf bei KI-Quellen noch Vergleichsbilder an:
-
-- `inputImage`: Originalbild vor KI-Vereinfachung
-- `aiPosterizedImage`: KI-Bild vor lokaler Pipeline
-
-Diese Vergleichsbilder helfen, die drei wichtigen Stufen visuell zu verstehen:
-
-1. Originalfoto
-2. KI-vereinfachtes Farbbild
-3. lokal berechnete Malvorlage
+Auf dem Experiment-Branch `experiment/fresh-paint-pipeline` haengt `App/App.tsx` im normalen Resultat keine Vergleichsbilder mehr an. Der Output-Dropdown enthaelt dadurch nur echte Generator-Ausgaben. Die Typ-IDs `inputImage` und `aiPosterizedImage` bleiben fuer spaetere Vergleichsansichten erhalten, werden aber aktuell nicht automatisch als exportierbare Varianten an `runCompleted` angefuegt.
 
 ### 7.11 Experimentelle Region-First-Parallelpipeline
 
@@ -1091,11 +1082,13 @@ Der Ansatz startet bewusst nicht mit der produktiven Pixel-K-Means-Pipeline. Sta
 
 Aktuelle App-Ausgabevarianten des TypeScript-Ports:
 
-- `classic`: farbige Region-First-Ausgabe mit geglaetteten schwarzen Grenzen; Default im neuen Port.
-- `cleanColor`: farbige Region-First-Ausgabe ohne Grenzen.
-- `brightColorCircles`: kompatibler Alias auf die Classic-Ausgabe, damit bestehende UI-/Exportannahmen nicht brechen.
+- `cleanColor`: Fresh Clean, farbige Region-First-Ausgabe ohne Grenzen oder Marker. Diese Variante ist der Default im normalen Fresh-Port.
+- `coloredEdges`: weisse Vorlage mit farbigen Regionenkanten.
+- `coloredEdgesWithDots`: weisse Vorlage mit farbigen Regionenkanten und Farbpunkten pro finaler Region.
 
-Nummern, Labelplatzierung, Farbpunkte und die vollstaendige alte Variantenliste sind im TypeScript-Port noch nicht implementiert.
+Fuer Debug-Reruns bleibt `classic` als interne Variante verfuegbar, wenn `variantIds: ['classic']` angefordert wird. Sie wird im normalen Output nicht mehr angeboten.
+
+Jede dieser Varianten liefert `pngBase64` und `svg`. Die SVG-Datei ist derzeit ein kompatibler SVG-Container mit eingebettetem PNG der jeweiligen Variante. Sie ist damit teil- und speicherbar, aber noch kein echtes Region-Vektor-SVG. Nummern, echte Textlabels und die vollstaendige alte Variantenliste sind im TypeScript-Port noch nicht implementiert. Farbpunkte werden als einfache Kreise nahe am Schwerpunkt jeder finalen Region platziert.
 
 Der wichtigste Unterschied zur produktiven Pipeline:
 
@@ -1144,6 +1137,8 @@ happy-numbers-<variantId>-<timestamp>.svg
 Fuer das Teilen nutzt die Shell `expo-sharing`.
 
 Wenn die UI ein SVG aus einer PNG-Variante anfordert, erzeugt die Shell ein SVG, das das PNG als Base64-Image einbettet. Das ist kein echtes Vektor-SVG der Regionen, aber ein kompatibler SVG-Container fuer die PNG-Ausgabe.
+
+Im Fresh-Pipeline-Port liefern die Varianten selbst bereits je ein PNG und ein SVG. `persistResultAssets()` schreibt deshalb pro Variante beide Dateien, zum Beispiel `happy-numbers-cleanColor-<timestamp>.png` und `happy-numbers-cleanColor-<timestamp>.svg`. Der normale Fresh-Output umfasst aktuell nur `cleanColor`, `coloredEdges` und `coloredEdgesWithDots`.
 
 ## 9. Debugdaten im Result-Screen
 

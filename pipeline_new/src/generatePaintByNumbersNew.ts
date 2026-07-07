@@ -32,6 +32,18 @@ const DETAIL_PROTECT_MIN_PIXELS = 80;
 const DETAIL_PROTECT_LAB_DISTANCE = 26;
 const BOUNDARY_ALPHA = 0.82;
 const BOUNDARY_SOFT_ALPHA = 0.22;
+const OUTLINE_R = 22;
+const OUTLINE_G = 29;
+const OUTLINE_B = 31;
+const WHITE_R = 250;
+const WHITE_G = 252;
+const WHITE_B = 249;
+
+const DEFAULT_FRESH_OUTPUT_VARIANT_IDS: readonly GeneratorOutputVariantId[] = [
+  'cleanColor',
+  'coloredEdges',
+  'coloredEdgesWithDots',
+];
 
 type PipelineStage = Exclude<GeneratorStage, 'done'>;
 
@@ -90,6 +102,64 @@ type MergeResult = {
 };
 
 type Rgb = [number, number, number];
+
+type FreshRenderFillMode = 'color' | 'white';
+type FreshRenderBoundaryMode = 'none' | 'black' | 'color';
+type FreshRenderMarkerMode = 'none' | 'circles';
+
+type FreshRenderConfig = {
+  id: GeneratorOutputVariantId;
+  label: string;
+  description: string;
+  fillMode: FreshRenderFillMode;
+  boundaryMode: FreshRenderBoundaryMode;
+  markerMode: FreshRenderMarkerMode;
+  isDefault?: boolean;
+};
+
+type MarkerPlacement = {
+  regionId: number;
+  colorIndex: number;
+  x: number;
+  y: number;
+  radius: number;
+};
+
+const FRESH_RENDER_VARIANTS: FreshRenderConfig[] = [
+  {
+    id: 'cleanColor',
+    label: 'Fresh Clean',
+    description: 'Region-First-Farbflächen ohne Grenzen oder Marker.',
+    fillMode: 'color',
+    boundaryMode: 'none',
+    markerMode: 'none',
+    isDefault: true,
+  },
+  {
+    id: 'coloredEdges',
+    label: 'Farbige Kanten',
+    description: 'Weiße Vorlage mit farbigen Regionenkanten.',
+    fillMode: 'white',
+    boundaryMode: 'color',
+    markerMode: 'none',
+  },
+  {
+    id: 'coloredEdgesWithDots',
+    label: 'Farbige Kanten + Kreise',
+    description: 'Weiße Vorlage mit farbigen Regionenkanten und Farbpunkten.',
+    fillMode: 'white',
+    boundaryMode: 'color',
+    markerMode: 'circles',
+  },
+  {
+    id: 'classic',
+    label: 'Fresh Classic',
+    description: 'Region-First-Farbflächen mit geglätteten schwarzen Grenzen.',
+    fillMode: 'color',
+    boundaryMode: 'black',
+    markerMode: 'none',
+  },
+];
 
 function nowMs(): number {
   return globalThis.performance?.now?.() ?? Date.now();
@@ -694,6 +764,90 @@ function recomputePalette(rgbData: Uint8ClampedArray, labelMap: Int32Array, colo
   return palette;
 }
 
+function paletteColorForLabel(paletteRgb: Float32Array, label: number): Rgb {
+  const offset = Math.max(0, label) * 3;
+  return [
+    clampByte(paletteRgb[offset] ?? 255),
+    clampByte(paletteRgb[offset + 1] ?? 255),
+    clampByte(paletteRgb[offset + 2] ?? 255),
+  ];
+}
+
+function blendChannel(base: number, overlay: number, alpha: number): number {
+  return base * (1 - alpha) + overlay * alpha;
+}
+
+function blendRgb(base: Rgb, overlay: Rgb, alpha: number): Rgb {
+  return [
+    blendChannel(base[0], overlay[0], alpha),
+    blendChannel(base[1], overlay[1], alpha),
+    blendChannel(base[2], overlay[2], alpha),
+  ];
+}
+
+function computeMarkerPlacements(components: Components, width: number, height: number): MarkerPlacement[] {
+  const regionCount = components.labels.length;
+  const sumX = new Float64Array(regionCount);
+  const sumY = new Float64Array(regionCount);
+  const centroidX = new Float64Array(regionCount);
+  const centroidY = new Float64Array(regionCount);
+  const bestDistance = new Float64Array(regionCount);
+  const bestIndex = new Int32Array(regionCount);
+
+  bestIndex.fill(-1);
+  bestDistance.fill(Number.POSITIVE_INFINITY);
+
+  for (let index = 0; index < components.componentMap.length; index += 1) {
+    const regionId = components.componentMap[index];
+    if (regionId < 0 || regionId >= regionCount) {
+      continue;
+    }
+    sumX[regionId] += index % width;
+    sumY[regionId] += Math.floor(index / width);
+  }
+
+  for (let regionId = 0; regionId < regionCount; regionId += 1) {
+    const area = Math.max(1, components.areas[regionId]);
+    centroidX[regionId] = sumX[regionId] / area;
+    centroidY[regionId] = sumY[regionId] / area;
+  }
+
+  for (let index = 0; index < components.componentMap.length; index += 1) {
+    const regionId = components.componentMap[index];
+    if (regionId < 0 || regionId >= regionCount) {
+      continue;
+    }
+    const x = index % width;
+    const y = Math.floor(index / width);
+    const dx = x - centroidX[regionId];
+    const dy = y - centroidY[regionId];
+    const distance = dx * dx + dy * dy;
+    if (distance < bestDistance[regionId]) {
+      bestDistance[regionId] = distance;
+      bestIndex[regionId] = index;
+    }
+  }
+
+  const placements: MarkerPlacement[] = [];
+  for (let regionId = 0; regionId < regionCount; regionId += 1) {
+    const index = bestIndex[regionId];
+    if (index < 0) {
+      continue;
+    }
+    const area = Math.max(1, components.areas[regionId]);
+    const radius = Math.max(1.45, Math.min(8.5, Math.sqrt(area / Math.PI) * 0.32));
+    placements.push({
+      regionId,
+      colorIndex: components.labels[regionId],
+      x: (index % width) + 0.5,
+      y: Math.floor(index / width) + 0.5,
+      radius,
+    });
+  }
+
+  return placements;
+}
+
 function boundaryMask(regionMap: Int32Array, width: number, height: number): Uint8Array {
   const mask = new Uint8Array(width * height);
   for (let y = 0; y < height; y += 1) {
@@ -738,34 +892,93 @@ function boundaryMask(regionMap: Int32Array, width: number, height: number): Uin
   return mask;
 }
 
+function blendPixel(rgba: Uint8Array, width: number, height: number, x: number, y: number, color: Rgb, alpha: number): void {
+  if (x < 0 || x >= width || y < 0 || y >= height || alpha <= 0) {
+    return;
+  }
+  const offset = (y * width + x) * 4;
+  const clampedAlpha = Math.max(0, Math.min(1, alpha));
+  rgba[offset] = clampByte(blendChannel(rgba[offset], color[0], clampedAlpha));
+  rgba[offset + 1] = clampByte(blendChannel(rgba[offset + 1], color[1], clampedAlpha));
+  rgba[offset + 2] = clampByte(blendChannel(rgba[offset + 2], color[2], clampedAlpha));
+  rgba[offset + 3] = 255;
+}
+
+function drawCircleMarker(
+  rgba: Uint8Array,
+  width: number,
+  height: number,
+  placement: MarkerPlacement,
+  paletteRgb: Float32Array,
+): void {
+  const fill = paletteColorForLabel(paletteRgb, placement.colorIndex);
+  const stroke: Rgb = [OUTLINE_R, OUTLINE_G, OUTLINE_B];
+  const outerRadius = placement.radius + 0.85;
+  const strokeStart = Math.max(0, placement.radius - 0.85);
+  const minX = Math.max(0, Math.floor(placement.x - outerRadius - 1));
+  const maxX = Math.min(width - 1, Math.ceil(placement.x + outerRadius + 1));
+  const minY = Math.max(0, Math.floor(placement.y - outerRadius - 1));
+  const maxY = Math.min(height - 1, Math.ceil(placement.y + outerRadius + 1));
+
+  for (let y = minY; y <= maxY; y += 1) {
+    for (let x = minX; x <= maxX; x += 1) {
+      const dx = x + 0.5 - placement.x;
+      const dy = y + 0.5 - placement.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      if (distance > outerRadius) {
+        continue;
+      }
+      const color = distance >= strokeStart ? stroke : fill;
+      const alpha = distance > outerRadius - 1 ? outerRadius - distance : 1;
+      blendPixel(rgba, width, height, x, y, color, alpha);
+    }
+  }
+}
+
+function drawMarkerCircles(
+  rgba: Uint8Array,
+  width: number,
+  height: number,
+  placements: MarkerPlacement[],
+  paletteRgb: Float32Array,
+): void {
+  for (const placement of placements) {
+    drawCircleMarker(rgba, width, height, placement, paletteRgb);
+  }
+}
+
 function renderRgba(
   labelMap: Int32Array,
   regionMap: Int32Array,
   paletteRgb: Float32Array,
   width: number,
   height: number,
-  withBoundaries: boolean,
+  config: FreshRenderConfig,
+  placements: MarkerPlacement[],
 ): Uint8Array {
   const rgba = new Uint8Array(width * height * 4);
-  const boundaries = withBoundaries ? boundaryMask(regionMap, width, height) : undefined;
+  const boundaries = config.boundaryMode === 'none' ? undefined : boundaryMask(regionMap, width, height);
   for (let index = 0; index < labelMap.length; index += 1) {
     const label = labelMap[index];
-    const paletteOffset = label * 3;
     const outputOffset = index * 4;
-    let r = paletteRgb[paletteOffset];
-    let g = paletteRgb[paletteOffset + 1];
-    let b = paletteRgb[paletteOffset + 2];
+    let color: Rgb = config.fillMode === 'white'
+      ? [WHITE_R, WHITE_G, WHITE_B]
+      : paletteColorForLabel(paletteRgb, label);
     const boundary = boundaries?.[index] ?? 0;
     if (boundary > 0) {
+      const boundaryColor: Rgb = config.boundaryMode === 'color'
+        ? paletteColorForLabel(paletteRgb, label)
+        : [OUTLINE_R, OUTLINE_G, OUTLINE_B];
       const alpha = boundary === 2 ? BOUNDARY_ALPHA : BOUNDARY_SOFT_ALPHA;
-      r *= 1 - alpha;
-      g *= 1 - alpha;
-      b *= 1 - alpha;
+      color = blendRgb(color, boundaryColor, alpha);
     }
-    rgba[outputOffset] = clampByte(r);
-    rgba[outputOffset + 1] = clampByte(g);
-    rgba[outputOffset + 2] = clampByte(b);
+    rgba[outputOffset] = clampByte(color[0]);
+    rgba[outputOffset + 1] = clampByte(color[1]);
+    rgba[outputOffset + 2] = clampByte(color[2]);
     rgba[outputOffset + 3] = 255;
+  }
+  if (config.markerMode === 'circles') {
+    drawMarkerCircles(rgba, width, height, placements, paletteRgb);
   }
   return rgba;
 }
@@ -816,19 +1029,16 @@ function buildPaletteStats(labelMap: Int32Array, paletteRgb: Float32Array): Pale
 }
 
 function createVariant(
-  id: GeneratorOutputVariantId,
-  label: string,
-  description: string,
+  config: FreshRenderConfig,
   base64: string,
   width: number,
   height: number,
-  isDefault = false,
 ): GeneratorOutputVariant {
   const svg = embeddedPngSvg(base64, width, height);
   return {
-    id,
-    label,
-    description,
+    id: config.id,
+    label: config.label,
+    description: config.description,
     pngBase64: base64,
     pngWidth: width,
     pngHeight: height,
@@ -837,7 +1047,7 @@ function createVariant(
     svgWidth: width,
     svgHeight: height,
     svgByteLength: svg.length,
-    isDefault,
+    isDefault: config.isDefault,
   };
 }
 
@@ -948,27 +1158,33 @@ export async function generatePaintByNumbers(
   addTiming(timings, 'borderTrace', borderStarted);
   report('borderTrace', 1, 'Grenzen vorbereitet.');
 
-  report('labelPlacement', 1, 'Nummernplatzierung in neuer Pipeline noch deaktiviert.');
-  timings.labelPlacement = 0;
+  report('labelPlacement', 0, 'Farbpunkte werden in den Regionen platziert.');
+  const labelStarted = nowMs();
+  const markerPlacements = computeMarkerPlacements(regionComponents, decoded.imageData.width, decoded.imageData.height);
+  addTiming(timings, 'labelPlacement', labelStarted);
+  report('labelPlacement', 1, `${markerPlacements.length} Farbpunkte platziert.`);
 
   report('svgRender', 0, 'Neue Pipeline-Ausgaben werden gerendert.');
   const renderStarted = nowMs();
-  const cleanBase64 = pngBase64FromRgba(
-    decoded.imageData.width,
-    decoded.imageData.height,
-    renderRgba(labelMap, regionMap, paletteRgb, decoded.imageData.width, decoded.imageData.height, false),
-  );
-  const classicBase64 = pngBase64FromRgba(
-    decoded.imageData.width,
-    decoded.imageData.height,
-    renderRgba(labelMap, regionMap, paletteRgb, decoded.imageData.width, decoded.imageData.height, true),
-  );
-  const variants = [
-    createVariant('classic', 'Neue Pipeline · Klassisch', 'Region-First-Farbflächen mit geglaetteten schwarzen Grenzen.', classicBase64, decoded.imageData.width, decoded.imageData.height, true),
-    createVariant('cleanColor', 'Neue Pipeline · Farbflaechen', 'Region-First-Farbflächen ohne Grenzen.', cleanBase64, decoded.imageData.width, decoded.imageData.height),
-    createVariant('brightColorCircles', 'Neue Pipeline · App-Default', 'Kompatible Default-Ausgabe der neuen Pipeline, ohne Zahlen.', classicBase64, decoded.imageData.width, decoded.imageData.height),
-  ].filter((variant) => options.variantIds == null || options.variantIds.includes(variant.id));
+  const selectedVariantIds = options.variantIds ?? DEFAULT_FRESH_OUTPUT_VARIANT_IDS;
+  const renderConfigs = FRESH_RENDER_VARIANTS.filter((config) => selectedVariantIds.includes(config.id));
+  if (renderConfigs.length === 0) {
+    throw new Error('No fresh pipeline render variants selected.');
+  }
+  const variants: GeneratorOutputVariant[] = [];
+  renderConfigs.forEach((config, index) => {
+    const base64 = pngBase64FromRgba(
+      decoded.imageData.width,
+      decoded.imageData.height,
+      renderRgba(labelMap, regionMap, paletteRgb, decoded.imageData.width, decoded.imageData.height, config, markerPlacements),
+    );
+    variants.push(createVariant(config, base64, decoded.imageData.width, decoded.imageData.height));
+    report('svgRender', (index + 1) / renderConfigs.length, `${config.label} gerendert.`);
+  });
   const defaultVariant = variants.find((variant) => variant.isDefault) ?? variants[0];
+  if (defaultVariant?.pngBase64 == null || defaultVariant.svg == null) {
+    throw new Error('Fresh pipeline did not render a default output variant.');
+  }
   addTiming(timings, 'svgRender', renderStarted);
   report('svgRender', 1, 'Neue Pipeline-Ausgaben gerendert.');
 
@@ -978,8 +1194,8 @@ export async function generatePaintByNumbers(
     message: 'Malvorlage mit neuer Pipeline fertig.',
   });
 
-  const previewPngBase64 = defaultVariant?.pngBase64 ?? classicBase64;
-  const svg = defaultVariant?.svg ?? embeddedPngSvg(previewPngBase64, decoded.imageData.width, decoded.imageData.height);
+  const previewPngBase64 = defaultVariant.pngBase64;
+  const svg = defaultVariant.svg;
 
   if (options.debug?.enabled === true) {
     options.debug.onCacheUpdated?.({});
@@ -1003,7 +1219,7 @@ export async function generatePaintByNumbers(
       ? {
           enabled: true,
           rerunFromStage: options.debug.rerunFromStage,
-          finalVariantId: defaultVariant?.id ?? 'classic',
+          finalVariantId: defaultVariant?.id ?? variants[0]?.id ?? 'cleanColor',
           parameterConfig: { ...settings },
           stages: [],
         }
