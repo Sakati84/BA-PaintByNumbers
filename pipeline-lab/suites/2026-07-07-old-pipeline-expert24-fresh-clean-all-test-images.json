@@ -1,0 +1,15 @@
+{
+  "name": "2026-07-07-old-pipeline-expert24-fresh-clean-all-test-images",
+  "sourceRun": "../../prompt-lab/runs/2026-07-07T17-46-16-266Z_2026-07-07-ki-testbilder-easy8-medium12-expert24",
+  "sourceCases": ["expert-24-current"],
+  "variants": ["cleanColor"],
+  "configs": [
+    {
+      "id": "expert24-old-clean",
+      "label": "Alte Pipeline Fresh Clean",
+      "description": "Aktuelle App-/Baseline-Pipeline mit Expert-Preset bei 24 Farben, gerendert als cleanColor zum direkten Vergleich mit der neuen Fresh-Clean-Pipeline.",
+      "difficulty": "expert",
+      "colorCount": 24
+    }
+  ]
+}

@@ -18,7 +18,7 @@ import type {
   WebViewAppRequest,
   WebViewHostEvent,
 } from './src/features/webview/appWebViewBridgeTypes';
-import type { GeneratorResult } from './src/features/generator/generatorTypes';
+import type { GeneratorOutputVariant, GeneratorResult } from './src/features/generator/generatorTypes';
 
 const NativeWebView = require('react-native-webview').WebView;
 
@@ -336,6 +336,8 @@ export default function App() {
     if (source == null) {
       throw new Error(`Die angeforderte Bildquelle ${sourceToken} ist in der Shell nicht mehr vorhanden.`);
     }
+    const originalSource =
+      source.source.parentSourceToken != null ? sourceStoreRef.current.get(source.source.parentSourceToken) : undefined;
 
     postEvent({
       type: 'processingProgress',
@@ -392,7 +394,10 @@ export default function App() {
     if (debugMode && updatedDebugCache != null) {
       debugCacheStoreRef.current.set(sourceToken, updatedDebugCache);
     }
-    const result = persistResultAssets(generatedResult);
+    const resultWithComparisons = debugMode
+      ? generatedResult
+      : await appendComparisonVariants(generatedResult, originalSource, source);
+    const result = persistResultAssets(resultWithComparisons);
 
     postEvent({
       type: 'runCompleted',
@@ -402,6 +407,76 @@ export default function App() {
         result,
       },
     });
+  }
+
+  async function createAssetComparisonVariant(
+    id: 'inputImage' | 'aiPosterizedImage',
+    label: string,
+    description: string,
+    asset: ImagePicker.ImagePickerAsset,
+  ): Promise<GeneratorOutputVariant> {
+    const rendered = await manipulateAsync(
+      asset.uri,
+      [],
+      {
+        base64: true,
+        compress: 1,
+        format: SaveFormat.PNG,
+      },
+    );
+
+    if (rendered.base64 == null) {
+      throw new Error(`${label} konnte nicht als Vergleichsbild vorbereitet werden.`);
+    }
+
+    return {
+      id,
+      label,
+      description,
+      pngBase64: rendered.base64,
+      pngWidth: rendered.width,
+      pngHeight: rendered.height,
+      pngByteLength: Math.ceil((rendered.base64.length * 3) / 4),
+    };
+  }
+
+  async function appendComparisonVariants(
+    result: GeneratorResult,
+    originalSource: StoredSource | undefined,
+    aiSource: StoredSource,
+  ): Promise<GeneratorResult> {
+    const comparisonVariants: GeneratorOutputVariant[] = [];
+
+    if (originalSource != null) {
+      comparisonVariants.push(
+        await createAssetComparisonVariant(
+          'inputImage',
+          'Originalbild',
+          'Vollständiges Eingabebild vor der KI-Vereinfachung.',
+          originalSource.asset,
+        ),
+      );
+    }
+
+    if (aiSource.source.kind === 'posterized') {
+      comparisonVariants.push(
+        await createAssetComparisonVariant(
+          'aiPosterizedImage',
+          'KI-Bild',
+          'Von der KI vereinfachtes Bild vor der lokalen Flächenreduktion.',
+          aiSource.asset,
+        ),
+      );
+    }
+
+    if (comparisonVariants.length === 0) {
+      return result;
+    }
+
+    return {
+      ...result,
+      variants: [...(result.variants ?? []), ...comparisonVariants],
+    };
   }
 
   function persistResultAssets(result: GeneratorResult): GeneratorResult {

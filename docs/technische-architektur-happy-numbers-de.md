@@ -409,6 +409,10 @@ Der finale Prompt besteht immer aus:
 8. Bild darf keine Nummern, Buchstaben, Labels oder Wasserzeichen enthalten
 9. laengste nutzbare Bildkante soll ungefaehr innerhalb von `1024 px` bleiben
 
+Gemeinsame Meaning-first-Regel seit 2026-07-07:
+
+Alle drei Prompt-Varianten verlangen jetzt explizit, dass die KI zuerst erkennt, welche Bildteile die Wiedererkennbarkeit tragen: Hauptmotiv, Silhouette, Pose, strukturelle Teile, charakteristische Markierungen sowie Kontakt-, Ueberlappungs- und Stuetzbereiche zur Umgebung. Wenn ein klares Hauptmotiv von grossen einfachen Flaechen wie Himmel, Boden, Strasse, Wasser, Wand oder Bodenflaeche umgeben ist, sollen diese grossen Freiflaechen zwar ruhig und breit vereinfacht werden, duerfen aber keine wichtigen Motivteile verschlucken. Wiederholte oder gepaarte Strukturteile, die Identitaet, Haltung, Stuetzung, Bewegung oder Funktion eines Motivs erklaeren, sollen in Anzahl, Position und lesbarer Trennung erhalten bleiben. Die Regel ist bewusst motivneutral formuliert; sie soll nicht einzelne Objektklassen hart kodieren, sondern die KI dazu bringen, die semantisch wichtigen Teile des jeweiligen Bildes vor der Flaechenvereinfachung zu schuetzen.
+
 ### 5.1 Easy
 
 Default:
@@ -429,6 +433,8 @@ Wichtige positive Anforderungen:
 - Vordergrund, Mittelgrund, Hintergrund und Horizontstruktur grob erhalten
 - Ausgabe als unnummerierte Paint-by-Numbers-Farbplatte priorisieren
 - alle sichtbaren Formen als geschlossene, fuellbare Malflaechen mit klaren Farbkanten anlegen
+- Bedeutung tragende Motivteile vor grossen Freiflaechen schuetzen
+- wiederholte/gepaarte Strukturteile erhalten, wenn sie fuer Identitaet, Haltung, Stuetzung, Bewegung oder Funktion wichtig sind
 - Foto stark vereinfachen
 - realistische Textur, Licht, Schatten und Reflexionen entfernen
 - wenige grosse Regionen pro Material oder Objekt
@@ -455,6 +461,7 @@ Negative Prompt verhindert insbesondere:
 - viele kleine Regionen und wiederholte Patches
 - amorphe gruene Flecken
 - abstrakte bedeutungslose Facetten
+- verlorene Bedeutungstraeger, Motivteile, Kontaktbereiche, Stuetzdetails oder wichtige Oeffnungen
 - schwarze Konturen
 - Coloring-Book-Lineart
 - Text, Nummern, Logos, Wasserzeichen
@@ -484,6 +491,8 @@ Wichtige positive Anforderungen:
 - wichtige Objekte und Hintergrundbereiche als geschlossene, fuellbare Paint-Cells aufbauen
 - klare Farbkanten fuer die spaetere lokale Tracing- und Nummerierungsstufe erzeugen
 - Hauptmotiv, Crop und Komposition wiedererkennbar erhalten
+- semantisch wichtige Motivteile, Kontaktbereiche und Ueberlappungen vor Freiflaechen-Vereinfachung schuetzen
+- wiederholte/gepaarte Strukturteile in Anzahl, Position und Trennung erhalten, wenn sie fuer das Motiv wichtig sind
 - Originale Farbidentitaet und wichtige Kontraste erhalten
 - natuerliche Hintergrundmassen als erkennbare stilisierte Objekte vereinfachen
 - lebendige, quellbasierte Farben mit staerkerem Kontrast
@@ -503,6 +512,7 @@ Negative Prompt verhindert insbesondere:
 - winzige Zellen und duenne Splitter
 - graue, blasse, pastellige oder kontrastarme Palette
 - abstrakte bedeutungslose Farbfelder
+- Motivteile, Kontaktbereiche, Stuetzdetails oder wichtige Oeffnungen, die im Hintergrund verschwinden
 - schwarze Konturen und Skizzenlook
 - Text, Nummern, Logos, Wasserzeichen
 
@@ -535,6 +545,8 @@ Wichtige positive Anforderungen:
 - keine Fototextur, keine Gradienten, keine Rohfoto-Pixel
 - Schatten, Highlights, Reflexionen und lokale Strukturen in abgestufte Farbzellen umwandeln
 - wichtige Markierungen und Strukturdaten erhalten
+- Meaning-first-Regel anwenden: wichtige Motivteile, Kontakt-/Stuetzbereiche, Ueberlappungen, untere Kanten und relevante Oeffnungen als geschlossene Zellen erhalten, bevor grosse ruhige Flaechen vereinfacht werden
+- wiederholte/gepaarte Strukturteile nicht verlieren, wenn sie Identitaet, Haltung, Stuetzung, Bewegung oder Funktion erklaeren
 - keine schwarzen Outlines
 - keine Zahlen, Labels oder Text
 
@@ -549,6 +561,7 @@ Negative Prompt verhindert insbesondere:
 - realistische Texturen
 - Mikrodetails wie Grasblaetter, Fellhaare, Federn, Samen, Rindenrauschen
 - unmalbare Mikrofragmente
+- verlorene Bedeutungstraeger, wichtige Motivteile oder Kontakt-/Stuetzdetails, die in einfachen Freiflaechen verschwinden
 - generischen Cartoon- oder Preschool-Stil
 - Text, Nummern, Logos, Wasserzeichen
 
@@ -617,12 +630,31 @@ Expert wurde am 2026-07-07 nach einem Detailerhalt-Vergleich auf acht KI-posteri
 
 Am selben Tag wurde die Expert-Reduktion um adaptives Merging erweitert. Die neue Vergleichsseite liegt unter `pipeline-lab/runs/2026-07-07-adaptive-merge-report/index.html` und enthaelt auch die historische Drake-Referenz. Ergebnis: Expert nutzt jetzt `maximumNumberOfFacets = 2600`. Das Budget verhindert 3000+-Flaechen-Ausreisser, waehrend die Merge-Logik kompakte kontrastreiche Motivdetails schuetzt und ruhige farbnahe Flaechen bevorzugt zusammenlegt.
 
+Fresh-Port-Zusatz auf `experiment/fresh-paint-pipeline`:
+
+Der aktive TypeScript-Fresh-Port in `pipeline_new/src/generatePaintByNumbersNew.ts` liest weiterhin `kMeansNrOfClusters` und `maximumNumberOfFacets` aus den UI-Settings, nutzt fuer seine Region-First-Geometrie aber eigene farbanzahlabhaengige Mindestflaechen:
+
+| Farbanzahl | Fresh-Min-Ratio | Fresh-Min-Pixel | Detailschutz ab |
+| ---: | ---: | ---: | ---: |
+| 8-11 | `0.00022` | `220 px` | `80 px` |
+| 12-17 | `0.00014` | `130 px` | `64 px` |
+| 18-24 | `0.00012` | `72 px` | `56 px` |
+
+Diese Werte ersetzen im Fresh-Port nicht die UI-Komplexitaetslogik, sondern uebersetzen sie in eine fuer Region-First passende Merge-Policy. Expert respektiert zusaetzlich das bestehende `maximumNumberOfFacets = 2600` als kontrastgeschuetztes Flaechenbudget.
+
 ## 7. Lokale Paint-by-Numbers-Pipeline nach der KI
 
-Die lokale Pipeline startet mit dem KI-posterisierten Bild. Einstieg ist:
+Die lokale Pipeline startet mit dem KI-posterisierten Bild.
+
+Im bisherigen Raster-Pfad ist der Einstieg:
 
 - `generatePaintByNumbers()`
 - danach `buildRasterPaintByNumbers()`
+
+Auf dem Experiment-Branch `experiment/fresh-paint-pipeline` ist der aktive App-Einstieg dagegen:
+
+- `pipeline_new/src/generatePaintByNumbersNew.ts`
+- `App/App.tsx` importiert diesen Generator direkt.
 
 Die Fortschrittsstufen sind:
 
@@ -1051,7 +1083,12 @@ Render-Details der bisherigen Raster-Pipeline:
 
 Zusaetzliche Vergleichsvarianten:
 
-Auf dem Experiment-Branch `experiment/fresh-paint-pipeline` haengt `App/App.tsx` im normalen Resultat keine Vergleichsbilder mehr an. Der Output-Dropdown enthaelt dadurch nur echte Generator-Ausgaben. Die Typ-IDs `inputImage` und `aiPosterizedImage` bleiben fuer spaetere Vergleichsansichten erhalten, werden aber aktuell nicht automatisch als exportierbare Varianten an `runCompleted` angefuegt.
+Auf dem Experiment-Branch `experiment/fresh-paint-pipeline` haengt `App/App.tsx` im normalen Resultat nach den Generator-Ausgaben wieder Vergleichsbilder an:
+
+- `inputImage`: Originalbild vor KI-Vereinfachung
+- `aiPosterizedImage`: KI-Bild vor lokaler Pipeline
+
+Diese Vergleichsvarianten werden als PNG persistiert. Wenn die UI fuer eine dieser Varianten SVG speichern soll, nutzt sie den bestehenden `shareResultSvgFromPng`-Fallback und schreibt einen SVG-Container mit eingebettetem PNG. Im Debug Mode werden die Vergleichsvarianten weiterhin nicht angehaengt, weil die Stage-Snapshots dort die Pipeline-Diagnose uebernehmen und die Bridge-Payload kleiner bleiben soll.
 
 ### 7.11 Experimentelle Region-First-Parallelpipeline
 
@@ -1062,7 +1099,9 @@ Branch-Experiment vom 2026-07-07:
 - App-Port: `pipeline_new/src/generatePaintByNumbersNew.ts`
 - Suite: `pipeline-lab/suites/2026-07-07-fresh-region-first-24c.json`
 - KI-Quellbild-Suite: `prompt-lab/suites/2026-07-07-test-images-current-expert-paint-map.json`
-- Referenzlauf: `pipeline-lab/runs/2026-07-07T13-36-53-088Z_fresh-region-first-24c-smoothed-final/`
+- Basis-Referenzlauf: `pipeline-lab/runs/2026-07-07T13-36-53-088Z_fresh-region-first-24c-smoothed-final/`
+- Aktueller source-aware Vergleichslauf: `pipeline-lab/runs/2026-07-07T19-17-58-275Z_fresh-region-first-24c-source-aware-ratio-00012/`
+- Iterationsprotokoll: `pipeline-lab/2026-07-07-fresh-source-aware-merge-iterations.md`
 
 Die Pipeline begann als isolierte Lab-Parallelwelt. Auf dem Experiment-Branch ist sie zusaetzlich als TypeScript-Port in `pipeline_new/` vorhanden und wird von `App/App.tsx` als aktiver Generator importiert. Die sichtbare React-WebView-UI bleibt unveraendert; sie sendet weiterhin `runPaintByNumbers` an die Expo-Shell. Der Unterschied liegt im Shell-Handler: Statt `App/src/features/generator/generatePaintByNumbers.ts` wird `pipeline_new/src/generatePaintByNumbersNew.ts` ausgefuehrt.
 
@@ -1075,10 +1114,13 @@ Der Ansatz startet bewusst nicht mit der produktiven Pixel-K-Means-Pipeline. Sta
 3. Das geglaettete Bild in eine uebersegmentierte 64-Farb-Tokenkarte aufteilen. Im Python-Lab passiert das per K-Means-Tokenkarte, im App-Port per 4x4x4-RGB-Binning fuer bessere Laufzeit.
 4. Per Connected Components aus den Tokenkarten zusammenhaengende Regionen bauen.
 5. Pro Region die mittlere Farbe berechnen und darauf eine gewichtete 24-Farb-Palette lernen. Die Gewichtung nutzt `area^0.78`, damit grosse Flaechen stabil bleiben, kleine Detailregionen aber nicht komplett gegen grosse Hintergruende verlieren.
-6. Das 24-Farb-Labelbild mit einem kleinen Mehrheitsfilter stabilisieren.
-7. Sehr kleine Restregionen in farblich und topologisch passende Nachbarn mergen. Kleine, aber groessere und stark kontrastierende Details koennen geschuetzt bleiben, damit Blütenzentren, Fell-/Federkanten und aehnliche Binnenformen nicht pauschal verschwinden.
-8. Echte Speckles unter `48 px` in einem finalen Cleanup bevorzugt entfernen.
-9. `clean-color.png` als Farbflächenbild und `classic.png` mit einem geglaetteten Boundary-Layer rendern. Der Boundary-Layer ersetzt im Lab-Prototyp das langsamere Kontur-pro-Region-Rendering und erzeugt ruhigere schwarze Linien.
+6. Das Ziel-Farb-Labelbild mit einem source-aware Mehrheitsfilter stabilisieren. Ein Pixel darf nur zur lokalen Mehrheitsfarbe wechseln, wenn diese Zielpalette fuer die lokale KI-Quellfarbe nicht deutlich schlechter passt.
+7. Sehr kleine Restregionen source-aware mergen. Bewertet wird nicht nur Palette-zu-Palette, sondern die LAB-Distanz zwischen der lokalen KI-Quellfarbe der Region und dem moeglichen Ziel.
+8. Wenn kein farblich plausibler Nachbar existiert, darf eine relevante kleine Region auf die naechstpassende globale Zielpalettenfarbe wechseln. Dieser Fallback ist auf Detailschutzgroesse oder kontrastreiche Speckles ab `18 px` begrenzt, damit Hintergrundtextur nicht als tausende Mikrokonturen stehen bleibt.
+9. Fehlende Zielpalettenfarben werden vor der finalen Palette-Neuberechnung reaktiviert, indem zusammenhaengende Regionen mit hoher Quellfarb-Abweichung einen leeren Palettenslot bekommen, ohne eine andere Farbe komplett zu leeren.
+10. Echte Speckles unter `48 px` werden in einem finalen Cleanup bevorzugt entfernt; kontrastreiche Details koennen ab `18 px` geschuetzt bleiben.
+11. Wenn `maximumNumberOfFacets` groesser als `0` ist, nutzt der Fresh-Port danach dasselbe Flaechenbudget als weitere source-aware Reduktion.
+12. `clean-color.png` als Farbflächenbild und `classic.png` mit einem geglaetteten Boundary-Layer rendern. Der Boundary-Layer ersetzt im Lab-Prototyp das langsamere Kontur-pro-Region-Rendering und erzeugt ruhigere schwarze Linien.
 
 Aktuelle App-Ausgabevarianten des TypeScript-Ports:
 
@@ -1088,14 +1130,14 @@ Aktuelle App-Ausgabevarianten des TypeScript-Ports:
 
 Fuer Debug-Reruns bleibt `classic` als interne Variante verfuegbar, wenn `variantIds: ['classic']` angefordert wird. Sie wird im normalen Output nicht mehr angeboten.
 
-Jede dieser Varianten liefert `pngBase64` und `svg`. Die SVG-Datei ist derzeit ein kompatibler SVG-Container mit eingebettetem PNG der jeweiligen Variante. Sie ist damit teil- und speicherbar, aber noch kein echtes Region-Vektor-SVG. Nummern, echte Textlabels und die vollstaendige alte Variantenliste sind im TypeScript-Port noch nicht implementiert. Farbpunkte werden als einfache Kreise nahe am Schwerpunkt jeder finalen Region platziert.
+Jede dieser drei Fresh-Generatorvarianten liefert `pngBase64` und `svg`. Die SVG-Datei ist derzeit ein kompatibler SVG-Container mit eingebettetem PNG der jeweiligen Variante. Sie ist damit teil- und speicherbar, aber noch kein echtes Region-Vektor-SVG. Nummern, echte Textlabels und die vollstaendige alte Variantenliste sind im TypeScript-Port noch nicht implementiert. Farbpunkte werden als einfache Kreise nahe am Schwerpunkt jeder finalen Region platziert.
 
 Der wichtigste Unterschied zur produktiven Pipeline:
 
 - Produktiv: Pixel zuerst auf Zielpalette per LAB-K-Means reduzieren, danach Facets bauen und bereinigen.
 - Experiment: Regionen zuerst als Formtraeger erzeugen, danach die Zielpalette auf Regionsebene lernen und lokale Restinseln bereinigen.
 
-Der Referenzlauf nutzt die vier Expert-Testbilder aus `prompt-lab/runs/2026-07-07T12-27-30-697Z_2026-07-07-test-images-current-expert-paint-map/`. Ergebnis:
+Der urspruengliche Basis-Referenzlauf nutzt die vier Expert-Testbilder aus `prompt-lab/runs/2026-07-07T12-27-30-697Z_2026-07-07-test-images-current-expert-paint-map/`. Ergebnis:
 
 | Bild | Genutzte Farben | Finale Regionen | Median-Region |
 | --- | ---: | ---: | ---: |
@@ -1106,7 +1148,16 @@ Der Referenzlauf nutzt die vier Expert-Testbilder aus `prompt-lab/runs/2026-07-0
 
 Laufzeiten im Referenzlauf: `img-1394` ca. 11.8s, `img-1681` ca. 16.0s, `img-1704` ca. 27.5s, `img-1998` ca. 10.3s auf dem lokalen Entwicklungsrechner.
 
-Visuelle Einschaetzung des aktuellen Lab-Stands: Die Pipeline erhaelt die groben Originalflaechen und viele Innenformen besser als eine harte direkte Posterisierung. Der geglaettete Boundary-Layer beruhigt die Classic-Ausgabe sichtbar, ohne die Farbflächen neu zu zerstoeren. Detailreiche Naturhintergruende, vor allem beim Specht, bleiben weiterhin der schwierigste Fall und brauchen fuer eine produktive Uebernahme noch eine bessere Trennung zwischen Motivdetails und Hintergrundtextur.
+Der source-aware Vergleichslauf vom 2026-07-07 nutzt dieselben vier Expert-KI-Bilder. Ergebnis:
+
+| Bild | Genutzte Farben | Finale Regionen | Median-Region | MAE zu KI, Basis | MAE zu KI, source-aware |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `img-1394` | 24 | 2058 | 4 px | 6.85 | 6.41 |
+| `img-1681` | 24 | 2375 | 122 px | 8.99 | 8.04 |
+| `img-1704` | 24 | 2868 | 25 px | 15.28 | 14.50 |
+| `img-1998` | 24 | 1514 | 4 px | 6.10 | 5.89 |
+
+Wichtige Interpretation: `cleanColor` bleibt messbar naeher am KI-Bild und die Ziel-Farbanzahl wird in den vier Lab-Referenzen eingehalten. Der Specht-Fall (`img-1704`) nutzt jetzt wieder 24/24 Farben statt 23/24. Der Preis ist eine hoehere Regionenzahl, vor allem in detailreichen Naturhintergruenden. Im App-Port greift fuer Expert danach `maximumNumberOfFacets = 2600`, sodass solche Ausreisser weiter source-aware budgetiert werden. Edge-/Classic-Ausgaben koennen bei stark texturierten Motiven weiterhin viele kleine Konturen zeigen; das bleibt ein bekanntes Parity-/Paintability-Risiko.
 
 ## 8. Export und Persistenz
 
@@ -1138,7 +1189,7 @@ Fuer das Teilen nutzt die Shell `expo-sharing`.
 
 Wenn die UI ein SVG aus einer PNG-Variante anfordert, erzeugt die Shell ein SVG, das das PNG als Base64-Image einbettet. Das ist kein echtes Vektor-SVG der Regionen, aber ein kompatibler SVG-Container fuer die PNG-Ausgabe.
 
-Im Fresh-Pipeline-Port liefern die Varianten selbst bereits je ein PNG und ein SVG. `persistResultAssets()` schreibt deshalb pro Variante beide Dateien, zum Beispiel `happy-numbers-cleanColor-<timestamp>.png` und `happy-numbers-cleanColor-<timestamp>.svg`. Der normale Fresh-Output umfasst aktuell nur `cleanColor`, `coloredEdges` und `coloredEdgesWithDots`.
+Im Fresh-Pipeline-Port liefern die drei Generatorvarianten selbst bereits je ein PNG und ein SVG. `persistResultAssets()` schreibt deshalb pro Generatorvariante beide Dateien, zum Beispiel `happy-numbers-cleanColor-<timestamp>.png` und `happy-numbers-cleanColor-<timestamp>.svg`. Der normale Fresh-Output umfasst aktuell zuerst `cleanColor`, `coloredEdges` und `coloredEdgesWithDots`; danach folgen die Vergleichsvarianten `inputImage` und `aiPosterizedImage`.
 
 ## 9. Debugdaten im Result-Screen
 
@@ -1268,4 +1319,4 @@ Wenn Pipeline-Semantik geaendert wird:
 
 ## 13. Mentales Modell in einem Satz
 
-Die App laesst eine React-WebView-UI ein Foto auswaehlen, laesst die Expo-Shell daraus per KI ein semantisch vereinfachtes flaches Farbbild erzeugen, reduziert dieses Bild lokal per LAB-K-Means und Region-Merge auf ausmalbare Flaechen und rendert daraus mehrere nummerierte, farbige und debugbare Paint-by-Numbers-Ausgaben.
+Die App laesst eine React-WebView-UI ein Foto auswaehlen, laesst die Expo-Shell daraus per KI ein semantisch vereinfachtes flaches Farbbild erzeugen, reduziert dieses Bild lokal entweder ueber den bisherigen LAB-K-Means-/Rasterpfad oder auf dem Experiment-Branch ueber die Region-First-Fresh-Pipeline auf ausmalbare Flaechen und rendert daraus farbige, kantenbasierte und debugbare Paint-by-Numbers-Ausgaben.

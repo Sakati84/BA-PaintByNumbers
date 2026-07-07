@@ -68,6 +68,13 @@ Preserve:
 - the foreground, middle ground, background, and horizon structure where present
 - the most important color identity of the subject
 
+Meaning-first free-space rule:
+- First identify what makes the image recognizable: the main subject, its silhouette, pose, structural parts, distinctive markings, and the places where it touches or overlaps its surroundings.
+- If the photo has one clear main subject surrounded by large simple areas such as sky, ground, road, water, wall, or floor, protect those meaning-carrying subject parts first and simplify the empty areas second.
+- Large free-space areas should become simple broad paint regions, but they must not absorb, crop away, or visually swallow the important subject parts.
+- Preserve support, contact, attachment, opening, overlap, lower-edge, and shadow-boundary details whenever they explain what the subject is or how it sits in the scene.
+- Preserve the count, placement, and readable separation of repeated or paired structural parts when they define the subject's identity, stance, support, movement, or function.
+
 Readable simplification:
 - Simplify the photo into child-friendly recognizable symbols and shapes, not abstract color blobs.
 - Do not invent a totally new scene, new viewpoint, or unrelated object arrangement.
@@ -115,7 +122,7 @@ Style:
 The final result should be a child-friendly paint-by-numbers reference for {{TARGET_AUDIENCE}}: simple, recognizable, strongly simplified, easy to paint, and still clearly tied to the uploaded photo.
 `.trim(),
     negativePrompt:
-      'unchanged photo, photo filter, ordinary poster art, painterly illustration, photorealistic image, realistic rendering, realistic lighting, realistic shadow, soft shading, smooth gradients, lens blur, depth of field, bokeh, glossy reflection, complex reflection detail, texture detail, grass blade detail, leaf detail, feather detail, fur detail, flower seed detail, tiny pattern, grain, noise, tiny speckles, many small regions, many repeated patches, thin slivers, unclosed regions, unpaintable regions, amorphous green blobs, abstract color fields, meaningless facets, black outlines, dark contour lines, coloring book line art, sketch, ink drawing, hatching, brush texture, watercolor texture, oil paint texture, adult illustration, unrelated object, invented scene, changed crop, changed viewpoint, changed main subject, wrong subject placement, any digit, numeral, number, label, letter, caption, signature, text-like mark, numbered template, numbers, labels, text, logos, watermarks',
+      'unchanged photo, photo filter, ordinary poster art, painterly illustration, photorealistic image, realistic rendering, realistic lighting, realistic shadow, soft shading, smooth gradients, lens blur, depth of field, bokeh, glossy reflection, complex reflection detail, texture detail, grass blade detail, leaf detail, feather detail, fur detail, flower seed detail, tiny pattern, grain, noise, tiny speckles, many small regions, many repeated patches, thin slivers, unclosed regions, unpaintable regions, amorphous green blobs, abstract color fields, meaningless facets, main subject absorbed by background, subject lost in empty space, important subject parts merged into background, meaning-carrying details lost, support details lost, contact details lost, lower edges lost, important openings lost, important overlaps lost, missing repeated structural parts, missing paired support parts, black outlines, dark contour lines, coloring book line art, sketch, ink drawing, hatching, brush texture, watercolor texture, oil paint texture, adult illustration, unrelated object, invented scene, changed crop, changed viewpoint, changed main subject, wrong subject placement, any digit, numeral, number, label, letter, caption, signature, text-like mark, numbered template, numbers, labels, text, logos, watermarks',
   },
   medium: {
     difficulty: 'medium',
@@ -144,6 +151,13 @@ Core requirement:
 - Simplify natural background masses into recognizable stylized objects where appropriate, not only abstract facets.
 - Simplify photographic surfaces aggressively.
 - Do not add decorative symbols, sparkles, stars, icons, or unrelated new elements.
+
+Meaning-first free-space rule:
+- First identify what makes the image recognizable: the main subject, its silhouette, pose, structural parts, distinctive markings, and the places where it touches or overlaps its surroundings.
+- If there is one clear main subject and large simple space around it, preserve the meaning-carrying subject parts, scale, placement, and contact/support structure before simplifying sky, ground, road, water, wall, or floor.
+- Large free-space areas should become broad calm paint cells, but they must not absorb or erase important subject edges.
+- Keep important support, contact, attachment, opening, and overlap details as separate bounded paint cells whenever they are needed to understand the subject.
+- Preserve the count, placement, and readable separation of repeated or paired structural parts when they define the subject's identity, stance, support, movement, or function.
 
 Visual target:
 - stylized flat poster artwork
@@ -202,7 +216,7 @@ Style:
 The result should look like a clean medium-level paint-by-numbers color reference for {{TARGET_AUDIENCE}}: recognizably based on the uploaded photo, visibly posterized, made from deliberate flat paintable regions, and noticeably more colorful and contrasted than a muted photo filter.
 `.trim(),
     negativePrompt:
-      'unchanged photo, lightly filtered photo, photo filter, ordinary poster art, painterly illustration, photorealistic image, camera-realistic rendering, realistic lighting, realistic shadows, photographic texture, natural micro-detail, soft shading, smooth gradients, grass blade detail, leaf detail, leaf micro-detail, feather detail, fur detail, flower seed detail, detailed flower center, bark detail, water ripple detail, noisy gradients, grain, noise, speckles, tiny color cells, thin slivers, unclosed regions, unpaintable regions, amorphous green blobs, abstract color fields, meaningless facets, black outlines, dark contour lines, coloring book line art, sketch, ink drawing, brush strokes, watercolor texture, oil paint texture, decorative symbol, sparkle, star, icon, unrelated objects, changed main subject, desaturated colors, graywashed palette, faded palette, pastel wash, low contrast, muddy middle tones, any digit, numeral, number, label, letter, caption, signature, text-like mark, numbered template, numbers, labels, text, logos, watermarks',
+      'unchanged photo, lightly filtered photo, photo filter, ordinary poster art, painterly illustration, photorealistic image, camera-realistic rendering, realistic lighting, realistic shadows, photographic texture, natural micro-detail, soft shading, smooth gradients, grass blade detail, leaf detail, leaf micro-detail, feather detail, fur detail, flower seed detail, detailed flower center, bark detail, water ripple detail, noisy gradients, grain, noise, speckles, tiny color cells, thin slivers, unclosed regions, unpaintable regions, amorphous green blobs, abstract color fields, meaningless facets, main subject absorbed by background, subject lost in empty space, important subject parts merged into background, meaning-carrying details lost, support details lost, contact details lost, lower edges lost, important openings lost, important overlaps lost, missing repeated structural parts, missing paired support parts, black outlines, dark contour lines, coloring book line art, sketch, ink drawing, brush strokes, watercolor texture, oil paint texture, decorative symbol, sparkle, star, icon, unrelated objects, changed main subject, desaturated colors, graywashed palette, faded palette, pastel wash, low contrast, muddy middle tones, any digit, numeral, number, label, letter, caption, signature, text-like mark, numbered template, numbers, labels, text, logos, watermarks',
   },
   expert: {
     difficulty: 'expert',
@@ -254,6 +268,14 @@ Preserve:
 - recognizable color relationships
 - important markings and structural detail
 
+Meaning-first free-space rule:
+- First identify what makes the image recognizable: the main subject, its silhouette, pose, structural parts, distinctive markings, and the places where it touches or overlaps its surroundings.
+- If the photo contains a clear main subject with lots of simple surrounding sky, ground, road, water, wall, or floor, preserve the meaning-carrying subject parts, scale, placement, and support/contact structure before simplifying the surrounding free space.
+- Empty or low-detail areas should be calm, broad paint cells, but they must not consume subject edges, lower contours, important internal parts, or the subject's relationship to the scene.
+- Keep support, contact, attachment, opening, overlap, and lower-edge details as distinct closed paint cells whenever they are needed to understand the subject.
+- If an important part is dark and touches a dark surrounding area, separate it with clear value or hue changes using the allowed palette instead of letting it disappear.
+- Preserve the count, placement, and readable separation of repeated or paired structural parts when they define the subject's identity, stance, support, movement, or function.
+
 Convert:
 - all photographic texture into grouped color cells
 - all gradients into stepped color regions
@@ -285,7 +307,7 @@ Style:
 The final result should be an expert-level paint-by-numbers reference for {{TARGET_AUDIENCE}}: more detailed than Medium, uniformly transformed, visibly posterized, and made from clean paintable cells.
 `.trim(),
     negativePrompt:
-      'photo enhancement, unchanged photo, lightly filtered photo, photo filter, ordinary poster art, painterly illustration, raw photo pixels, photorealistic image, photographic rendering, realistic lighting, realistic shadows, realistic texture, continuous gradients, soft shading, lens blur, depth of field, bokeh, glossy reflection, grass blade texture, leaf texture, feather micro-detail, fur hair detail, flower seed noise, bark noise, water ripple noise, grain, sensor noise, random speckles, unclosed regions, unpaintable regions, unpaintable micro-fragments, black outlines, dark contour lines, coloring book line art, sketch, ink, brush texture, watercolor texture, oil paint texture, generic cartoon, preschool style, decorative symbol, sparkle, star, unrelated objects, changed main subject, any digit, numeral, number, label, letter, caption, signature, text-like mark, numbered template, numbers, labels, text, logos, watermarks',
+      'photo enhancement, unchanged photo, lightly filtered photo, photo filter, ordinary poster art, painterly illustration, raw photo pixels, photorealistic image, photographic rendering, realistic lighting, realistic shadows, realistic texture, continuous gradients, soft shading, lens blur, depth of field, bokeh, glossy reflection, grass blade texture, leaf texture, feather micro-detail, fur hair detail, flower seed noise, bark noise, water ripple noise, grain, sensor noise, random speckles, unclosed regions, unpaintable regions, unpaintable micro-fragments, main subject absorbed by background, subject lost in empty space, important subject parts merged into background, meaning-carrying details lost, support details lost, contact details lost, lower edges lost, important openings lost, important overlaps lost, missing repeated structural parts, missing paired support parts, black outlines, dark contour lines, coloring book line art, sketch, ink, brush texture, watercolor texture, oil paint texture, generic cartoon, preschool style, decorative symbol, sparkle, star, unrelated objects, changed main subject, any digit, numeral, number, label, letter, caption, signature, text-like mark, numbered template, numbers, labels, text, logos, watermarks',
   },
 };
 

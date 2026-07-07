@@ -1,0 +1,60 @@
+{
+  "name": "2026-07-07-expert24-detail-preservation",
+  "sourceRun": "../../prompt-lab/runs/2026-07-01T05-12-25-497Z_2026-07-01-all-photos-current-easy-medium-expert",
+  "sourceCases": ["expert-i4", "expert"],
+  "variants": ["cleanColor", "classic", "brightColorCircles"],
+  "configs": [
+    {
+      "id": "expert24-current",
+      "label": "Current Expert 24",
+      "description": "Baseline vor der 2026-07-07-Aenderung: 24 Farben, Palette-Merge 4.25, Mindestflaeche 0.000025.",
+      "difficulty": "expert",
+      "colorCount": 24
+    },
+    {
+      "id": "expert24-color-preserve",
+      "label": "Color preserve",
+      "description": "Wie current, aber weniger aggressiver Merge fast identischer Farben.",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "settings": {
+        "nearIdenticalPaletteMergeLabDistance": 2
+      }
+    },
+    {
+      "id": "expert24-balanced-detail",
+      "label": "Balanced detail",
+      "description": "Weniger Palette-Merge und niedrigere Mindestflaeche fuer mehr lokale Struktur.",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "settings": {
+        "nearIdenticalPaletteMergeLabDistance": 2,
+        "removeFacetsSmallerThanImageRatio": 0.000012
+      }
+    },
+    {
+      "id": "expert24-max-detail",
+      "label": "Max detail 24",
+      "description": "Diagnosevariante: sehr niedrige Mindestflaeche und fast kein Palette-Merge; nahe am KI-Bild, aber mit Paintability-Risiko.",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "settings": {
+        "nearIdenticalPaletteMergeLabDistance": 1,
+        "removeFacetsSmallerThanImageRatio": 0.000006
+      }
+    },
+    {
+      "id": "expert24-balanced-cleanup",
+      "label": "Balanced + cleanup",
+      "description": "Balanced detail plus je ein Narrow- und Protrusion-Cleanup-Lauf, um zu testen, ob Artefakte ohne grossen Detailverlust verschwinden.",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "settings": {
+        "nearIdenticalPaletteMergeLabDistance": 2,
+        "removeFacetsSmallerThanImageRatio": 0.000012,
+        "narrowPixelStripCleanupRuns": 1,
+        "nrOfTimesToHalveBorderSegments": 1
+      }
+    }
+  ]
+}

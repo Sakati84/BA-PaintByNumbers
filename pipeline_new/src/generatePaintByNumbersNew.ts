@@ -1,4 +1,5 @@
 import type { ImagePickerAsset } from 'expo-image-picker';
+import '../../App/src/features/generator/textDecoderCompatibility';
 import { encode } from 'fast-png';
 
 import type { SimpleImageData } from '../../App/src/types/imageData';
@@ -23,13 +24,25 @@ const PALETTE_WEIGHT_POWER = 0.78;
 const MAJORITY_FILTER_RUNS = 2;
 const POST_MAJORITY_FILTER_RUNS = 1;
 const FINAL_MAJORITY_FILTER_RUNS = 1;
-const MIN_REGION_RATIO = 0.00018;
-const MIN_REGION_PIXELS = 160;
+const EASY_MIN_REGION_RATIO = 0.00022;
+const MEDIUM_MIN_REGION_RATIO = 0.00014;
+const EXPERT_MIN_REGION_RATIO = 0.00012;
+const EASY_MIN_REGION_PIXELS = 220;
+const MEDIUM_MIN_REGION_PIXELS = 130;
+const EXPERT_MIN_REGION_PIXELS = 72;
 const TINY_MERGE_PASSES = 12;
 const SPECKLE_REGION_PIXELS = 48;
 const FINAL_SPECKLE_PASSES = 8;
 const DETAIL_PROTECT_MIN_PIXELS = 80;
 const DETAIL_PROTECT_LAB_DISTANCE = 26;
+const DETAIL_SPECKLE_PROTECT_MIN_PIXELS = 18;
+const DETAIL_SPECKLE_PROTECT_LAB_DISTANCE = 34;
+const SOURCE_AWARE_MAJORITY_RGB_TOLERANCE = 22;
+const SOURCE_AWARE_MAJORITY_ABSOLUTE_RGB_LIMIT = 46;
+const SOURCE_MERGE_MAX_LAB_DISTANCE = 28;
+const SOURCE_TINY_MERGE_MAX_LAB_DISTANCE = 34;
+const SOURCE_GLOBAL_REASSIGN_MAX_LAB_DISTANCE = 24;
+const SOURCE_GLOBAL_REASSIGN_MIN_IMPROVEMENT = 5;
 const BOUNDARY_ALPHA = 0.82;
 const BOUNDARY_SOFT_ALPHA = 0.22;
 const OUTLINE_R = 22;
@@ -96,6 +109,7 @@ type Components = {
 type MergeResult = {
   labelMap: Int32Array;
   mergeCount: number;
+  globalReassignCount: number;
   componentCount: number;
   smallRemaining: number;
   protectedSmall: number;
@@ -198,6 +212,34 @@ function settingsWithPipelineResizeLimit(settings: GeneratorSettings): Generator
     ...settings,
     resizeImageWidth: Math.min(settings.resizeImageWidth, WORK_MAX_EDGE),
     resizeImageHeight: Math.min(settings.resizeImageHeight, WORK_MAX_EDGE),
+  };
+}
+
+function regionPolicyForColorCount(colorCount: number): {
+  minRegionRatio: number;
+  minRegionPixels: number;
+  detailProtectMinPixels: number;
+} {
+  if (colorCount <= 11) {
+    return {
+      minRegionRatio: EASY_MIN_REGION_RATIO,
+      minRegionPixels: EASY_MIN_REGION_PIXELS,
+      detailProtectMinPixels: DETAIL_PROTECT_MIN_PIXELS,
+    };
+  }
+
+  if (colorCount <= 17) {
+    return {
+      minRegionRatio: MEDIUM_MIN_REGION_RATIO,
+      minRegionPixels: MEDIUM_MIN_REGION_PIXELS,
+      detailProtectMinPixels: Math.round(DETAIL_PROTECT_MIN_PIXELS * 0.8),
+    };
+  }
+
+  return {
+    minRegionRatio: EXPERT_MIN_REGION_RATIO,
+    minRegionPixels: EXPERT_MIN_REGION_PIXELS,
+    detailProtectMinPixels: Math.round(DETAIL_PROTECT_MIN_PIXELS * 0.7),
   };
 }
 
@@ -391,6 +433,19 @@ function labDistance(left: Float32Array, leftIndex: number, right: Float32Array,
   return Math.sqrt(dL * dL + dA * dA + dB * dB);
 }
 
+function rgbDistanceToPalette(
+  sourceRgbData: Uint8ClampedArray,
+  pixelOffset: number,
+  paletteRgb: Float32Array,
+  label: number,
+): number {
+  const paletteOffset = label * 3;
+  const dR = sourceRgbData[pixelOffset] - (paletteRgb[paletteOffset] ?? 255);
+  const dG = sourceRgbData[pixelOffset + 1] - (paletteRgb[paletteOffset + 1] ?? 255);
+  const dB = sourceRgbData[pixelOffset + 2] - (paletteRgb[paletteOffset + 2] ?? 255);
+  return Math.sqrt(dR * dR + dG * dG + dB * dB);
+}
+
 function componentLabColors(meanRgb: Float32Array): Float32Array {
   const lab = new Float32Array(meanRgb.length);
   for (let index = 0; index < meanRgb.length / 3; index += 1) {
@@ -532,7 +587,15 @@ function labelMapFromComponents(componentMap: Int32Array, componentLabels: Int32
   return labelMap;
 }
 
-function majorityFilterLabels(labelMap: Int32Array, width: number, height: number, colorCount: number, runs: number): Int32Array {
+function majorityFilterLabels(
+  labelMap: Int32Array,
+  width: number,
+  height: number,
+  colorCount: number,
+  runs: number,
+  sourceRgbData?: Uint8ClampedArray,
+  paletteRgb?: Float32Array,
+): Int32Array {
   let current = labelMap;
   for (let run = 0; run < runs; run += 1) {
     const next = new Int32Array(current.length);
@@ -563,7 +626,26 @@ function majorityFilterLabels(labelMap: Int32Array, width: number, height: numbe
             }
           }
         }
-        next[y * width + x] = bestLabel;
+        const index = y * width + x;
+        const currentLabel = current[index];
+        if (
+          bestLabel !== currentLabel
+          && sourceRgbData != null
+          && paletteRgb != null
+          && currentLabel >= 0
+          && currentLabel < colorCount
+        ) {
+          const pixelOffset = index * 4;
+          const currentDistance = rgbDistanceToPalette(sourceRgbData, pixelOffset, paletteRgb, currentLabel);
+          const targetDistance = rgbDistanceToPalette(sourceRgbData, pixelOffset, paletteRgb, bestLabel);
+          if (
+            targetDistance > SOURCE_AWARE_MAJORITY_ABSOLUTE_RGB_LIMIT
+            && targetDistance > currentDistance + SOURCE_AWARE_MAJORITY_RGB_TOLERANCE
+          ) {
+            bestLabel = currentLabel;
+          }
+        }
+        next[index] = bestLabel;
       }
     }
     current = next;
@@ -616,8 +698,27 @@ function buildAdjacency(componentMap: Int32Array, width: number, height: number)
   return adjacency;
 }
 
+function nearestPaletteLabelForComponent(
+  componentLab: Float32Array,
+  componentId: number,
+  paletteLabColors: Float32Array,
+  colorCount: number,
+): { label: number; distance: number } {
+  let label = 0;
+  let distance = Number.POSITIVE_INFINITY;
+  for (let candidate = 0; candidate < colorCount; candidate += 1) {
+    const candidateDistance = labDistance(componentLab, componentId, paletteLabColors, candidate);
+    if (candidateDistance < distance) {
+      distance = candidateDistance;
+      label = candidate;
+    }
+  }
+  return { label, distance };
+}
+
 function mergeTinyRegions(
   labelMap: Int32Array,
+  sourceRgbData: Uint8ClampedArray,
   paletteRgb: Float32Array,
   width: number,
   height: number,
@@ -631,12 +732,14 @@ function mergeTinyRegions(
   const colorCount = paletteRgb.length / 3;
   const lab = paletteLab(paletteRgb);
   let totalMerges = 0;
+  let totalGlobalReassignments = 0;
   let componentCount = 0;
   let smallRemaining = 0;
   let protectedSmall = 0;
 
   for (let pass = 0; pass < maxPasses; pass += 1) {
-    const components = connectedComponentsForLabels(current, colorCount, width, height);
+    const components = connectedComponentsForLabels(current, colorCount, width, height, sourceRgbData);
+    const componentLab = componentLabColors(components.meanRgb);
     componentCount = components.labels.length;
     const adjacency = buildAdjacency(components.componentMap, width, height);
     const replacementByComponent = new Int32Array(componentCount);
@@ -657,30 +760,66 @@ function mergeTinyRegions(
         continue;
       }
 
-      let nearestDistance = Number.POSITIVE_INFINITY;
+      const nearestPalette = nearestPaletteLabelForComponent(componentLab, componentId, lab, colorCount);
+      const currentSourceDistance = labDistance(componentLab, componentId, lab, sourceLabel);
+      let nearestNeighborSourceDistance = Number.POSITIVE_INFINITY;
       let bestLabel = sourceLabel;
+      let bestNeighborSourceDistance = Number.POSITIVE_INFINITY;
       let bestScore = Number.POSITIVE_INFINITY;
       for (const [neighborId, borderCount] of neighbors) {
         const targetLabel = components.labels[neighborId];
         if (targetLabel === sourceLabel) {
           continue;
         }
-        const distance = labDistance(lab, sourceLabel, lab, targetLabel);
-        nearestDistance = Math.min(nearestDistance, distance);
+        const paletteDistance = labDistance(lab, sourceLabel, lab, targetLabel);
+        const sourceTargetDistance = labDistance(componentLab, componentId, lab, targetLabel);
+        nearestNeighborSourceDistance = Math.min(nearestNeighborSourceDistance, sourceTargetDistance);
         const borderBonus = Math.min(8, Math.log1p(borderCount) * 1.4);
         const areaBonus = Math.min(12, Math.log1p(components.areas[neighborId]) * 0.8);
-        const score = distance - borderBonus - areaBonus;
+        const score = sourceTargetDistance * 1.25 + paletteDistance * 0.18 - borderBonus - areaBonus;
         if (score < bestScore) {
           bestScore = score;
           bestLabel = targetLabel;
+          bestNeighborSourceDistance = sourceTargetDistance;
         }
       }
 
-      const detailProtected = area >= protectMinArea && nearestDistance >= protectLabDistance;
-      if (detailProtected && area >= forceMergeBelow) {
+      const isForcedTiny = area < forceMergeBelow;
+      const neighborLimit = isForcedTiny ? SOURCE_TINY_MERGE_MAX_LAB_DISTANCE : SOURCE_MERGE_MAX_LAB_DISTANCE;
+      const hasGoodNeighbor = bestLabel !== sourceLabel && bestNeighborSourceDistance <= neighborLimit;
+      const globalIsBetter =
+        nearestPalette.distance <= SOURCE_GLOBAL_REASSIGN_MAX_LAB_DISTANCE
+        || nearestPalette.distance + SOURCE_GLOBAL_REASSIGN_MIN_IMPROVEMENT < bestNeighborSourceDistance
+        || nearestPalette.distance + SOURCE_GLOBAL_REASSIGN_MIN_IMPROVEMENT < currentSourceDistance;
+      const canUseGlobalReassignment =
+        area >= protectMinArea
+        || (
+          area >= DETAIL_SPECKLE_PROTECT_MIN_PIXELS
+          && nearestNeighborSourceDistance >= protectLabDistance + 8
+          && nearestPalette.distance <= SOURCE_GLOBAL_REASSIGN_MAX_LAB_DISTANCE * 0.75
+        );
+      const detailProtected =
+        area >= protectMinArea
+        && nearestNeighborSourceDistance >= protectLabDistance
+        && nearestPalette.distance <= Math.max(SOURCE_GLOBAL_REASSIGN_MAX_LAB_DISTANCE, currentSourceDistance + SOURCE_GLOBAL_REASSIGN_MIN_IMPROVEMENT);
+
+      if (canUseGlobalReassignment && (detailProtected || !hasGoodNeighbor) && nearestPalette.label !== sourceLabel && globalIsBetter) {
+        replacementByComponent[componentId] = nearestPalette.label;
+        changed += 1;
+        totalGlobalReassignments += 1;
         continue;
       }
-      if (bestLabel !== sourceLabel) {
+
+      if (detailProtected && !isForcedTiny) {
+        continue;
+      }
+
+      if (hasGoodNeighbor) {
+        replacementByComponent[componentId] = bestLabel;
+        changed += 1;
+      } else if (nearestPalette.label === sourceLabel && detailProtected) {
+        continue;
+      } else if (bestLabel !== sourceLabel && isForcedTiny) {
         replacementByComponent[componentId] = bestLabel;
         changed += 1;
       }
@@ -698,7 +837,8 @@ function mergeTinyRegions(
     totalMerges += changed;
   }
 
-  const finalComponents = connectedComponentsForLabels(current, colorCount, width, height);
+  const finalComponents = connectedComponentsForLabels(current, colorCount, width, height, sourceRgbData);
+  const finalComponentLab = componentLabColors(finalComponents.meanRgb);
   componentCount = finalComponents.labels.length;
   const adjacency = buildAdjacency(finalComponents.componentMap, width, height);
   for (let componentId = 0; componentId < componentCount; componentId += 1) {
@@ -713,7 +853,7 @@ function mergeTinyRegions(
       for (const neighborId of neighbors.keys()) {
         const targetLabel = finalComponents.labels[neighborId];
         if (targetLabel !== sourceLabel) {
-          nearestDistance = Math.min(nearestDistance, labDistance(lab, sourceLabel, lab, targetLabel));
+          nearestDistance = Math.min(nearestDistance, labDistance(finalComponentLab, componentId, lab, targetLabel));
         }
       }
     }
@@ -727,9 +867,105 @@ function mergeTinyRegions(
   return {
     labelMap: current,
     mergeCount: totalMerges,
+    globalReassignCount: totalGlobalReassignments,
     componentCount,
     smallRemaining,
     protectedSmall,
+  };
+}
+
+function labelPixelCounts(labelMap: Int32Array, colorCount: number): Int32Array {
+  const counts = new Int32Array(colorCount);
+  for (const label of labelMap) {
+    if (label >= 0 && label < colorCount) {
+      counts[label] += 1;
+    }
+  }
+  return counts;
+}
+
+function ensureTargetPaletteUsage(
+  labelMap: Int32Array,
+  sourceRgbData: Uint8ClampedArray,
+  paletteRgb: Float32Array,
+  width: number,
+  height: number,
+  colorCount: number,
+  minRegionArea: number,
+): { labelMap: Int32Array; reintroducedCount: number } {
+  const counts = labelPixelCounts(labelMap, colorCount);
+  const missingLabels: number[] = [];
+  for (let label = 0; label < colorCount; label += 1) {
+    if (counts[label] === 0) {
+      missingLabels.push(label);
+    }
+  }
+  if (missingLabels.length === 0) {
+    return { labelMap, reintroducedCount: 0 };
+  }
+
+  const components = connectedComponentsForLabels(labelMap, colorCount, width, height, sourceRgbData);
+  if (components.labels.length <= colorCount - missingLabels.length) {
+    return { labelMap, reintroducedCount: 0 };
+  }
+
+  const componentLab = componentLabColors(components.meanRgb);
+  const lab = paletteLab(paletteRgb);
+  const selectedComponents = new Set<number>();
+  let next: Int32Array | null = null;
+  let reintroducedCount = 0;
+  const minimumCandidateArea = Math.max(DETAIL_SPECKLE_PROTECT_MIN_PIXELS, Math.min(minRegionArea, MEDIUM_MIN_REGION_PIXELS));
+
+  for (const missingLabel of missingLabels) {
+    let bestComponent = -1;
+    let bestScore = Number.NEGATIVE_INFINITY;
+
+    for (let componentId = 0; componentId < components.labels.length; componentId += 1) {
+      if (selectedComponents.has(componentId)) {
+        continue;
+      }
+      const area = components.areas[componentId];
+      if (area < minimumCandidateArea) {
+        continue;
+      }
+      const sourceLabel = components.labels[componentId];
+      if (counts[sourceLabel] <= area) {
+        continue;
+      }
+      const currentDistance = labDistance(componentLab, componentId, lab, sourceLabel);
+      const missingDistance = labDistance(componentLab, componentId, lab, missingLabel);
+      const improvement = currentDistance - missingDistance;
+      const areaScore = Math.min(16, Math.log1p(area) * 1.6);
+      const hugeAreaPenalty = Math.max(0, area / Math.max(1, width * height) - 0.08) * 80;
+      const score = currentDistance * 1.4 + improvement * 1.8 + areaScore - hugeAreaPenalty;
+      if (score > bestScore) {
+        bestScore = score;
+        bestComponent = componentId;
+      }
+    }
+
+    if (bestComponent < 0) {
+      continue;
+    }
+
+    if (next == null) {
+      next = new Int32Array(labelMap);
+    }
+    const previousLabel = components.labels[bestComponent];
+    for (let index = 0; index < components.componentMap.length; index += 1) {
+      if (components.componentMap[index] === bestComponent) {
+        next[index] = missingLabel;
+      }
+    }
+    counts[previousLabel] -= components.areas[bestComponent];
+    counts[missingLabel] += components.areas[bestComponent];
+    selectedComponents.add(bestComponent);
+    reintroducedCount += 1;
+  }
+
+  return {
+    labelMap: next ?? labelMap,
+    reintroducedCount,
   };
 }
 
@@ -1098,11 +1334,23 @@ export async function generatePaintByNumbers(
 
   report('narrowCleanup', 0, 'Lokale Pixelinseln werden beruhigt.');
   const majorityStarted = nowMs();
-  labelMap = majorityFilterLabels(labelMap, decoded.imageData.width, decoded.imageData.height, targetColorCount, MAJORITY_FILTER_RUNS);
+  labelMap = majorityFilterLabels(
+    labelMap,
+    decoded.imageData.width,
+    decoded.imageData.height,
+    targetColorCount,
+    MAJORITY_FILTER_RUNS,
+    smoothed,
+    paletteRgb,
+  );
   addTiming(timings, 'narrowCleanup', majorityStarted);
   report('narrowCleanup', 1, 'Lokale Pixelinseln beruhigt.');
 
-  const minRegionArea = Math.max(MIN_REGION_PIXELS, Math.round(decoded.imageData.width * decoded.imageData.height * MIN_REGION_RATIO));
+  const regionPolicy = regionPolicyForColorCount(targetColorCount);
+  const minRegionArea = Math.max(
+    regionPolicy.minRegionPixels,
+    Math.round(decoded.imageData.width * decoded.imageData.height * regionPolicy.minRegionRatio),
+  );
 
   report('facetBuild', 0, 'Finale Farbregionen werden aufgebaut.');
   const facetBuildStarted = nowMs();
@@ -1114,43 +1362,110 @@ export async function generatePaintByNumbers(
   const reduceStarted = nowMs();
   let merge = mergeTinyRegions(
     labelMap,
+    smoothed,
     paletteRgb,
     decoded.imageData.width,
     decoded.imageData.height,
     minRegionArea,
     TINY_MERGE_PASSES,
     SPECKLE_REGION_PIXELS,
-    DETAIL_PROTECT_MIN_PIXELS,
+    regionPolicy.detailProtectMinPixels,
     DETAIL_PROTECT_LAB_DISTANCE,
   );
-  labelMap = majorityFilterLabels(merge.labelMap, decoded.imageData.width, decoded.imageData.height, targetColorCount, POST_MAJORITY_FILTER_RUNS);
+  labelMap = majorityFilterLabels(
+    merge.labelMap,
+    decoded.imageData.width,
+    decoded.imageData.height,
+    targetColorCount,
+    POST_MAJORITY_FILTER_RUNS,
+    smoothed,
+    paletteRgb,
+  );
   merge = mergeTinyRegions(
     labelMap,
+    smoothed,
     paletteRgb,
     decoded.imageData.width,
     decoded.imageData.height,
     minRegionArea,
     Math.max(4, Math.floor(TINY_MERGE_PASSES / 2)),
     SPECKLE_REGION_PIXELS,
-    DETAIL_PROTECT_MIN_PIXELS,
+    regionPolicy.detailProtectMinPixels,
     DETAIL_PROTECT_LAB_DISTANCE,
   );
-  merge = mergeTinyRegions(
+  labelMap = majorityFilterLabels(
     merge.labelMap,
+    decoded.imageData.width,
+    decoded.imageData.height,
+    targetColorCount,
+    FINAL_MAJORITY_FILTER_RUNS,
+    smoothed,
+    paletteRgb,
+  );
+  merge = mergeTinyRegions(
+    labelMap,
+    smoothed,
     paletteRgb,
     decoded.imageData.width,
     decoded.imageData.height,
     SPECKLE_REGION_PIXELS,
     FINAL_SPECKLE_PASSES,
     SPECKLE_REGION_PIXELS,
-    Number.MAX_SAFE_INTEGER,
-    Number.POSITIVE_INFINITY,
+    DETAIL_SPECKLE_PROTECT_MIN_PIXELS,
+    DETAIL_SPECKLE_PROTECT_LAB_DISTANCE,
   );
-  labelMap = majorityFilterLabels(merge.labelMap, decoded.imageData.width, decoded.imageData.height, targetColorCount, FINAL_MAJORITY_FILTER_RUNS);
+  labelMap = merge.labelMap;
+  const maximumNumberOfFacets = Math.max(0, Math.floor(settings.maximumNumberOfFacets));
+  if (maximumNumberOfFacets > 0) {
+    let previousBudgetComponentCount = Number.POSITIVE_INFINITY;
+    for (let budgetPass = 0; budgetPass < 5; budgetPass += 1) {
+      const budgetComponents = connectedComponentsForLabels(
+        labelMap,
+        targetColorCount,
+        decoded.imageData.width,
+        decoded.imageData.height,
+      );
+      if (budgetComponents.labels.length <= maximumNumberOfFacets || budgetComponents.labels.length >= previousBudgetComponentCount) {
+        break;
+      }
+      previousBudgetComponentCount = budgetComponents.labels.length;
+      const budgetMinArea = Math.max(minRegionArea, Math.round(minRegionArea * (1.2 + budgetPass * 0.35)));
+      const budgetMerge = mergeTinyRegions(
+        labelMap,
+        smoothed,
+        paletteRgb,
+        decoded.imageData.width,
+        decoded.imageData.height,
+        budgetMinArea,
+        4,
+        SPECKLE_REGION_PIXELS,
+        regionPolicy.detailProtectMinPixels,
+        DETAIL_PROTECT_LAB_DISTANCE + 4,
+      );
+      labelMap = budgetMerge.labelMap;
+      if (budgetMerge.mergeCount === 0) {
+        break;
+      }
+    }
+  }
+  const paletteUsage = ensureTargetPaletteUsage(
+    labelMap,
+    smoothed,
+    paletteRgb,
+    decoded.imageData.width,
+    decoded.imageData.height,
+    targetColorCount,
+    minRegionArea,
+  );
+  labelMap = paletteUsage.labelMap;
   paletteRgb = recomputePalette(smoothed, labelMap, targetColorCount);
   regionComponents = connectedComponentsForLabels(labelMap, targetColorCount, decoded.imageData.width, decoded.imageData.height);
   addTiming(timings, 'facetReduce', reduceStarted);
-  report('facetReduce', 1, `${regionComponents.labels.length} finale Regionen erzeugt.`);
+  report(
+    'facetReduce',
+    1,
+    `${regionComponents.labels.length} finale Regionen erzeugt${paletteUsage.reintroducedCount > 0 ? `, ${paletteUsage.reintroducedCount} Zielfarben reaktiviert` : ''}.`,
+  );
 
   report('borderTrace', 0, 'Geglaettete Grenzen werden vorbereitet.');
   const borderStarted = nowMs();

@@ -19,10 +19,11 @@ Der Port ist eine app-taugliche Annäherung an den Python-Prototyp:
 3. 64 Farb-Token aus RGB-Bins bauen.
 4. Zusammenhaengende Token-Regionen erkennen.
 5. Eine gewichtete Zielpalette auf Regionsebene lernen.
-6. Kleine Restregionen mergen und kontrastreiche Details schuetzen.
-7. Speckles bereinigen.
-8. `cleanColor` und `classic` rendern.
+6. Source-aware Majority- und Merge-Entscheidungen gegen die lokale KI-Quellfarbe treffen.
+7. Kleine relevante Details schuetzen oder auf die naechstpassende globale Zielpalettenfarbe legen.
+8. Fehlende Zielpalettenfarben reaktivieren und Speckles bereinigen.
+9. `cleanColor`, `coloredEdges` und `coloredEdgesWithDots` rendern.
 
 Nummern, Labelplatzierung und die vollstaendige alte Variantenliste sind in diesem Port noch nicht
-implementiert. Fuer App-Kompatibilitaet liefert der Port `classic`, `cleanColor` und einen
-`brightColorCircles`-Default-Alias.
+implementiert. Fuer App-Kompatibilitaet liefert der Port im normalen Flow `cleanColor`,
+`coloredEdges` und `coloredEdgesWithDots`; `classic` bleibt fuer gezielte Debug-Renders verfuegbar.
