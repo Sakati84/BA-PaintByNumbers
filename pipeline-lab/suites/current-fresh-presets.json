@@ -1,0 +1,10 @@
+{
+  "name": "current-fresh-typescript-presets",
+  "sourceRun": "../../prompt-lab/runs/2026-06-30T19-40-19-250Z_nano-banana-2-lite-easy-medium-expert",
+  "variants": ["cleanColor", "coloredEdges", "coloredEdgesWithDots"],
+  "configs": [
+    { "id": "fresh-easy-8", "label": "Fresh Easy 8", "pipeline": "fresh", "difficulty": "easy", "colorCount": 8 },
+    { "id": "fresh-medium-12", "label": "Fresh Medium 12", "pipeline": "fresh", "difficulty": "medium", "colorCount": 12 },
+    { "id": "fresh-expert-24", "label": "Fresh Expert 24", "pipeline": "fresh", "difficulty": "expert", "colorCount": 24 }
+  ]
+}

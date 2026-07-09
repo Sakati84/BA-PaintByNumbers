@@ -410,6 +410,7 @@ function configMetaHtml(config) {
     <strong>${htmlEscape(config.label)}</strong>
     <div>${htmlEscape(config.description ?? '')}</div>
     <code>${htmlEscape(JSON.stringify({
+      pipeline: config.pipeline,
       colors: settings.kMeansNrOfClusters,
       nearIdentical: settings.nearIdenticalPaletteMergeLabDistance,
       minAreaRatio: settings.removeFacetsSmallerThanImageRatio,
@@ -721,6 +722,7 @@ async function main() {
           mimeType: prepared.mimeType,
         }, {
           variantIds: suite.variants,
+          pipeline: config.pipeline,
         });
         const variants = await writePipelineResultFiles(configDir, result);
         const palettePath = path.join(configDir, 'palette.json');

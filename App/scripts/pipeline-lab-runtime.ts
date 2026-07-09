@@ -15,6 +15,7 @@ import {
   mergeRedundantPaletteColors,
 } from '../src/features/generator/pipelineCore';
 import { buildRasterPaintByNumbers } from '../src/features/generator/rasterPaintByNumbers';
+import { generatePaintByNumbersFreshFromPreparedInput } from '../src/features/generator/fresh/generatePaintByNumbersFresh';
 import {
   DEFAULT_SETTINGS,
   settingsForColorCount,
@@ -29,6 +30,7 @@ export type PipelineLabConfigInput = {
   colorCount?: number;
   difficulty?: 'easy' | 'medium' | 'expert' | 'simple' | 'detailed';
   settings?: Partial<GeneratorSettings>;
+  pipeline?: 'fresh' | 'legacy';
 };
 
 export type PipelineLabResolvedConfig = {
@@ -38,6 +40,7 @@ export type PipelineLabResolvedConfig = {
   colorCount: number;
   difficulty: string | null;
   settings: GeneratorSettings;
+  pipeline: 'fresh' | 'legacy';
 };
 
 export type PipelineLabPreparedImage = {
@@ -55,6 +58,7 @@ export type PipelineLabRunResult = Omit<GeneratorResult, 'preparedImage'> & {
 
 export type PipelineLabRunOptions = {
   variantIds?: readonly GeneratorOutputVariantId[];
+  pipeline?: 'fresh' | 'legacy';
 };
 
 function nowMs(): number {
@@ -100,11 +104,16 @@ export function resolvePipelineLabConfig(input: PipelineLabConfigInput): Pipelin
     : complexity == null
       ? settingsForColorCount(colorCount)
       : settingsForComplexity(complexity);
+  const pipeline = input.pipeline ?? 'legacy';
   const settings: GeneratorSettings = {
     ...baseSettings,
     kMeansNrOfClusters: colorCount,
     ...input.settings,
   };
+  if (pipeline === 'fresh') {
+    settings.resizeImageWidth = Math.min(1400, settings.resizeImageWidth);
+    settings.resizeImageHeight = Math.min(1400, settings.resizeImageHeight);
+  }
 
   return {
     id: input.id ?? `colors-${settings.kMeansNrOfClusters}`,
@@ -113,6 +122,7 @@ export function resolvePipelineLabConfig(input: PipelineLabConfigInput): Pipelin
     colorCount: settings.kMeansNrOfClusters,
     difficulty: difficulty ?? null,
     settings,
+    pipeline,
   };
 }
 
@@ -122,6 +132,28 @@ export async function runPipelineLabImage(
   preparedImage: PipelineLabPreparedImage,
   options: PipelineLabRunOptions = {},
 ): Promise<PipelineLabRunResult> {
+  if (options.pipeline === 'fresh') {
+    const freshResult = await generatePaintByNumbersFreshFromPreparedInput(
+      {
+        prepared: {
+          imageUri: preparedImage.imageUri,
+          width: preparedImage.width,
+          height: preparedImage.height,
+          fileName: preparedImage.fileName ?? null,
+          mimeType: preparedImage.mimeType ?? 'image/png',
+        },
+        imageData,
+      },
+      settings,
+      undefined,
+      { variantIds: options.variantIds },
+    );
+    return {
+      ...freshResult,
+      variants: freshResult.variants ?? [],
+    };
+  }
+
   const timings: GeneratorTimings = {};
   const targetColorCount = Math.max(1, Math.floor(settings.kMeansNrOfClusters));
   const vendorSettings = toVendorSettings({
