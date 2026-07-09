@@ -1,6 +1,6 @@
 # Technische Architektur: Happy Numbers Paint-by-Numbers
 
-Stand: 2026-07-07
+Stand: 2026-07-09
 
 Dieses Dokument beschreibt den aktuellen technischen Aufbau des Projekts, den KI-gestuetzten Bildvorbereitungsschritt, die drei Prompt-Varianten und die lokale Paint-by-Numbers-Pipeline. Es ist als Arbeitsdokument fuer Entwicklung, Agenten und Projektverstaendnis gedacht. Wenn sich Architektur, KI-Call, Prompting, Pipeline-Stufen, Komplexitaetslogik oder Exportvarianten aendern, muss dieses Dokument mit aktualisiert werden.
 
@@ -75,7 +75,10 @@ Wichtig: Die aktuelle iPhone-App ist kein reiner Browser und keine reine native 
   Einstiegspunkt der bisherigen lokalen Paint-by-Numbers-Pipeline fuer ein `ImagePickerAsset`. Dieser Pfad bleibt als Legacy-Fallback im Repository und kann ueber `EXPO_PUBLIC_GENERATOR_PIPELINE=legacy` als aktiver Generator ausgewaehlt werden.
 
 - `App/src/features/generator/fresh/generatePaintByNumbersFresh.ts`
-  Aktiver TypeScript-Port der Region-First-Fresh-Pipeline. `App/App.tsx` importiert diesen Generator und nutzt ihn standardmaessig, wenn `EXPO_PUBLIC_GENERATOR_PIPELINE` leer ist oder auf `fresh` steht.
+  Plattformneutraler TypeScript-Kern der Region-First-Fresh-Pipeline. Er akzeptiert bereits vorbereitete RGBA-Bilddaten und kann deshalb sowohl in der App als auch direkt im Node-basierten Pipeline-Lab und in Regressionstests ausgefuehrt werden.
+
+- `App/src/features/generator/fresh/generatePaintByNumbersFreshNative.ts`
+  Native App-Huelle des Fresh-Kerns. Sie bereitet das `ImagePickerAsset` mit dem Fresh-Arbeitslimit vor und uebergibt es danach an den plattformneutralen Kern. `App/App.tsx` importiert diese Huelle standardmaessig, wenn `EXPO_PUBLIC_GENERATOR_PIPELINE` leer ist oder auf `fresh` steht.
 
 - `App/src/features/generator/prepareImage.ts`
   Resize, PNG-Normalisierung, Alpha-Flattening auf Weiss und Umwandlung in `ImageData`.
@@ -627,7 +630,7 @@ Die wichtigsten Unterschiede:
 
 Wichtige Konsequenz:
 
-Die Code-Pipeline besitzt Schritte fuer schmale Pixelstreifen und duenne Auslaeufer, aber die aktuellen UI-Defaults setzen beide Durchlaufzahlen auf `0`. Diese Stufen werden also durchlaufen, veraendern mit den aktuellen Settings aber normalerweise nichts. Die Region-Merge-Stufe bleibt aktiv und ist aktuell der wichtigste lokale Saeuberungsschritt nach K-Means und Palette-Merge.
+Die bisherige Raster-Pipeline besitzt Schritte fuer schmale Pixelstreifen und duenne Auslaeufer, aber die aktuellen UI-Defaults setzen beide Durchlaufzahlen auf `0`. Diese Stufen werden dort also durchlaufen, veraendern mit den aktuellen Settings aber normalerweise nichts. Die Region-Merge-Stufe bleibt aktiv und ist in diesem Pfad der wichtigste lokale Saeuberungsschritt nach K-Means und Palette-Merge.
 
 Expert wurde am 2026-07-07 nach einem Detailerhalt-Vergleich auf acht KI-posterisierten Expert-24-Beispielbildern angepasst. Die erste Vergleichsseite liegt unter `pipeline-lab/runs/2026-07-07-expert24-detail-preservation-report/index.html`. Ergebnis: Eine niedrigere Expert-Mindestflaeche (`0.000012`) erhaelt wichtige lokale Struktur naeher am KI-Bild, ohne die Farbanzahl zu erhoehen. Reaktivierte Narrow-/Protrusion-Cleanup-Runs waren im Vergleich nicht ueberzeugend und bleiben fuer Expert deaktiviert.
 
@@ -635,7 +638,7 @@ Am selben Tag wurde die Expert-Reduktion um adaptives Merging erweitert. Die neu
 
 Fresh-Port-Zusatz:
 
-Der aktive TypeScript-Fresh-Port in `App/src/features/generator/fresh/generatePaintByNumbersFresh.ts` liest weiterhin `kMeansNrOfClusters` und `maximumNumberOfFacets` aus den UI-Settings, nutzt fuer seine Region-First-Geometrie aber eigene farbanzahlabhaengige Mindestflaechen:
+Der aktive TypeScript-Fresh-Port in `App/src/features/generator/fresh/generatePaintByNumbersFresh.ts` liest weiterhin `kMeansNrOfClusters`, `randomSeed` und `maximumNumberOfFacets` aus den UI-Settings, validiert und begrenzt alle numerischen Eingaben am Core-Einstieg und nutzt fuer seine Region-First-Geometrie eigene farbanzahlabhaengige Mindestflaechen:
 
 | Farbanzahl | Fresh-Min-Ratio | Fresh-Min-Pixel | Detailschutz ab |
 | ---: | ---: | ---: | ---: |
@@ -643,7 +646,9 @@ Der aktive TypeScript-Fresh-Port in `App/src/features/generator/fresh/generatePa
 | 12-17 | `0.00014` | `130 px` | `64 px` |
 | 18-24 | `0.00012` | `72 px` | `56 px` |
 
-Diese Werte ersetzen im Fresh-Port nicht die UI-Komplexitaetslogik, sondern uebersetzen sie in eine fuer Region-First passende Merge-Policy. Expert respektiert zusaetzlich das bestehende `maximumNumberOfFacets = 2600` als kontrastgeschuetztes Flaechenbudget.
+Diese Werte ersetzen im Fresh-Port nicht die UI-Komplexitaetslogik, sondern uebersetzen sie in eine fuer Region-First passende Merge-Policy. `removeFacetsSmallerThanImageRatio` kann die Fresh-Mindestflaeche im Debug oder durch Settings nur anheben; die farbanzahlabhaengige Fresh-Policy bleibt die Untergrenze. Expert respektiert zusaetzlich das bestehende `maximumNumberOfFacets = 2600` als kontrastgeschuetztes hartes Flaechenbudget. Nach dem normalen source-aware Cleanup fuehrt der Fresh-Kern bei Bedarf stabile Least-Cost-Merge-Batches aus, bis das Budget erreicht ist. Hochkontrast-Details bekommen dabei einen hohen Merge-Preis, koennen bei einem expliziten harten Budget aber nicht unbegrenzt alle Reduktion blockieren.
+
+Fresh nutzt im `narrowCleanup` zwei feste source-aware Majority-Basisdurchlaeufe. `narrowPixelStripCleanupRuns` addiert im Fresh-Port optionale weitere Durchlaeufe. `nrOfTimesToHalveBorderSegments` ist im Fresh-Port kein Legacy-Protrusion-Tracer, sondern ein optionaler weiterer source-aware Beruhigungsdurchlauf vor `facetBuild`; der UI-Default `0` laesst diesen Zusatzschritt unveraendert.
 
 ## 7. Lokale Paint-by-Numbers-Pipeline nach der KI
 
@@ -656,7 +661,7 @@ Im bisherigen Raster-Pfad ist der Einstieg:
 
 Der aktive App-Einstieg wird in `App/App.tsx` ueber `EXPO_PUBLIC_GENERATOR_PIPELINE` gewaehlt:
 
-- unset oder `fresh`: `App/src/features/generator/fresh/generatePaintByNumbersFresh.ts`
+- unset oder `fresh`: `App/src/features/generator/fresh/generatePaintByNumbersFreshNative.ts`, danach plattformneutraler Kern in `generatePaintByNumbersFresh.ts`
 - `legacy`: `App/src/features/generator/generatePaintByNumbers.ts`
 
 Damit kann `main` die neue Fresh-Pipeline standardmaessig nutzen, ohne den bisherigen Raster-Pfad zu verlieren. Beide Generatoren bleiben statisch importiert, damit der Build beide Pfade kennt; zur Laufzeit entscheidet nur die Env-Variable.
@@ -688,7 +693,10 @@ Unterschiede im Debug Mode:
 
 - Der `runPaintByNumbers`-Bridge-Request sendet `debugMode: true`.
 - Ein Rerun aus dem Debug-Inspector sendet zusaetzlich `debugStartStage`, zum Beispiel `kmeans`, `borderSegment` oder `facetReduce`.
-- Die Expo-Shell haelt pro `sourceToken` einen nativen In-Memory-Cache mit Rohdaten fuer Decode, K-Means, ColorMap und Raster-Zwischenstaende. Diese Rohdaten werden nicht ueber die WebView serialisiert.
+- Die Expo-Shell haelt fuer den zuletzt verwendeten `sourceToken` einen begrenzten nativen In-Memory-Cache mit Rohdaten fuer die aktive Pipeline. Im Legacy-Pfad sind das Decode-, K-Means-, ColorMap- und Raster-Zwischenstaende; im Fresh-Pfad sind es Decode, geglaettetes Bild, Token-Components, kompakte `Uint8`-Farblabelkarten, nicht redundant gespeicherte Region-Components und Markerpositionen. Diese Rohdaten werden nicht ueber die WebView serialisiert.
+- Fresh-Cache-Eintraege tragen eine Cache-Version, Source-Signatur und kumulative Stage-Signaturen aus Bildgroesse, Pipeline-Konstanten und allen relevanten Upstream-Settings. Ein fehlender oder unpassender Checkpoint invalidiert automatisch alle nachfolgenden Cache-Stufen. Dadurch ist ein Teil-Rerun mit geaenderter Farbanzahl oder Resize-Konfiguration nicht mehr mit alten Labelkarten kombinierbar.
+- Wiederverwendete Fresh-Checkpoints teilen unveraenderliche Typed-Array-Referenzen statt fuer jeden Rerun alle Vollbildpuffer erneut zu klonen. Die Shell behaelt maximal einen Fresh-/Legacy-Debug-Cache und verwirft den aeltesten Eintrag.
+- Beide aktiven Pipelinepfade liefern im Debug Mode Snapshots fuer alle zehn Bridge-Stufen von `decode` bis `svgRender`. Im Fresh-Pfad entspricht `kmeans` intern der kantenbewussten Glaettung plus 64-RGB-Tokenisierung; `borderSegment` ist dort ein optionaler source-aware Zusatzfilter vor dem Region-Build.
 - Wenn ein Rerun ab einer spaeteren Stage gestartet wird und der Cache noch vorhanden ist, werden vorherige Stufen aus dem Cache uebernommen und nur die gewaehlte Stage plus nachfolgende Stufen neu berechnet.
 - Wenn der Cache fehlt, faellt der Lauf automatisch auf die noetigen vorherigen Berechnungen zurueck.
 - Die React-UI bekommt nur JSON-sichere Debugdaten: Parameter, Metriken, Timings, Cache-Hit-Flags und kompakte PNG-Snapshots.
@@ -696,7 +704,7 @@ Unterschiede im Debug Mode:
 - Jede Stage im Debug-Inspector besitzt einen Info-Button mit einer kurzen Erklaerung des jeweiligen Pipeline-Schritts.
 - Am Ende des Debug-Inspectors kann die aktuelle Parameterkonfiguration als JSON erzeugt und, wenn die WebView es erlaubt, in die Zwischenablage kopiert werden.
 
-Die Debug-Parameter sind stage-nah gruppiert:
+Die Debug-Parameter sind stage-nah gruppiert. Im Legacy-/Raster-Pfad:
 
 | Stage | Editierbare Parameter |
 | --- | --- |
@@ -707,9 +715,20 @@ Die Debug-Parameter sind stage-nah gruppiert:
 | `borderSegment` | `nrOfTimesToHalveBorderSegments` |
 | `facetReduce` | `removeFacetsSmallerThanImageRatio`, `mergeSimilarAdjacentRegions`, `maximumNumberOfFacets` |
 
-Nicht alle Stufen haben aktuell editierbare Produktparameter. `facetBuild`, `borderTrace`, `labelPlacement` und `svgRender` zeigen daher vor allem Metriken und Snapshots.
+Im Fresh-Pfad:
 
-Die Gewichtung fuer die Fortschrittsanzeige:
+| Stage | Editierbare Parameter |
+| --- | --- |
+| `decode` | `resizeImageWidth`, `resizeImageHeight` |
+| `kmeans` | keine Fresh-spezifischen Editierparameter; zeigt Glaettung, 64 Token und Startregionen |
+| `colorMap` | `kMeansNrOfClusters`, `randomSeed` |
+| `narrowCleanup` | `narrowPixelStripCleanupRuns` als Zusatzdurchlaeufe auf zwei festen Fresh-Basisdurchlaeufen |
+| `borderSegment` | `nrOfTimesToHalveBorderSegments` als optionale weitere source-aware Beruhigung |
+| `facetReduce` | `removeFacetsSmallerThanImageRatio` als Mindestflaechen-Floor, `maximumNumberOfFacets` |
+
+Nicht alle Stufen haben aktuell editierbare Produktparameter. `facetBuild`, `borderTrace`, `labelPlacement` und `svgRender` zeigen daher vor allem Metriken und Snapshots. `kMeansMinDeltaDifference`, `nearIdenticalPaletteMergeLabDistance` und `mergeSimilarAdjacentRegions` bleiben derzeit Legacy-/Raster-Parameter.
+
+Die Gewichtung fuer die Fortschrittsanzeige im Legacy-/Raster-Pfad:
 
 | Stufe | Gewicht |
 | --- | ---: |
@@ -723,6 +742,21 @@ Die Gewichtung fuer die Fortschrittsanzeige:
 | borderTrace | 6% |
 | labelPlacement | 4% |
 | svgRender | 6% |
+
+Die Gewichtung im Fresh-Pfad:
+
+| Stufe | Gewicht |
+| --- | ---: |
+| decode | 8% |
+| kmeans | 32% |
+| colorMap | 8% |
+| narrowCleanup | 8% |
+| borderSegment | 4% |
+| facetBuild | 14% |
+| facetReduce | 14% |
+| borderTrace | 4% |
+| labelPlacement | 1% |
+| svgRender | 7% |
 
 ### 7.1 Decode und Prepare
 
@@ -1119,13 +1153,16 @@ Der Ansatz startet bewusst nicht mit der produktiven Pixel-K-Means-Pipeline. Sta
 3. Das geglaettete Bild in eine uebersegmentierte 64-Farb-Tokenkarte aufteilen. Im Python-Lab passiert das per K-Means-Tokenkarte, im App-Port per 4x4x4-RGB-Binning fuer bessere Laufzeit.
 4. Per Connected Components aus den Tokenkarten zusammenhaengende Regionen bauen.
 5. Pro Region die mittlere Farbe berechnen und darauf eine gewichtete 24-Farb-Palette lernen. Die Gewichtung nutzt `area^0.78`, damit grosse Flaechen stabil bleiben, kleine Detailregionen aber nicht komplett gegen grosse Hintergruende verlieren.
-6. Das Ziel-Farb-Labelbild mit einem source-aware Mehrheitsfilter stabilisieren. Ein Pixel darf nur zur lokalen Mehrheitsfarbe wechseln, wenn diese Zielpalette fuer die lokale KI-Quellfarbe nicht deutlich schlechter passt.
-7. Sehr kleine Restregionen source-aware mergen. Bewertet wird nicht nur Palette-zu-Palette, sondern die LAB-Distanz zwischen der lokalen KI-Quellfarbe der Region und dem moeglichen Ziel.
-8. Wenn kein farblich plausibler Nachbar existiert, darf eine relevante kleine Region auf die naechstpassende globale Zielpalettenfarbe wechseln. Dieser Fallback ist auf Detailschutzgroesse oder kontrastreiche Speckles ab `18 px` begrenzt, damit Hintergrundtextur nicht als tausende Mikrokonturen stehen bleibt.
-9. Fehlende Zielpalettenfarben werden vor der finalen Palette-Neuberechnung reaktiviert, indem zusammenhaengende Regionen mit hoher Quellfarb-Abweichung einen leeren Palettenslot bekommen, ohne eine andere Farbe komplett zu leeren.
-10. Echte Speckles unter `48 px` werden in einem finalen Cleanup bevorzugt entfernt; kontrastreiche Details koennen ab `18 px` geschuetzt bleiben.
-11. Wenn `maximumNumberOfFacets` groesser als `0` ist, nutzt der Fresh-Port danach dasselbe Flaechenbudget als weitere source-aware Reduktion.
-12. `clean-color.png` als Farbflächenbild und `classic.png` mit einem geglaetteten Boundary-Layer rendern. Der Boundary-Layer ersetzt im Lab-Prototyp das langsamere Kontur-pro-Region-Rendering und erzeugt ruhigere schwarze Linien.
+6. Das Ziel-Farb-Labelbild mit einem source-aware Mehrheitsfilter stabilisieren. Ein Pixel darf nur zur lokalen Mehrheitsfarbe wechseln, wenn diese Zielpalette fuer die lokale KI-Quellfarbe nicht deutlich schlechter passt. Im App-Port laufen zwei feste Basisdurchlaeufe; `narrowPixelStripCleanupRuns` kann weitere Durchlaeufe addieren.
+7. Vor dem Region-Build kann `nrOfTimesToHalveBorderSegments` als optionaler weiterer source-aware Beruhigungsdurchlauf angewendet werden. Der aktuelle UI-Default ist `0`.
+8. Sehr kleine Restregionen source-aware mergen. Bewertet wird nicht nur Palette-zu-Palette, sondern die LAB-Distanz zwischen der lokalen KI-Quellfarbe der Region und dem moeglichen Ziel. Merge-Batches sperren jede Zielregion fuer den aktuellen Pass; dadurch koennen zwei kleine Nachbarn ihre Labels nicht mehr gegenseitig tauschen oder zwischen Durchlaeufen oszillieren.
+9. Wenn kein farblich plausibler Nachbar existiert, darf eine relevante kleine Region auf die naechstpassende globale Zielpalettenfarbe wechseln. Dieser Fallback ist auf Detailschutzgroesse oder kontrastreiche Speckles ab `18 px` begrenzt, damit Hintergrundtextur nicht als tausende Mikrokonturen stehen bleibt.
+10. Leere K-Means-Cluster werden waehrend des Palettenlernens deterministisch mit einer weit entfernten gewichteten Quellregion neu initialisiert. Fehlende Zielpalettenfarben werden vor der finalen Palette-Neuberechnung nur dann reaktiviert, wenn die fehlende Farbe absolut innerhalb des LAB-Limits liegt, die Quellregion gegenueber ihrem aktuellen Label messbar verbessert und keine andere Farbe komplett geleert wird. Kann diese Qualitaetsbedingung nicht erfuellt werden, darf die Ausgabe bewusst weniger als die angeforderte Farbanzahl nutzen.
+11. Echte Speckles unter `48 px` werden in einem finalen Cleanup bevorzugt entfernt; kontrastreiche Details koennen ab `18 px` geschuetzt bleiben.
+12. Wenn `maximumNumberOfFacets` groesser als `0` ist, erzwingt der Fresh-Port danach dasselbe Flaechenbudget mit stabilen, kostenbewerteten Merge-Batches. Die Debug-Metriken zeigen Budget-Merges und Budgetstatus explizit.
+13. Markerpositionen werden per lokaler Distance Transform am breitesten Innenpunkt jeder finalen Region bestimmt. Der Kreisradius wird sowohl von der Regionflaeche als auch vom gemessenen Innenabstand begrenzt, damit Marker bei duennen oder konkaven Formen nicht in Nachbarregionen ragen.
+14. PNG-Ausgaben werden aus dem gecachten globalen Boundary-Mask-Layer gerendert. Zwischen teuren Stufen, Merge-Paessen und Varianten gibt der Kern die JS-Event-Loop frei und prueft, ob der Lauf durch einen neueren Request abgeloest wurde.
+15. Jede Fresh-Variante erhaelt zusaetzlich ein echtes SVG aus Vektor-Fuellpfaden, zusammengefassten horizontalen/vertikalen Boundary-Pfaden und optionalen `<circle>`-Markern. Fresh-SVGs enthalten kein eingebettetes Base64-PNG mehr.
 
 Aktuelle App-Ausgabevarianten des TypeScript-Ports:
 
@@ -1135,7 +1172,7 @@ Aktuelle App-Ausgabevarianten des TypeScript-Ports:
 
 Fuer Debug-Reruns bleibt `classic` als interne Variante verfuegbar, wenn `variantIds: ['classic']` angefordert wird. Sie wird im normalen Output nicht mehr angeboten.
 
-Jede dieser drei Fresh-Generatorvarianten liefert `pngBase64` und `svg`. Die SVG-Datei ist derzeit ein kompatibler SVG-Container mit eingebettetem PNG der jeweiligen Variante. Sie ist damit teil- und speicherbar, aber noch kein echtes Region-Vektor-SVG. Nummern, echte Textlabels und die vollstaendige alte Variantenliste sind im TypeScript-Port noch nicht implementiert. Farbpunkte werden als einfache Kreise nahe am Schwerpunkt jeder finalen Region platziert.
+Jede dieser drei Fresh-Generatorvarianten liefert `pngBase64` und ein echtes Vektor-`svg`. Farbfuellungen werden als zeilenweise zusammengefasste Vektorpfade geschrieben, gemeinsame Grenzen als eindeutige horizontale/vertikale Pfade und Farbpunkte als `<circle>`. Dadurch wird kein Base64-PNG doppelt im SVG gehalten und der Export bleibt frei skalierbar. Nummern, echte Textlabels und die vollstaendige alte Variantenliste sind im TypeScript-Port weiterhin nicht implementiert.
 
 Der wichtigste Unterschied zur produktiven Pipeline:
 
@@ -1163,6 +1200,31 @@ Der source-aware Vergleichslauf vom 2026-07-07 nutzt dieselben vier Expert-KI-Bi
 | `img-1998` | 24 | 1514 | 4 px | 6.10 | 5.89 |
 
 Wichtige Interpretation: `cleanColor` bleibt messbar naeher am KI-Bild und die Ziel-Farbanzahl wird in den vier Lab-Referenzen eingehalten. Der Specht-Fall (`img-1704`) nutzt jetzt wieder 24/24 Farben statt 23/24. Der Preis ist eine hoehere Regionenzahl, vor allem in detailreichen Naturhintergruenden. Im App-Port greift fuer Expert danach `maximumNumberOfFacets = 2600`, sodass solche Ausreisser weiter source-aware budgetiert werden. Edge-/Classic-Ausgaben koennen bei stark texturierten Motiven weiterhin viele kleine Konturen zeigen; das bleibt ein bekanntes Parity-/Paintability-Risiko.
+
+### 7.12 Fresh-TypeScript-Regression und Pipeline-Lab
+
+Der reale TypeScript-Fresh-Kern ist seit 2026-07-09 direkt testbar; die App-Logik muss fuer Lab-Laeufe nicht mehr durch die Python-Approximation vertreten werden.
+
+Schnelle synthetische Regression:
+
+- `npm run pipeline:fresh:regression --prefix ./App`
+- prueft Einfarbbild ohne erfundene Palettenfarben
+- prueft den frueher moeglichen Zwei-Regionen-Labeltausch
+- prueft das harte Flaechenbudget auf einem Checkerboard-Worst-Case
+- prueft monotone Fortschrittswerte und deterministische Ergebnis-Hashes
+- prueft einen Marker pro finaler Region
+- prueft, dass Fresh-SVGs Vektorgeometrie statt eingebetteter PNGs enthalten
+- prueft, dass ein inkompatibler Debug-Cache-Rerun dasselbe Ergebnis wie ein kompletter sauberer Lauf liefert
+
+Realer Korpuslauf ueber den vorhandenen Pipeline-Lab-Runner:
+
+- Suite: `pipeline-lab/suites/current-fresh-presets.json`
+- Beispiel: `npm run pipeline:lab --prefix ./App -- --suite ../pipeline-lab/suites/current-fresh-presets.json --limit-sources 1 --limit-configs 1`
+- `App/scripts/pipeline-lab-runtime.ts` routet pro Config ueber `pipeline: "fresh"` oder `pipeline: "legacy"`.
+- Fresh-Configs werden vor der Bildvorbereitung auf die echte Arbeitskante von `1400 px` begrenzt.
+- Der Report persistiert PNG und echte SVG-Ausgaben des TypeScript-Kerns, Facet-/Palettenmetriken und Stage-Timings.
+
+Die Python-Datei `pipeline-lab/fresh_region_pipeline.py` bleibt fuer OpenCV-Mean-Shift-Vergleiche wertvoll, ist aber nicht mehr der einzige automatisierbare Fresh-Qualitaetsnachweis.
 
 ## 8. Export und Persistenz
 

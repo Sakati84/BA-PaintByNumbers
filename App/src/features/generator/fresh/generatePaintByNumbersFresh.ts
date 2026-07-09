@@ -1,10 +1,12 @@
-import type { ImagePickerAsset } from 'expo-image-picker';
 import '../textDecoderCompatibility';
 import { encode } from 'fast-png';
 
 import type { SimpleImageData } from '../../../types/imageData';
 import { uint8ToBase64 } from '../base64';
 import type {
+  GeneratorDebugImage,
+  GeneratorDebugMetric,
+  GeneratorDebugParameter,
   GeneratorDebugStageSnapshot,
   GeneratorOutputVariant,
   GeneratorOutputVariantId,
@@ -14,10 +16,13 @@ import type {
   GeneratorStage,
   GeneratorTimings,
   PaletteStat,
+  PreparedImage,
 } from '../generatorTypes';
-import { preparePickedImageForGenerator } from '../prepareImage';
+import { encodeRgbaDebugImage } from '../debugSnapshots';
+import { renderFreshVectorSvg } from './freshVectorRenderer';
 
 const WORK_MAX_EDGE = 1400;
+const FRESH_PIPELINE_CACHE_VERSION = 2;
 const TOKEN_BINS_PER_CHANNEL = 4;
 const TOKEN_COLOR_COUNT = TOKEN_BINS_PER_CHANNEL * TOKEN_BINS_PER_CHANNEL * TOKEN_BINS_PER_CHANNEL;
 const PALETTE_WEIGHT_POWER = 0.78;
@@ -43,6 +48,9 @@ const SOURCE_MERGE_MAX_LAB_DISTANCE = 28;
 const SOURCE_TINY_MERGE_MAX_LAB_DISTANCE = 34;
 const SOURCE_GLOBAL_REASSIGN_MAX_LAB_DISTANCE = 24;
 const SOURCE_GLOBAL_REASSIGN_MIN_IMPROVEMENT = 5;
+const PALETTE_REINTRO_MAX_LAB_DISTANCE = 22;
+const PALETTE_REINTRO_MIN_IMPROVEMENT = 2;
+const MAX_FACET_BUDGET_PASSES = 16;
 const BOUNDARY_ALPHA = 0.82;
 const BOUNDARY_SOFT_ALPHA = 0.22;
 const OUTLINE_R = 22;
@@ -59,6 +67,12 @@ const DEFAULT_FRESH_OUTPUT_VARIANT_IDS: readonly GeneratorOutputVariantId[] = [
 ];
 
 type PipelineStage = Exclude<GeneratorStage, 'done'>;
+type LabelMap = Uint8Array;
+
+export type PreparedFreshGeneratorImage = {
+  prepared: PreparedImage;
+  imageData: SimpleImageData;
+};
 
 const STAGE_WEIGHTS: Record<PipelineStage, number> = {
   decode: 0.08,
@@ -86,9 +100,32 @@ const STAGE_ORDER: PipelineStage[] = [
   'svgRender',
 ];
 
-export type GeneratorPipelineDebugCache = Record<string, never>;
+type FreshLabelDebugState = {
+  labelMap: LabelMap;
+  paletteRgb: Float32Array;
+};
 
-type GeneratePaintByNumbersOptions = {
+type FreshRegionDebugState = {
+  paletteRgb: Float32Array;
+  components: Components;
+};
+
+export type GeneratorPipelineDebugCache = {
+  version: number;
+  sourceKey: string;
+  signatures: Partial<Record<PipelineStage, string>>;
+  decoded?: PreparedFreshGeneratorImage;
+  smoothed?: Uint8ClampedArray;
+  tokenComponents?: Components;
+  colorMap?: FreshLabelDebugState;
+  afterNarrowCleanup?: FreshLabelDebugState;
+  afterBorderSegment?: FreshLabelDebugState;
+  beforeFacetReduce?: FreshRegionDebugState;
+  afterFacetReduce?: FreshRegionDebugState;
+  markerPlacements?: MarkerPlacement[];
+};
+
+export type GeneratePaintByNumbersOptions = {
   debug?: {
     enabled: boolean;
     rerunFromStage?: GeneratorStage;
@@ -97,6 +134,9 @@ type GeneratePaintByNumbersOptions = {
   };
   onStageSnapshot?: (snapshot: GeneratorDebugStageSnapshot) => void;
   variantIds?: readonly GeneratorOutputVariantId[];
+  shouldCancel?: () => boolean;
+  preparedDecodeDurationMs?: number;
+  cacheSourceKey?: string;
 };
 
 type Components = {
@@ -104,15 +144,26 @@ type Components = {
   labels: Int32Array;
   areas: Int32Array;
   meanRgb: Float32Array;
+  minX: Int32Array;
+  minY: Int32Array;
+  maxX: Int32Array;
+  maxY: Int32Array;
 };
 
 type MergeResult = {
-  labelMap: Int32Array;
+  labelMap: LabelMap;
   mergeCount: number;
   globalReassignCount: number;
   componentCount: number;
   smallRemaining: number;
   protectedSmall: number;
+};
+
+type FacetBudgetResult = {
+  labelMap: LabelMap;
+  mergeCount: number;
+  componentCount: number;
+  satisfied: boolean;
 };
 
 type Rgb = [number, number, number];
@@ -179,6 +230,121 @@ function nowMs(): number {
   return globalThis.performance?.now?.() ?? Date.now();
 }
 
+function nowYield(): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = globalThis.setTimeout;
+    if (typeof timer === 'function') {
+      timer(resolve, 0);
+      return;
+    }
+    resolve();
+  });
+}
+
+async function yieldAndCheckCancellation(options: GeneratePaintByNumbersOptions): Promise<void> {
+  await nowYield();
+  if (options.shouldCancel?.() === true) {
+    throw new Error('Fresh pipeline run was cancelled.');
+  }
+}
+
+function finiteInteger(value: number, fallback: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) {
+    return fallback;
+  }
+  return Math.max(min, Math.min(max, Math.round(value)));
+}
+
+function normalizedFreshSettings(settings: GeneratorSettings): GeneratorSettings {
+  return {
+    ...settings,
+    kMeansNrOfClusters: finiteInteger(settings.kMeansNrOfClusters, 12, 1, 64),
+    narrowPixelStripCleanupRuns: finiteInteger(settings.narrowPixelStripCleanupRuns, 0, 0, 16),
+    nrOfTimesToHalveBorderSegments: finiteInteger(settings.nrOfTimesToHalveBorderSegments, 0, 0, 16),
+    maximumNumberOfFacets: finiteInteger(settings.maximumNumberOfFacets, 0, 0, 50000),
+    resizeImageWidth: finiteInteger(settings.resizeImageWidth, WORK_MAX_EDGE, 1, WORK_MAX_EDGE),
+    resizeImageHeight: finiteInteger(settings.resizeImageHeight, WORK_MAX_EDGE, 1, WORK_MAX_EDGE),
+    randomSeed: finiteInteger(settings.randomSeed, 7707, 0, 0x7fffffff),
+    removeFacetsSmallerThanImageRatio: Number.isFinite(settings.removeFacetsSmallerThanImageRatio)
+      ? Math.max(0, Math.min(0.05, settings.removeFacetsSmallerThanImageRatio))
+      : 0,
+  };
+}
+
+function sourceKeyForPrepared(prepared: PreparedFreshGeneratorImage): string {
+  return [
+    prepared.prepared.imageUri,
+    prepared.imageData.width,
+    prepared.imageData.height,
+    prepared.prepared.fileName ?? '',
+  ].join('|');
+}
+
+function signature(parts: readonly (string | number | boolean)[]): string {
+  return parts.join('|');
+}
+
+export function freshDecodeCacheSignature(sourceKey: string, requestedSettings: GeneratorSettings): string {
+  const settings = normalizedFreshSettings(requestedSettings);
+  return signature([
+    FRESH_PIPELINE_CACHE_VERSION,
+    sourceKey,
+    settings.resizeImageWidth,
+    settings.resizeImageHeight,
+  ]);
+}
+
+export function getReusableFreshDecodedInput(
+  cache: GeneratorPipelineDebugCache | null | undefined,
+  sourceKey: string,
+  settings: GeneratorSettings,
+  rerunFromStage: GeneratorStage | undefined,
+): PreparedFreshGeneratorImage | null {
+  if (
+    rerunFromStage == null
+    || stageIndex('decode') >= stageIndex(rerunFromStage)
+    || cache?.version !== FRESH_PIPELINE_CACHE_VERSION
+    || cache.sourceKey !== sourceKey
+    || cache.signatures.decode !== freshDecodeCacheSignature(sourceKey, settings)
+  ) {
+    return null;
+  }
+  return cache.decoded ?? null;
+}
+
+function assertValidLabelMap(
+  labelMap: LabelMap,
+  colorCount: number,
+  width: number,
+  height: number,
+  stage: string,
+): void {
+  if (labelMap.length !== width * height) {
+    throw new Error(`${stage}: label map length does not match image dimensions.`);
+  }
+  for (let index = 0; index < labelMap.length; index += 1) {
+    if (labelMap[index] >= colorCount) {
+      throw new Error(`${stage}: label ${labelMap[index]} at pixel ${index} exceeds palette size ${colorCount}.`);
+    }
+  }
+}
+
+function assertValidComponents(components: Components, pixelCount: number, stage: string): void {
+  let areaSum = 0;
+  for (const area of components.areas) {
+    areaSum += area;
+  }
+  if (areaSum !== pixelCount) {
+    throw new Error(`${stage}: connected-component coverage is ${areaSum}/${pixelCount} pixels.`);
+  }
+  for (let index = 0; index < components.componentMap.length; index += 1) {
+    const componentId = components.componentMap[index];
+    if (componentId < 0 || componentId >= components.labels.length) {
+      throw new Error(`${stage}: invalid component ${componentId} at pixel ${index}.`);
+    }
+  }
+}
+
 function clampByte(value: number): number {
   return Math.max(0, Math.min(255, Math.round(value)));
 }
@@ -205,14 +371,6 @@ function createProgressReporter(onProgress?: (progress: GeneratorProgress) => vo
 
 function addTiming(timings: GeneratorTimings, stage: GeneratorStage, startedAt: number): void {
   timings[stage] = (timings[stage] ?? 0) + (nowMs() - startedAt);
-}
-
-function settingsWithPipelineResizeLimit(settings: GeneratorSettings): GeneratorSettings {
-  return {
-    ...settings,
-    resizeImageWidth: Math.min(settings.resizeImageWidth, WORK_MAX_EDGE),
-    resizeImageHeight: Math.min(settings.resizeImageHeight, WORK_MAX_EDGE),
-  };
 }
 
 function regionPolicyForColorCount(colorCount: number): {
@@ -298,14 +456,14 @@ function edgePreservingSmooth(image: SimpleImageData): Uint8ClampedArray {
 }
 
 function tokenForRgb(data: Uint8ClampedArray, offset: number): number {
-  const rBin = data[offset] >> 6;
-  const gBin = data[offset + 1] >> 6;
-  const bBin = data[offset + 2] >> 6;
-  return (rBin << 4) | (gBin << 2) | bBin;
+  const rBin = Math.min(TOKEN_BINS_PER_CHANNEL - 1, Math.floor((data[offset] * TOKEN_BINS_PER_CHANNEL) / 256));
+  const gBin = Math.min(TOKEN_BINS_PER_CHANNEL - 1, Math.floor((data[offset + 1] * TOKEN_BINS_PER_CHANNEL) / 256));
+  const bBin = Math.min(TOKEN_BINS_PER_CHANNEL - 1, Math.floor((data[offset + 2] * TOKEN_BINS_PER_CHANNEL) / 256));
+  return (rBin * TOKEN_BINS_PER_CHANNEL + gBin) * TOKEN_BINS_PER_CHANNEL + bBin;
 }
 
-function buildTokenLabels(data: Uint8ClampedArray, width: number, height: number): Int32Array {
-  const labels = new Int32Array(width * height);
+function buildTokenLabels(data: Uint8ClampedArray, width: number, height: number): LabelMap {
+  const labels = new Uint8Array(width * height);
   for (let index = 0; index < labels.length; index += 1) {
     labels[index] = tokenForRgb(data, index * 4);
   }
@@ -313,7 +471,7 @@ function buildTokenLabels(data: Uint8ClampedArray, width: number, height: number
 }
 
 function connectedComponentsForLabels(
-  labelMap: Int32Array,
+  labelMap: LabelMap,
   labelCount: number,
   width: number,
   height: number,
@@ -326,6 +484,10 @@ function connectedComponentsForLabels(
   const labels: number[] = [];
   const areas: number[] = [];
   const meanRgb: number[] = [];
+  const minX: number[] = [];
+  const minY: number[] = [];
+  const maxX: number[] = [];
+  const maxY: number[] = [];
 
   for (let start = 0; start < pixelCount; start += 1) {
     if (componentMap[start] !== -1) {
@@ -343,6 +505,10 @@ function connectedComponentsForLabels(
     let sumR = 0;
     let sumG = 0;
     let sumB = 0;
+    let componentMinX = width;
+    let componentMinY = height;
+    let componentMaxX = 0;
+    let componentMaxY = 0;
     queue[tail] = start;
     tail += 1;
     componentMap[start] = componentId;
@@ -359,6 +525,11 @@ function connectedComponentsForLabels(
       }
 
       const x = index % width;
+      const y = Math.floor(index / width);
+      componentMinX = Math.min(componentMinX, x);
+      componentMinY = Math.min(componentMinY, y);
+      componentMaxX = Math.max(componentMaxX, x);
+      componentMaxY = Math.max(componentMaxY, y);
       const up = index - width;
       const down = index + width;
       const left = index - 1;
@@ -392,6 +563,10 @@ function connectedComponentsForLabels(
       area > 0 ? sumG / area : 255,
       area > 0 ? sumB / area : 255,
     );
+    minX.push(componentMinX);
+    minY.push(componentMinY);
+    maxX.push(componentMaxX);
+    maxY.push(componentMaxY);
   }
 
   return {
@@ -399,6 +574,10 @@ function connectedComponentsForLabels(
     labels: Int32Array.from(labels),
     areas: Int32Array.from(areas),
     meanRgb: Float32Array.from(meanRgb),
+    minX: Int32Array.from(minX),
+    minY: Int32Array.from(minY),
+    maxX: Int32Array.from(maxX),
+    maxY: Int32Array.from(maxY),
   };
 }
 
@@ -463,8 +642,11 @@ function weightedPaletteKMeans(
   areas: Int32Array,
   colorCount: number,
   seed: number,
-): { componentLabels: Int32Array; paletteRgb: Float32Array } {
+): { componentLabels: LabelMap; paletteRgb: Float32Array } {
   const componentCount = areas.length;
+  if (componentCount === 0) {
+    throw new Error('Fresh palette learning requires at least one connected component.');
+  }
   const actualColorCount = Math.max(1, Math.min(colorCount, componentCount));
   const componentLab = componentLabColors(meanRgb);
   const weights = new Float32Array(componentCount);
@@ -502,8 +684,9 @@ function weightedPaletteKMeans(
     centers[dst + 2] = componentLab[src + 2];
   }
 
-  const componentLabels = new Int32Array(componentCount);
-  for (let iteration = 0; iteration < 18; iteration += 1) {
+  const componentLabels = new Uint8Array(componentCount);
+  componentLabels.fill(255);
+  for (let iteration = 0; iteration < 30; iteration += 1) {
     let changed = 0;
     for (let index = 0; index < componentCount; index += 1) {
       let bestLabel = 0;
@@ -533,6 +716,8 @@ function weightedPaletteKMeans(
       sums[dst + 2] += componentLab[src + 2] * weight;
       weightSums[label] += weight;
     }
+    let reseededEmptyCenter = false;
+    const reseedComponents = new Set<number>();
     for (let label = 0; label < actualColorCount; label += 1) {
       const dst = label * 3;
       const weight = weightSums[label];
@@ -540,10 +725,41 @@ function weightedPaletteKMeans(
         centers[dst] = sums[dst] / weight;
         centers[dst + 1] = sums[dst + 1] / weight;
         centers[dst + 2] = sums[dst + 2] / weight;
+        continue;
       }
+
+      let replacement = firstCenter;
+      let replacementScore = Number.NEGATIVE_INFINITY;
+      for (let componentId = 0; componentId < componentCount; componentId += 1) {
+        if (reseedComponents.has(componentId)) {
+          continue;
+        }
+        let nearestDistance = Number.POSITIVE_INFINITY;
+        for (let activeLabel = 0; activeLabel < actualColorCount; activeLabel += 1) {
+          if (weightSums[activeLabel] <= 0) {
+            continue;
+          }
+          nearestDistance = Math.min(
+            nearestDistance,
+            labDistance(componentLab, componentId, centers, activeLabel),
+          );
+        }
+        const score = nearestDistance * nearestDistance * weights[componentId];
+        if (score > replacementScore) {
+          replacementScore = score;
+          replacement = componentId;
+        }
+      }
+      reseedComponents.add(replacement);
+      const src = replacement * 3;
+      centers[dst] = componentLab[src];
+      centers[dst + 1] = componentLab[src + 1];
+      centers[dst + 2] = componentLab[src + 2];
+      componentLabels[replacement] = label;
+      reseededEmptyCenter = true;
     }
 
-    if (changed === 0) {
+    if (changed === 0 && !reseededEmptyCenter) {
       break;
     }
   }
@@ -561,8 +777,8 @@ function weightedPaletteKMeans(
     paletteWeights[label] += weight;
   }
 
-  const paletteRgb = new Float32Array(colorCount * 3);
-  for (let label = 0; label < colorCount; label += 1) {
+  const paletteRgb = new Float32Array(actualColorCount * 3);
+  for (let label = 0; label < actualColorCount; label += 1) {
     const dst = label * 3;
     const weight = paletteWeights[label];
     if (weight > 0) {
@@ -570,17 +786,18 @@ function weightedPaletteKMeans(
       paletteRgb[dst + 1] = paletteSums[dst + 1] / weight;
       paletteRgb[dst + 2] = paletteSums[dst + 2] / weight;
     } else {
-      paletteRgb[dst] = 255;
-      paletteRgb[dst + 1] = 255;
-      paletteRgb[dst + 2] = 255;
+      const fallbackOffset = firstCenter * 3;
+      paletteRgb[dst] = meanRgb[fallbackOffset];
+      paletteRgb[dst + 1] = meanRgb[fallbackOffset + 1];
+      paletteRgb[dst + 2] = meanRgb[fallbackOffset + 2];
     }
   }
 
   return { componentLabels, paletteRgb };
 }
 
-function labelMapFromComponents(componentMap: Int32Array, componentLabels: Int32Array): Int32Array {
-  const labelMap = new Int32Array(componentMap.length);
+function labelMapFromComponents(componentMap: Int32Array, componentLabels: Int32Array | LabelMap): LabelMap {
+  const labelMap = new Uint8Array(componentMap.length);
   for (let index = 0; index < componentMap.length; index += 1) {
     labelMap[index] = componentLabels[componentMap[index]] ?? 0;
   }
@@ -588,17 +805,17 @@ function labelMapFromComponents(componentMap: Int32Array, componentLabels: Int32
 }
 
 function majorityFilterLabels(
-  labelMap: Int32Array,
+  labelMap: LabelMap,
   width: number,
   height: number,
   colorCount: number,
   runs: number,
   sourceRgbData?: Uint8ClampedArray,
   paletteRgb?: Float32Array,
-): Int32Array {
+): LabelMap {
   let current = labelMap;
   for (let run = 0; run < runs; run += 1) {
-    const next = new Int32Array(current.length);
+    const next = new Uint8Array(current.length);
     const counts = new Int16Array(colorCount);
     for (let y = 0; y < height; y += 1) {
       for (let x = 0; x < width; x += 1) {
@@ -716,8 +933,8 @@ function nearestPaletteLabelForComponent(
   return { label, distance };
 }
 
-function mergeTinyRegions(
-  labelMap: Int32Array,
+async function mergeTinyRegions(
+  labelMap: LabelMap,
   sourceRgbData: Uint8ClampedArray,
   paletteRgb: Float32Array,
   width: number,
@@ -727,8 +944,9 @@ function mergeTinyRegions(
   forceMergeBelow: number,
   protectMinArea: number,
   protectLabDistance: number,
-): MergeResult {
-  let current = labelMap;
+  options: GeneratePaintByNumbersOptions,
+): Promise<MergeResult> {
+  let current = new Uint8Array(labelMap);
   const colorCount = paletteRgb.length / 3;
   const lab = paletteLab(paletteRgb);
   let totalMerges = 0;
@@ -742,18 +960,25 @@ function mergeTinyRegions(
     const componentLab = componentLabColors(components.meanRgb);
     componentCount = components.labels.length;
     const adjacency = buildAdjacency(components.componentMap, width, height);
-    const replacementByComponent = new Int32Array(componentCount);
-    let changed = 0;
+    const replacementByComponent = new Uint8Array(componentCount);
+    const scheduledSource = new Uint8Array(componentCount);
+    const lockedAsTarget = new Uint8Array(componentCount);
+    let mergeCount = 0;
+    let globalReassignCount = 0;
 
     for (let componentId = 0; componentId < componentCount; componentId += 1) {
       replacementByComponent[componentId] = components.labels[componentId];
     }
 
-    for (let componentId = 0; componentId < componentCount; componentId += 1) {
-      const area = components.areas[componentId];
-      if (area >= minArea) {
+    const candidates = Array.from({ length: componentCount }, (_, componentId) => componentId)
+      .filter((componentId) => components.areas[componentId] < minArea)
+      .sort((left, right) => components.areas[left] - components.areas[right] || left - right);
+
+    for (const componentId of candidates) {
+      if (lockedAsTarget[componentId] !== 0) {
         continue;
       }
+      const area = components.areas[componentId];
       const sourceLabel = components.labels[componentId];
       const neighbors = adjacency.get(componentId);
       if (neighbors == null || neighbors.size === 0) {
@@ -764,9 +989,13 @@ function mergeTinyRegions(
       const currentSourceDistance = labDistance(componentLab, componentId, lab, sourceLabel);
       let nearestNeighborSourceDistance = Number.POSITIVE_INFINITY;
       let bestLabel = sourceLabel;
+      let bestNeighborId = -1;
       let bestNeighborSourceDistance = Number.POSITIVE_INFINITY;
       let bestScore = Number.POSITIVE_INFINITY;
       for (const [neighborId, borderCount] of neighbors) {
+        if (scheduledSource[neighborId] !== 0) {
+          continue;
+        }
         const targetLabel = components.labels[neighborId];
         if (targetLabel === sourceLabel) {
           continue;
@@ -780,6 +1009,7 @@ function mergeTinyRegions(
         if (score < bestScore) {
           bestScore = score;
           bestLabel = targetLabel;
+          bestNeighborId = neighborId;
           bestNeighborSourceDistance = sourceTargetDistance;
         }
       }
@@ -805,7 +1035,8 @@ function mergeTinyRegions(
 
       if (canUseGlobalReassignment && (detailProtected || !hasGoodNeighbor) && nearestPalette.label !== sourceLabel && globalIsBetter) {
         replacementByComponent[componentId] = nearestPalette.label;
-        changed += 1;
+        scheduledSource[componentId] = 1;
+        globalReassignCount += 1;
         totalGlobalReassignments += 1;
         continue;
       }
@@ -816,25 +1047,34 @@ function mergeTinyRegions(
 
       if (hasGoodNeighbor) {
         replacementByComponent[componentId] = bestLabel;
-        changed += 1;
+        scheduledSource[componentId] = 1;
+        if (bestNeighborId >= 0) {
+          lockedAsTarget[bestNeighborId] = 1;
+        }
+        mergeCount += 1;
       } else if (nearestPalette.label === sourceLabel && detailProtected) {
         continue;
       } else if (bestLabel !== sourceLabel && isForcedTiny) {
         replacementByComponent[componentId] = bestLabel;
-        changed += 1;
+        scheduledSource[componentId] = 1;
+        if (bestNeighborId >= 0) {
+          lockedAsTarget[bestNeighborId] = 1;
+        }
+        mergeCount += 1;
       }
     }
 
-    if (changed === 0) {
+    if (mergeCount === 0 && globalReassignCount === 0) {
       break;
     }
 
-    const next = new Int32Array(current.length);
+    const next = new Uint8Array(current.length);
     for (let index = 0; index < current.length; index += 1) {
       next[index] = replacementByComponent[components.componentMap[index]];
     }
     current = next;
-    totalMerges += changed;
+    totalMerges += mergeCount;
+    await yieldAndCheckCancellation(options);
   }
 
   const finalComponents = connectedComponentsForLabels(current, colorCount, width, height, sourceRgbData);
@@ -874,7 +1114,123 @@ function mergeTinyRegions(
   };
 }
 
-function labelPixelCounts(labelMap: Int32Array, colorCount: number): Int32Array {
+async function enforceFacetBudget(
+  labelMap: LabelMap,
+  sourceRgbData: Uint8ClampedArray,
+  paletteRgb: Float32Array,
+  width: number,
+  height: number,
+  maximumNumberOfFacets: number,
+  options: GeneratePaintByNumbersOptions,
+): Promise<FacetBudgetResult> {
+  let current = new Uint8Array(labelMap);
+  const colorCount = paletteRgb.length / 3;
+  const lab = paletteLab(paletteRgb);
+  let totalMergeCount = 0;
+  let componentCount = Number.POSITIVE_INFINITY;
+
+  for (let pass = 0; pass < MAX_FACET_BUDGET_PASSES; pass += 1) {
+    const components = connectedComponentsForLabels(current, colorCount, width, height, sourceRgbData);
+    componentCount = components.labels.length;
+    if (componentCount <= maximumNumberOfFacets) {
+      return { labelMap: current, mergeCount: totalMergeCount, componentCount, satisfied: true };
+    }
+
+    const excess = componentCount - maximumNumberOfFacets;
+    const componentLab = componentLabColors(components.meanRgb);
+    const adjacency = buildAdjacency(components.componentMap, width, height);
+    const proposals: Array<{ sourceId: number; targetId: number; targetLabel: number; cost: number }> = [];
+
+    for (let componentId = 0; componentId < componentCount; componentId += 1) {
+      const sourceLabel = components.labels[componentId];
+      const neighbors = adjacency.get(componentId);
+      if (neighbors == null) {
+        continue;
+      }
+      let bestTargetId = -1;
+      let bestTargetLabel = sourceLabel;
+      let bestCost = Number.POSITIVE_INFINITY;
+      for (const [neighborId, borderCount] of neighbors) {
+        const targetLabel = components.labels[neighborId];
+        if (targetLabel === sourceLabel) {
+          continue;
+        }
+        const sourceDistance = labDistance(componentLab, componentId, lab, targetLabel);
+        const sharedBoundaryReward = Math.min(18, Math.log1p(borderCount) * 2.2);
+        const targetAreaReward = Math.min(14, Math.log1p(components.areas[neighborId]) * 0.9);
+        const compactDetailPenalty = components.areas[componentId] >= DETAIL_PROTECT_MIN_PIXELS
+          && sourceDistance >= DETAIL_PROTECT_LAB_DISTANCE
+          ? 80
+          : 0;
+        const cost = sourceDistance * 1.7 - sharedBoundaryReward - targetAreaReward + compactDetailPenalty;
+        if (cost < bestCost) {
+          bestCost = cost;
+          bestTargetId = neighborId;
+          bestTargetLabel = targetLabel;
+        }
+      }
+      if (bestTargetId >= 0) {
+        proposals.push({
+          sourceId: componentId,
+          targetId: bestTargetId,
+          targetLabel: bestTargetLabel,
+          cost: bestCost + Math.log1p(components.areas[componentId]) * 0.35,
+        });
+      }
+    }
+
+    const targetUseCounts = new Int32Array(componentCount);
+    for (const proposal of proposals) {
+      targetUseCounts[proposal.targetId] += 1;
+    }
+    proposals.sort((left, right) => (
+      targetUseCounts[right.targetId] - targetUseCounts[left.targetId]
+      || left.cost - right.cost
+      || left.sourceId - right.sourceId
+    ));
+    const scheduledSource = new Uint8Array(componentCount);
+    const lockedTarget = new Uint8Array(componentCount);
+    const replacementByComponent = new Uint8Array(components.labels);
+    let scheduled = 0;
+    for (const proposal of proposals) {
+      if (scheduled >= excess) {
+        break;
+      }
+      if (
+        scheduledSource[proposal.sourceId] !== 0
+        || lockedTarget[proposal.sourceId] !== 0
+        || scheduledSource[proposal.targetId] !== 0
+      ) {
+        continue;
+      }
+      replacementByComponent[proposal.sourceId] = proposal.targetLabel;
+      scheduledSource[proposal.sourceId] = 1;
+      lockedTarget[proposal.targetId] = 1;
+      scheduled += 1;
+    }
+
+    if (scheduled === 0) {
+      break;
+    }
+    const next = new Uint8Array(current.length);
+    for (let index = 0; index < current.length; index += 1) {
+      next[index] = replacementByComponent[components.componentMap[index]];
+    }
+    current = next;
+    totalMergeCount += scheduled;
+    await yieldAndCheckCancellation(options);
+  }
+
+  componentCount = connectedComponentsForLabels(current, colorCount, width, height).labels.length;
+  return {
+    labelMap: current,
+    mergeCount: totalMergeCount,
+    componentCount,
+    satisfied: componentCount <= maximumNumberOfFacets,
+  };
+}
+
+function labelPixelCounts(labelMap: LabelMap, colorCount: number): Int32Array {
   const counts = new Int32Array(colorCount);
   for (const label of labelMap) {
     if (label >= 0 && label < colorCount) {
@@ -885,14 +1241,14 @@ function labelPixelCounts(labelMap: Int32Array, colorCount: number): Int32Array 
 }
 
 function ensureTargetPaletteUsage(
-  labelMap: Int32Array,
+  labelMap: LabelMap,
   sourceRgbData: Uint8ClampedArray,
   paletteRgb: Float32Array,
   width: number,
   height: number,
   colorCount: number,
   minRegionArea: number,
-): { labelMap: Int32Array; reintroducedCount: number } {
+): { labelMap: LabelMap; reintroducedCount: number } {
   const counts = labelPixelCounts(labelMap, colorCount);
   const missingLabels: number[] = [];
   for (let label = 0; label < colorCount; label += 1) {
@@ -912,13 +1268,15 @@ function ensureTargetPaletteUsage(
   const componentLab = componentLabColors(components.meanRgb);
   const lab = paletteLab(paletteRgb);
   const selectedComponents = new Set<number>();
-  let next: Int32Array | null = null;
+  let next: LabelMap | null = null;
   let reintroducedCount = 0;
   const minimumCandidateArea = Math.max(DETAIL_SPECKLE_PROTECT_MIN_PIXELS, Math.min(minRegionArea, MEDIUM_MIN_REGION_PIXELS));
 
   for (const missingLabel of missingLabels) {
     let bestComponent = -1;
     let bestScore = Number.NEGATIVE_INFINITY;
+    let bestMissingDistance = Number.POSITIVE_INFINITY;
+    let bestImprovement = Number.NEGATIVE_INFINITY;
 
     for (let componentId = 0; componentId < components.labels.length; componentId += 1) {
       if (selectedComponents.has(componentId)) {
@@ -935,21 +1293,33 @@ function ensureTargetPaletteUsage(
       const currentDistance = labDistance(componentLab, componentId, lab, sourceLabel);
       const missingDistance = labDistance(componentLab, componentId, lab, missingLabel);
       const improvement = currentDistance - missingDistance;
+      const isPlausibleReintroduction =
+        missingDistance <= PALETTE_REINTRO_MAX_LAB_DISTANCE
+        && improvement >= PALETTE_REINTRO_MIN_IMPROVEMENT;
+      if (!isPlausibleReintroduction) {
+        continue;
+      }
       const areaScore = Math.min(16, Math.log1p(area) * 1.6);
       const hugeAreaPenalty = Math.max(0, area / Math.max(1, width * height) - 0.08) * 80;
       const score = currentDistance * 1.4 + improvement * 1.8 + areaScore - hugeAreaPenalty;
       if (score > bestScore) {
         bestScore = score;
         bestComponent = componentId;
+        bestMissingDistance = missingDistance;
+        bestImprovement = improvement;
       }
     }
 
-    if (bestComponent < 0) {
+    if (
+      bestComponent < 0
+      || bestMissingDistance > PALETTE_REINTRO_MAX_LAB_DISTANCE
+      || bestImprovement < PALETTE_REINTRO_MIN_IMPROVEMENT
+    ) {
       continue;
     }
 
     if (next == null) {
-      next = new Int32Array(labelMap);
+      next = new Uint8Array(labelMap);
     }
     const previousLabel = components.labels[bestComponent];
     for (let index = 0; index < components.componentMap.length; index += 1) {
@@ -969,7 +1339,7 @@ function ensureTargetPaletteUsage(
   };
 }
 
-function recomputePalette(rgbData: Uint8ClampedArray, labelMap: Int32Array, colorCount: number): Float32Array {
+function recomputePalette(rgbData: Uint8ClampedArray, labelMap: LabelMap, colorCount: number): Float32Array {
   const sums = new Float64Array(colorCount * 3);
   const counts = new Int32Array(colorCount);
   for (let index = 0; index < labelMap.length; index += 1) {
@@ -1023,60 +1393,81 @@ function blendRgb(base: Rgb, overlay: Rgb, alpha: number): Rgb {
 
 function computeMarkerPlacements(components: Components, width: number, height: number): MarkerPlacement[] {
   const regionCount = components.labels.length;
-  const sumX = new Float64Array(regionCount);
-  const sumY = new Float64Array(regionCount);
-  const centroidX = new Float64Array(regionCount);
-  const centroidY = new Float64Array(regionCount);
-  const bestDistance = new Float64Array(regionCount);
-  const bestIndex = new Int32Array(regionCount);
-
-  bestIndex.fill(-1);
-  bestDistance.fill(Number.POSITIVE_INFINITY);
-
-  for (let index = 0; index < components.componentMap.length; index += 1) {
-    const regionId = components.componentMap[index];
-    if (regionId < 0 || regionId >= regionCount) {
-      continue;
-    }
-    sumX[regionId] += index % width;
-    sumY[regionId] += Math.floor(index / width);
-  }
-
-  for (let regionId = 0; regionId < regionCount; regionId += 1) {
-    const area = Math.max(1, components.areas[regionId]);
-    centroidX[regionId] = sumX[regionId] / area;
-    centroidY[regionId] = sumY[regionId] / area;
-  }
-
-  for (let index = 0; index < components.componentMap.length; index += 1) {
-    const regionId = components.componentMap[index];
-    if (regionId < 0 || regionId >= regionCount) {
-      continue;
-    }
-    const x = index % width;
-    const y = Math.floor(index / width);
-    const dx = x - centroidX[regionId];
-    const dy = y - centroidY[regionId];
-    const distance = dx * dx + dy * dy;
-    if (distance < bestDistance[regionId]) {
-      bestDistance[regionId] = distance;
-      bestIndex[regionId] = index;
-    }
-  }
-
   const placements: MarkerPlacement[] = [];
   for (let regionId = 0; regionId < regionCount; regionId += 1) {
-    const index = bestIndex[regionId];
-    if (index < 0) {
+    const minX = Math.max(0, components.minX[regionId]);
+    const minY = Math.max(0, components.minY[regionId]);
+    const maxX = Math.min(width - 1, components.maxX[regionId]);
+    const maxY = Math.min(height - 1, components.maxY[regionId]);
+    if (minX > maxX || minY > maxY) {
       continue;
     }
+
+    const localWidth = maxX - minX + 3;
+    const localHeight = maxY - minY + 3;
+    const distances = new Int16Array(localWidth * localHeight);
+    const large = 32000;
+    for (let localY = 1; localY < localHeight - 1; localY += 1) {
+      const sourceY = minY + localY - 1;
+      const sourceRow = sourceY * width;
+      const localRow = localY * localWidth;
+      for (let localX = 1; localX < localWidth - 1; localX += 1) {
+        const sourceX = minX + localX - 1;
+        distances[localRow + localX] = components.componentMap[sourceRow + sourceX] === regionId ? large : 0;
+      }
+    }
+
+    for (let localY = 1; localY < localHeight - 1; localY += 1) {
+      const row = localY * localWidth;
+      for (let localX = 1; localX < localWidth - 1; localX += 1) {
+        const index = row + localX;
+        if (distances[index] === 0) {
+          continue;
+        }
+        distances[index] = Math.min(
+          distances[index],
+          distances[index - 1] + 1,
+          distances[index - localWidth] + 1,
+          distances[index - localWidth - 1] + 1,
+          distances[index - localWidth + 1] + 1,
+        );
+      }
+    }
+
+    let bestX = 1;
+    let bestY = 1;
+    let bestClearance = 1;
+    for (let localY = localHeight - 2; localY >= 1; localY -= 1) {
+      const row = localY * localWidth;
+      for (let localX = localWidth - 2; localX >= 1; localX -= 1) {
+        const index = row + localX;
+        if (distances[index] === 0) {
+          continue;
+        }
+        const clearance = Math.min(
+          distances[index],
+          distances[index + 1] + 1,
+          distances[index + localWidth] + 1,
+          distances[index + localWidth - 1] + 1,
+          distances[index + localWidth + 1] + 1,
+        );
+        distances[index] = clearance;
+        if (clearance > bestClearance) {
+          bestClearance = clearance;
+          bestX = localX;
+          bestY = localY;
+        }
+      }
+    }
+
     const area = Math.max(1, components.areas[regionId]);
-    const radius = Math.max(1.45, Math.min(8.5, Math.sqrt(area / Math.PI) * 0.32));
+    const areaRadius = Math.sqrt(area / Math.PI) * 0.32;
+    const radius = Math.max(0.25, Math.min(8.5, areaRadius, Math.max(0.25, bestClearance - 0.7)));
     placements.push({
       regionId,
       colorIndex: components.labels[regionId],
-      x: (index % width) + 0.5,
-      y: Math.floor(index / width) + 0.5,
+      x: minX + bestX - 0.5,
+      y: minY + bestY - 0.5,
       radius,
     });
   }
@@ -1149,8 +1540,9 @@ function drawCircleMarker(
 ): void {
   const fill = paletteColorForLabel(paletteRgb, placement.colorIndex);
   const stroke: Rgb = [OUTLINE_R, OUTLINE_G, OUTLINE_B];
-  const outerRadius = placement.radius + 0.85;
-  const strokeStart = Math.max(0, placement.radius - 0.85);
+  const strokeWidth = Math.min(0.85, Math.max(0.12, placement.radius * 0.35));
+  const outerRadius = placement.radius + strokeWidth;
+  const strokeStart = Math.max(0, placement.radius - strokeWidth);
   const minX = Math.max(0, Math.floor(placement.x - outerRadius - 1));
   const maxX = Math.min(width - 1, Math.ceil(placement.x + outerRadius + 1));
   const minY = Math.max(0, Math.floor(placement.y - outerRadius - 1));
@@ -1184,16 +1576,19 @@ function drawMarkerCircles(
 }
 
 function renderRgba(
-  labelMap: Int32Array,
+  labelMap: LabelMap,
   regionMap: Int32Array,
   paletteRgb: Float32Array,
   width: number,
   height: number,
   config: FreshRenderConfig,
   placements: MarkerPlacement[],
+  cachedBoundaries?: Uint8Array,
 ): Uint8Array {
   const rgba = new Uint8Array(width * height * 4);
-  const boundaries = config.boundaryMode === 'none' ? undefined : boundaryMask(regionMap, width, height);
+  const boundaries = config.boundaryMode === 'none'
+    ? undefined
+    : cachedBoundaries ?? boundaryMask(regionMap, width, height);
   for (let index = 0; index < labelMap.length; index += 1) {
     const label = labelMap[index];
     const outputOffset = index * 4;
@@ -1230,15 +1625,7 @@ function pngBase64FromRgba(width: number, height: number, data: Uint8Array): str
   return uint8ToBase64(bytes);
 }
 
-function embeddedPngSvg(base64: string, width: number, height: number): string {
-  return [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
-    `<image href="data:image/png;base64,${base64}" width="${width}" height="${height}" preserveAspectRatio="xMidYMid meet" />`,
-    '</svg>',
-  ].join('');
-}
-
-function buildPaletteStats(labelMap: Int32Array, paletteRgb: Float32Array): PaletteStat[] {
+function buildPaletteStats(labelMap: LabelMap, paletteRgb: Float32Array): PaletteStat[] {
   const colorCount = paletteRgb.length / 3;
   const counts = new Int32Array(colorCount);
   let total = 0;
@@ -1267,10 +1654,10 @@ function buildPaletteStats(labelMap: Int32Array, paletteRgb: Float32Array): Pale
 function createVariant(
   config: FreshRenderConfig,
   base64: string,
+  svg: string,
   width: number,
   height: number,
 ): GeneratorOutputVariant {
-  const svg = embeddedPngSvg(base64, width, height);
   return {
     id: config.id,
     label: config.label,
@@ -1287,197 +1674,913 @@ function createVariant(
   };
 }
 
-export async function generatePaintByNumbers(
-  asset: ImagePickerAsset,
+type FreshDebugImageSource =
+  | GeneratorDebugImage
+  | (() => GeneratorDebugImage | Promise<GeneratorDebugImage | undefined> | undefined)
+  | undefined;
+
+function addElapsedTiming(timings: GeneratorTimings, stage: GeneratorStage, elapsedMs: number): void {
+  timings[stage] = (timings[stage] ?? 0) + elapsedMs;
+}
+
+function stageIndex(stage: GeneratorStage): number {
+  const order: GeneratorStage[] = [...STAGE_ORDER, 'done'];
+  const index = order.indexOf(stage);
+  return index < 0 ? 0 : index;
+}
+
+function shouldUseCachedStage(options: GeneratePaintByNumbersOptions | undefined, stage: GeneratorStage): boolean {
+  const startStage = options?.debug?.rerunFromStage;
+  return options?.debug?.enabled === true && startStage != null && stageIndex(stage) < stageIndex(startStage);
+}
+
+function debugNumberParameter(
   settings: GeneratorSettings,
+  key: keyof GeneratorSettings,
+  label: string,
+  min: number,
+  max: number,
+  step: number,
+  unit?: string,
+  description?: string,
+): GeneratorDebugParameter {
+  return {
+    key,
+    label,
+    value: Number(settings[key]),
+    input: 'number',
+    min,
+    max,
+    step,
+    unit,
+    description,
+  };
+}
+
+function freshStageParameters(stage: GeneratorStage, settings: GeneratorSettings): GeneratorDebugParameter[] {
+  if (stage === 'decode') {
+    return [
+      debugNumberParameter(settings, 'resizeImageWidth', 'Max. Breite', 128, 2048, 64, 'px'),
+      debugNumberParameter(settings, 'resizeImageHeight', 'Max. Hoehe', 128, 2048, 64, 'px'),
+    ];
+  }
+
+  if (stage === 'colorMap') {
+    return [
+      debugNumberParameter(settings, 'kMeansNrOfClusters', 'Zielfarben', 2, 48, 1, 'Farben'),
+      debugNumberParameter(settings, 'randomSeed', 'Random Seed', 0, 999999, 1),
+    ];
+  }
+
+  if (stage === 'narrowCleanup') {
+    return [
+      debugNumberParameter(
+        settings,
+        'narrowPixelStripCleanupRuns',
+        'Zusatz-Cleanup',
+        0,
+        8,
+        1,
+        'Runs',
+        'Fresh nutzt zwei feste source-aware Basisdurchlaeufe; dieser Wert fuegt weitere Durchlaeufe hinzu.',
+      ),
+    ];
+  }
+
+  if (stage === 'borderSegment') {
+    return [
+      debugNumberParameter(
+        settings,
+        'nrOfTimesToHalveBorderSegments',
+        'Zusatz-Pruning',
+        0,
+        8,
+        1,
+        'Runs',
+        'Fresh nutzt diesen Wert als optionale weitere source-aware Beruhigung vor dem Region-Build.',
+      ),
+    ];
+  }
+
+  if (stage === 'facetReduce') {
+    return [
+      debugNumberParameter(
+        settings,
+        'removeFacetsSmallerThanImageRatio',
+        'Mindestflaeche-Floor',
+        0,
+        0.001,
+        0.000005,
+        'Bildanteil',
+        'Kann die Fresh-Mindestflaeche anheben; die farbanzahlabhaengige Fresh-Policy bleibt die Untergrenze.',
+      ),
+      debugNumberParameter(
+        settings,
+        'maximumNumberOfFacets',
+        'Maximale Flaechen',
+        0,
+        12000,
+        25,
+        'Flaechen',
+        '0 bedeutet kein hartes Flaechenlimit.',
+      ),
+    ];
+  }
+
+  return [];
+}
+
+function debugRegionColor(regionId: number): Rgb {
+  const hash = Math.imul(regionId + 1, 1103515245) + 12345;
+  return [
+    70 + Math.abs(hash & 0xff) % 150,
+    70 + Math.abs((hash >> 8) & 0xff) % 150,
+    70 + Math.abs((hash >> 16) & 0xff) % 150,
+  ];
+}
+
+function labelMapToRgba(
+  labelMap: LabelMap,
+  paletteRgb: Float32Array,
+  width: number,
+  height: number,
+  components?: Components,
+  mode: 'color' | 'debugRegions' | 'boundaries' = 'color',
+  placements?: MarkerPlacement[],
+): Uint8Array {
+  const rgba = new Uint8Array(width * height * 4);
+  const boundaries = components != null && mode !== 'color' ? boundaryMask(components.componentMap, width, height) : undefined;
+
+  for (let index = 0; index < labelMap.length; index += 1) {
+    const regionId = components?.componentMap[index] ?? -1;
+    const rgb = mode === 'debugRegions' && regionId >= 0
+      ? debugRegionColor(regionId)
+      : paletteColorForLabel(paletteRgb, labelMap[index]);
+    const offset = index * 4;
+    rgba[offset] = rgb[0];
+    rgba[offset + 1] = rgb[1];
+    rgba[offset + 2] = rgb[2];
+    rgba[offset + 3] = 255;
+  }
+
+  if (boundaries != null) {
+    for (let index = 0; index < boundaries.length; index += 1) {
+      const boundary = boundaries[index];
+      if (boundary === 0) {
+        continue;
+      }
+      const offset = index * 4;
+      const alpha = boundary === 2 ? BOUNDARY_ALPHA : BOUNDARY_SOFT_ALPHA;
+      rgba[offset] = clampByte(blendChannel(rgba[offset], OUTLINE_R, alpha));
+      rgba[offset + 1] = clampByte(blendChannel(rgba[offset + 1], OUTLINE_G, alpha));
+      rgba[offset + 2] = clampByte(blendChannel(rgba[offset + 2], OUTLINE_B, alpha));
+    }
+  }
+
+  if (placements != null) {
+    drawMarkerCircles(rgba, width, height, placements, paletteRgb);
+  }
+
+  return rgba;
+}
+
+async function renderFreshDebugImage(
+  label: string,
+  labelMap: LabelMap,
+  paletteRgb: Float32Array,
+  width: number,
+  height: number,
+  components?: Components,
+  mode: 'color' | 'debugRegions' | 'boundaries' = 'color',
+  placements?: MarkerPlacement[],
+): Promise<GeneratorDebugImage> {
+  return encodeRgbaDebugImage(
+    label,
+    width,
+    height,
+    labelMapToRgba(labelMap, paletteRgb, width, height, components, mode, placements),
+  );
+}
+
+async function pushFreshDebugSnapshot(
+  snapshots: GeneratorDebugStageSnapshot[] | null,
+  stage: GeneratorStage,
+  label: string,
+  description: string,
+  settings: GeneratorSettings,
+  metrics: GeneratorDebugMetric[],
+  image: FreshDebugImageSource,
+  timingMs: number | undefined,
+  cacheHit = false,
+  onStageSnapshot?: (snapshot: GeneratorDebugStageSnapshot) => void,
+): Promise<void> {
+  if (snapshots == null && onStageSnapshot == null) {
+    return;
+  }
+
+  const resolvedImage = typeof image === 'function' ? await image() : image;
+  const snapshot: GeneratorDebugStageSnapshot = {
+    stage,
+    label,
+    description,
+    parameters: freshStageParameters(stage, settings),
+    metrics,
+    image: resolvedImage,
+    timingMs,
+    canRerunFromHere: stage !== 'svgRender',
+    cacheHit,
+  };
+
+  snapshots?.push(snapshot);
+  onStageSnapshot?.(snapshot);
+}
+
+async function generatePaintByNumbersInternal(
+  preparedInput: PreparedFreshGeneratorImage,
+  requestedSettings: GeneratorSettings,
   onProgress?: (progress: GeneratorProgress) => void,
   options: GeneratePaintByNumbersOptions = {},
 ): Promise<GeneratorResult> {
+  const settings = normalizedFreshSettings(requestedSettings);
   const report = createProgressReporter(onProgress);
   const timings: GeneratorTimings = {};
-  const targetColorCount = Math.max(1, Math.floor(settings.kMeansNrOfClusters));
+  const targetColorCount = settings.kMeansNrOfClusters;
+  const debugEnabled = options.debug?.enabled === true;
+  const debugSnapshots: GeneratorDebugStageSnapshot[] | null = debugEnabled ? [] : null;
+  const previousCache = options.debug?.cache ?? null;
+  const sourceKey = options.cacheSourceKey ?? sourceKeyForPrepared(preparedInput);
+  const nextCache: GeneratorPipelineDebugCache = {
+    version: FRESH_PIPELINE_CACHE_VERSION,
+    sourceKey,
+    signatures: {},
+  };
+  let cachePrefixValid =
+    previousCache?.version === FRESH_PIPELINE_CACHE_VERSION
+    && previousCache.sourceKey === sourceKey;
+  const canUseCachedStage = (stage: PipelineStage, expectedSignature: string, valuePresent: boolean): boolean => {
+    if (!shouldUseCachedStage(options, stage)) {
+      return false;
+    }
+    const valid =
+      cachePrefixValid
+      && valuePresent
+      && previousCache?.signatures?.[stage] === expectedSignature;
+    if (!valid) {
+      cachePrefixValid = false;
+    }
+    return valid;
+  };
+  const rememberSignature = (stage: PipelineStage, value: string): void => {
+    nextCache.signatures[stage] = value;
+  };
+  const decodeSignature = freshDecodeCacheSignature(sourceKey, settings);
 
-  report('decode', 0, 'Bild wird fuer neue Region-First-Pipeline vorbereitet.');
-  const decodeStarted = nowMs();
-  const decoded = await preparePickedImageForGenerator(asset, settingsWithPipelineResizeLimit(settings));
-  addTiming(timings, 'decode', decodeStarted);
-  report('decode', 1, `Bild mit ${decoded.imageData.width}x${decoded.imageData.height} Pixeln vorbereitet.`);
+  let decoded: PreparedFreshGeneratorImage;
+  if (canUseCachedStage('decode', decodeSignature, previousCache?.decoded != null)) {
+    decoded = previousCache?.decoded as PreparedFreshGeneratorImage;
+    nextCache.decoded = decoded;
+    addElapsedTiming(timings, 'decode', 0);
+    report('decode', 1, 'Vorbereitetes Bild aus Debug-Cache übernommen.');
+    await pushFreshDebugSnapshot(
+      debugSnapshots,
+      'decode',
+      'Decode',
+      'Normalisiertes Eingabebild nach Resize und Alpha-Flattening.',
+      settings,
+      [
+        { label: 'Status', value: 'Aus Cache' },
+        { label: 'Arbeitsgroesse', value: `${decoded.imageData.width} x ${decoded.imageData.height} px` },
+      ],
+      () => encodeRgbaDebugImage('Decode', decoded.imageData.width, decoded.imageData.height, decoded.imageData.data),
+      0,
+      true,
+      options.onStageSnapshot,
+    );
+  } else {
+    report('decode', 0, 'Bild wird fuer neue Region-First-Pipeline vorbereitet.');
+    const decodeStarted = nowMs();
+    decoded = preparedInput;
+    if (
+      decoded.imageData.width <= 0
+      || decoded.imageData.height <= 0
+      || decoded.imageData.data.length !== decoded.imageData.width * decoded.imageData.height * 4
+    ) {
+      throw new Error('Fresh pipeline received invalid prepared image dimensions or pixel data.');
+    }
+    addElapsedTiming(
+      timings,
+      'decode',
+      Math.max(options.preparedDecodeDurationMs ?? 0, nowMs() - decodeStarted),
+    );
+    report('decode', 1, `Bild mit ${decoded.imageData.width}x${decoded.imageData.height} Pixeln vorbereitet.`);
+    nextCache.decoded = decoded;
+    await pushFreshDebugSnapshot(
+      debugSnapshots,
+      'decode',
+      'Decode',
+      'Normalisiertes Eingabebild nach Resize und Alpha-Flattening.',
+      settings,
+      [
+        { label: 'Arbeitsgroesse', value: `${decoded.imageData.width} x ${decoded.imageData.height} px` },
+        { label: 'Fresh-Resize-Limit', value: `${Math.min(settings.resizeImageWidth, WORK_MAX_EDGE)} x ${Math.min(settings.resizeImageHeight, WORK_MAX_EDGE)} px` },
+      ],
+      () => encodeRgbaDebugImage('Decode', decoded.imageData.width, decoded.imageData.height, decoded.imageData.data),
+      timings.decode,
+      false,
+      options.onStageSnapshot,
+    );
+  }
+  rememberSignature('decode', decodeSignature);
+  await yieldAndCheckCancellation(options);
 
-  report('kmeans', 0.1, 'Farben werden kantenbewusst geglaettet.');
-  const colorStarted = nowMs();
-  const smoothed = edgePreservingSmooth(decoded.imageData);
-  report('kmeans', 0.45, '64 Farb-Token werden aufgebaut.');
-  const tokenLabels = buildTokenLabels(smoothed, decoded.imageData.width, decoded.imageData.height);
-  report('kmeans', 0.7, 'Zusammenhaengende Farbregionen werden gesucht.');
-  const tokenComponents = connectedComponentsForLabels(
-    tokenLabels,
-    TOKEN_COLOR_COUNT,
-    decoded.imageData.width,
-    decoded.imageData.height,
-    smoothed,
-  );
-  report('kmeans', 0.9, `${tokenComponents.labels.length} Startregionen gefunden.`);
-  addTiming(timings, 'kmeans', colorStarted);
+  const { width, height } = decoded.imageData;
+  const kmeansSignature = signature([
+    decodeSignature,
+    TOKEN_BINS_PER_CHANNEL,
+    PALETTE_WEIGHT_POWER,
+    'smooth-34-v2',
+  ]);
+  let smoothed: Uint8ClampedArray;
+  let tokenComponents: Components;
+  if (
+    canUseCachedStage(
+      'kmeans',
+      kmeansSignature,
+      previousCache?.smoothed != null && previousCache.tokenComponents != null,
+    )
+  ) {
+    smoothed = previousCache?.smoothed as Uint8ClampedArray;
+    tokenComponents = previousCache?.tokenComponents as Components;
+    nextCache.smoothed = smoothed;
+    nextCache.tokenComponents = tokenComponents;
+    addElapsedTiming(timings, 'kmeans', 0);
+    report('kmeans', 1, 'Fresh-Tokenisierung aus Debug-Cache übernommen.');
+    await pushFreshDebugSnapshot(
+      debugSnapshots,
+      'kmeans',
+      'Fresh Tokenisierung',
+      'Kantenbewusst geglaettetes Bild und 64 RGB-Token als Startregionen.',
+      settings,
+      [
+        { label: 'Status', value: 'Aus Cache' },
+        { label: 'Farb-Token', value: String(TOKEN_COLOR_COUNT) },
+        { label: 'Startregionen', value: String(tokenComponents.labels.length) },
+      ],
+      () => encodeRgbaDebugImage('Fresh Tokenisierung', width, height, smoothed),
+      0,
+      true,
+      options.onStageSnapshot,
+    );
+  } else {
+    report('kmeans', 0.1, 'Farben werden kantenbewusst geglaettet.');
+    const colorStarted = nowMs();
+    smoothed = edgePreservingSmooth(decoded.imageData);
+    report('kmeans', 0.45, '64 Farb-Token werden aufgebaut.');
+    const tokenLabels = buildTokenLabels(smoothed, width, height);
+    report('kmeans', 0.7, 'Zusammenhaengende Farbregionen werden gesucht.');
+    tokenComponents = connectedComponentsForLabels(
+      tokenLabels,
+      TOKEN_COLOR_COUNT,
+      width,
+      height,
+      smoothed,
+    );
+    report('kmeans', 0.9, `${tokenComponents.labels.length} Startregionen gefunden.`);
+    addTiming(timings, 'kmeans', colorStarted);
+    nextCache.smoothed = smoothed;
+    nextCache.tokenComponents = tokenComponents;
+    await pushFreshDebugSnapshot(
+      debugSnapshots,
+      'kmeans',
+      'Fresh Tokenisierung',
+      'Kantenbewusst geglaettetes Bild und 64 RGB-Token als Startregionen.',
+      settings,
+      [
+        { label: 'Farb-Token', value: String(TOKEN_COLOR_COUNT) },
+        { label: 'Startregionen', value: String(tokenComponents.labels.length) },
+      ],
+      () => encodeRgbaDebugImage('Fresh Tokenisierung', width, height, smoothed),
+      timings.kmeans,
+      false,
+      options.onStageSnapshot,
+    );
+  }
+  assertValidComponents(tokenComponents, width * height, 'kmeans');
+  rememberSignature('kmeans', kmeansSignature);
+  await yieldAndCheckCancellation(options);
 
-  report('colorMap', 0, `${targetColorCount} Zielfarben werden regionengewichtet gelernt.`);
-  const paletteStarted = nowMs();
-  const paletteModel = weightedPaletteKMeans(
-    tokenComponents.meanRgb,
-    tokenComponents.areas,
-    targetColorCount,
-    settings.randomSeed,
-  );
-  let labelMap = labelMapFromComponents(tokenComponents.componentMap, paletteModel.componentLabels);
-  let paletteRgb = paletteModel.paletteRgb;
-  addTiming(timings, 'colorMap', paletteStarted);
-  report('colorMap', 1, `${targetColorCount} Zielfarben gelernt.`);
+  const colorMapSignature = signature([kmeansSignature, targetColorCount, settings.randomSeed, 'palette-v2']);
+  let labelMap: LabelMap;
+  let paletteRgb: Float32Array;
+  if (canUseCachedStage('colorMap', colorMapSignature, previousCache?.colorMap != null)) {
+    const cached = previousCache?.colorMap as FreshLabelDebugState;
+    labelMap = cached.labelMap;
+    paletteRgb = cached.paletteRgb;
+    nextCache.colorMap = cached;
+    addElapsedTiming(timings, 'colorMap', 0);
+    report('colorMap', 1, 'Fresh-Zielpalette aus Debug-Cache übernommen.');
+    await pushFreshDebugSnapshot(
+      debugSnapshots,
+      'colorMap',
+      'Color Map',
+      'Regionengewichtete Zielpalette und erstes Ziel-Farblabelbild.',
+      settings,
+      [
+        { label: 'Status', value: 'Aus Cache' },
+        { label: 'Zielfarben', value: String(targetColorCount) },
+      ],
+      () => renderFreshDebugImage('Color Map', labelMap, paletteRgb, width, height),
+      0,
+      true,
+      options.onStageSnapshot,
+    );
+  } else {
+    report('colorMap', 0, `${targetColorCount} Zielfarben werden regionengewichtet gelernt.`);
+    const paletteStarted = nowMs();
+    const paletteModel = weightedPaletteKMeans(
+      tokenComponents.meanRgb,
+      tokenComponents.areas,
+      targetColorCount,
+      settings.randomSeed,
+    );
+    labelMap = labelMapFromComponents(tokenComponents.componentMap, paletteModel.componentLabels);
+    paletteRgb = paletteModel.paletteRgb;
+    addTiming(timings, 'colorMap', paletteStarted);
+    report('colorMap', 1, `${paletteRgb.length / 3} von ${targetColorCount} Zielfarben gelernt.`);
+    nextCache.colorMap = { labelMap, paletteRgb };
+    await pushFreshDebugSnapshot(
+      debugSnapshots,
+      'colorMap',
+      'Color Map',
+      'Regionengewichtete Zielpalette und erstes Ziel-Farblabelbild.',
+      settings,
+      [
+        { label: 'Zielfarben', value: String(targetColorCount) },
+        { label: 'Startregionen', value: String(tokenComponents.labels.length) },
+        { label: 'Seed', value: String(settings.randomSeed) },
+      ],
+      () => renderFreshDebugImage('Color Map', labelMap, paletteRgb, width, height),
+      timings.colorMap,
+      false,
+      options.onStageSnapshot,
+    );
+  }
+  rememberSignature('colorMap', colorMapSignature);
+  const paletteColorCount = paletteRgb.length / 3;
+  assertValidLabelMap(labelMap, paletteColorCount, width, height, 'colorMap');
+  await yieldAndCheckCancellation(options);
 
-  report('narrowCleanup', 0, 'Lokale Pixelinseln werden beruhigt.');
-  const majorityStarted = nowMs();
-  labelMap = majorityFilterLabels(
-    labelMap,
-    decoded.imageData.width,
-    decoded.imageData.height,
-    targetColorCount,
-    MAJORITY_FILTER_RUNS,
-    smoothed,
-    paletteRgb,
-  );
-  addTiming(timings, 'narrowCleanup', majorityStarted);
-  report('narrowCleanup', 1, 'Lokale Pixelinseln beruhigt.');
+  const narrowExtraRuns = Math.max(0, Math.floor(settings.narrowPixelStripCleanupRuns));
+  const narrowTotalRuns = MAJORITY_FILTER_RUNS + narrowExtraRuns;
+  const narrowSignature = signature([
+    colorMapSignature,
+    narrowTotalRuns,
+    SOURCE_AWARE_MAJORITY_RGB_TOLERANCE,
+    SOURCE_AWARE_MAJORITY_ABSOLUTE_RGB_LIMIT,
+  ]);
+  if (canUseCachedStage('narrowCleanup', narrowSignature, previousCache?.afterNarrowCleanup != null)) {
+    const cached = previousCache?.afterNarrowCleanup as FreshLabelDebugState;
+    labelMap = cached.labelMap;
+    paletteRgb = cached.paletteRgb;
+    nextCache.afterNarrowCleanup = cached;
+    addElapsedTiming(timings, 'narrowCleanup', 0);
+    report('narrowCleanup', 1, 'Fresh-Majority-Cleanup aus Debug-Cache übernommen.');
+    await pushFreshDebugSnapshot(
+      debugSnapshots,
+      'narrowCleanup',
+      'Narrow Cleanup',
+      'Source-aware Majority-Filter fuer lokale Pixelinseln.',
+      settings,
+      [
+        { label: 'Status', value: 'Aus Cache' },
+        { label: 'Basis-Runs', value: String(MAJORITY_FILTER_RUNS) },
+        { label: 'Zusatz-Runs', value: String(narrowExtraRuns) },
+      ],
+      () => renderFreshDebugImage('Narrow Cleanup', labelMap, paletteRgb, width, height),
+      0,
+      true,
+      options.onStageSnapshot,
+    );
+  } else {
+    report('narrowCleanup', 0, 'Lokale Pixelinseln werden beruhigt.');
+    const majorityStarted = nowMs();
+    labelMap = majorityFilterLabels(
+      labelMap,
+      width,
+      height,
+      paletteColorCount,
+      narrowTotalRuns,
+      smoothed,
+      paletteRgb,
+    );
+    addTiming(timings, 'narrowCleanup', majorityStarted);
+    report('narrowCleanup', 1, 'Lokale Pixelinseln beruhigt.');
+    nextCache.afterNarrowCleanup = { labelMap, paletteRgb };
+    await pushFreshDebugSnapshot(
+      debugSnapshots,
+      'narrowCleanup',
+      'Narrow Cleanup',
+      'Source-aware Majority-Filter fuer lokale Pixelinseln.',
+      settings,
+      [
+        { label: 'Basis-Runs', value: String(MAJORITY_FILTER_RUNS) },
+        { label: 'Zusatz-Runs', value: String(narrowExtraRuns) },
+        { label: 'Gesamt-Runs', value: String(narrowTotalRuns) },
+      ],
+      () => renderFreshDebugImage('Narrow Cleanup', labelMap, paletteRgb, width, height),
+      timings.narrowCleanup,
+      false,
+      options.onStageSnapshot,
+    );
+  }
+  assertValidLabelMap(labelMap, paletteColorCount, width, height, 'narrowCleanup');
+  rememberSignature('narrowCleanup', narrowSignature);
+  await yieldAndCheckCancellation(options);
+
+  const borderSegmentRuns = Math.max(0, Math.floor(settings.nrOfTimesToHalveBorderSegments));
+  const borderSegmentSignature = signature([narrowSignature, borderSegmentRuns]);
+  if (canUseCachedStage('borderSegment', borderSegmentSignature, previousCache?.afterBorderSegment != null)) {
+    const cached = previousCache?.afterBorderSegment as FreshLabelDebugState;
+    labelMap = cached.labelMap;
+    paletteRgb = cached.paletteRgb;
+    nextCache.afterBorderSegment = cached;
+    addElapsedTiming(timings, 'borderSegment', 0);
+    report('borderSegment', 1, 'Fresh-Border-Segment aus Debug-Cache übernommen.');
+    await pushFreshDebugSnapshot(
+      debugSnapshots,
+      'borderSegment',
+      'Border Segment',
+      'Optionaler Fresh-Zusatzfilter vor dem Aufbau finaler Regionen.',
+      settings,
+      [
+        { label: 'Status', value: 'Aus Cache' },
+        { label: 'Zusatz-Runs', value: String(borderSegmentRuns) },
+      ],
+      () => renderFreshDebugImage('Border Segment', labelMap, paletteRgb, width, height),
+      0,
+      true,
+      options.onStageSnapshot,
+    );
+  } else {
+    report('borderSegment', 0, 'Fresh-Zusatzfilter vor dem Region-Build wird angewendet.');
+    const borderSegmentStarted = nowMs();
+    if (borderSegmentRuns > 0) {
+      labelMap = majorityFilterLabels(
+        labelMap,
+        width,
+        height,
+        paletteColorCount,
+        borderSegmentRuns,
+        smoothed,
+        paletteRgb,
+      );
+    }
+    addTiming(timings, 'borderSegment', borderSegmentStarted);
+    report('borderSegment', 1, borderSegmentRuns > 0 ? 'Fresh-Zusatzfilter angewendet.' : 'Fresh-Zusatzfilter uebersprungen.');
+    nextCache.afterBorderSegment = { labelMap, paletteRgb };
+    await pushFreshDebugSnapshot(
+      debugSnapshots,
+      'borderSegment',
+      'Border Segment',
+      'Optionaler Fresh-Zusatzfilter vor dem Aufbau finaler Regionen.',
+      settings,
+      [
+        { label: 'Zusatz-Runs', value: String(borderSegmentRuns) },
+        { label: 'Status', value: borderSegmentRuns > 0 ? 'Angewendet' : 'Keine Zusatz-Runs' },
+      ],
+      () => renderFreshDebugImage('Border Segment', labelMap, paletteRgb, width, height),
+      timings.borderSegment,
+      false,
+      options.onStageSnapshot,
+    );
+  }
+  assertValidLabelMap(labelMap, paletteColorCount, width, height, 'borderSegment');
+  rememberSignature('borderSegment', borderSegmentSignature);
+  await yieldAndCheckCancellation(options);
 
   const regionPolicy = regionPolicyForColorCount(targetColorCount);
-  const minRegionArea = Math.max(
+  const freshPolicyMinArea = Math.max(
     regionPolicy.minRegionPixels,
-    Math.round(decoded.imageData.width * decoded.imageData.height * regionPolicy.minRegionRatio),
+    Math.round(width * height * regionPolicy.minRegionRatio),
   );
+  const settingsMinArea = Math.max(0, Math.round(width * height * settings.removeFacetsSmallerThanImageRatio));
+  const minRegionArea = Math.max(freshPolicyMinArea, settingsMinArea);
+  const facetBuildSignature = signature([borderSegmentSignature, paletteColorCount, 'components-v2']);
 
-  report('facetBuild', 0, 'Finale Farbregionen werden aufgebaut.');
-  const facetBuildStarted = nowMs();
-  let regionComponents = connectedComponentsForLabels(labelMap, targetColorCount, decoded.imageData.width, decoded.imageData.height);
-  addTiming(timings, 'facetBuild', facetBuildStarted);
-  report('facetBuild', 1, `${regionComponents.labels.length} Farbregionen erkannt.`);
+  let regionComponents: Components;
+  if (canUseCachedStage('facetBuild', facetBuildSignature, previousCache?.beforeFacetReduce != null)) {
+    const cached = previousCache?.beforeFacetReduce as FreshRegionDebugState;
+    paletteRgb = cached.paletteRgb;
+    regionComponents = cached.components;
+    labelMap = labelMapFromComponents(regionComponents.componentMap, regionComponents.labels);
+    nextCache.beforeFacetReduce = cached;
+    addElapsedTiming(timings, 'facetBuild', 0);
+    report('facetBuild', 1, 'Fresh-Regionen aus Debug-Cache übernommen.');
+    await pushFreshDebugSnapshot(
+      debugSnapshots,
+      'facetBuild',
+      'Facet Build',
+      'Zusammenhaengende Ziel-Farbregionen vor der Reduktion.',
+      settings,
+      [
+        { label: 'Status', value: 'Aus Cache' },
+        { label: 'Regionen vor Merge', value: String(regionComponents.labels.length) },
+        { label: 'Mindestflaeche', value: `${minRegionArea} px` },
+      ],
+      () => renderFreshDebugImage('Facet Build', labelMap, paletteRgb, width, height, regionComponents, 'debugRegions'),
+      0,
+      true,
+      options.onStageSnapshot,
+    );
+  } else {
+    report('facetBuild', 0, 'Finale Farbregionen werden aufgebaut.');
+    const facetBuildStarted = nowMs();
+    regionComponents = connectedComponentsForLabels(labelMap, paletteColorCount, width, height);
+    addTiming(timings, 'facetBuild', facetBuildStarted);
+    report('facetBuild', 1, `${regionComponents.labels.length} Farbregionen erkannt.`);
+    nextCache.beforeFacetReduce = { paletteRgb, components: regionComponents };
+    await pushFreshDebugSnapshot(
+      debugSnapshots,
+      'facetBuild',
+      'Facet Build',
+      'Zusammenhaengende Ziel-Farbregionen vor der Reduktion.',
+      settings,
+      [
+        { label: 'Regionen vor Merge', value: String(regionComponents.labels.length) },
+        { label: 'Fresh-Policy-Min', value: `${freshPolicyMinArea} px` },
+        { label: 'Settings-Min', value: `${settingsMinArea} px` },
+      ],
+      () => renderFreshDebugImage('Facet Build', labelMap, paletteRgb, width, height, regionComponents, 'debugRegions'),
+      timings.facetBuild,
+      false,
+      options.onStageSnapshot,
+    );
+  }
+  assertValidComponents(regionComponents, width * height, 'facetBuild');
+  rememberSignature('facetBuild', facetBuildSignature);
+  await yieldAndCheckCancellation(options);
 
-  report('facetReduce', 0, 'Kleine Restregionen werden gemerged.');
-  const reduceStarted = nowMs();
-  let merge = mergeTinyRegions(
-    labelMap,
-    smoothed,
-    paletteRgb,
-    decoded.imageData.width,
-    decoded.imageData.height,
-    minRegionArea,
-    TINY_MERGE_PASSES,
-    SPECKLE_REGION_PIXELS,
-    regionPolicy.detailProtectMinPixels,
-    DETAIL_PROTECT_LAB_DISTANCE,
-  );
-  labelMap = majorityFilterLabels(
-    merge.labelMap,
-    decoded.imageData.width,
-    decoded.imageData.height,
-    targetColorCount,
-    POST_MAJORITY_FILTER_RUNS,
-    smoothed,
-    paletteRgb,
-  );
-  merge = mergeTinyRegions(
-    labelMap,
-    smoothed,
-    paletteRgb,
-    decoded.imageData.width,
-    decoded.imageData.height,
-    minRegionArea,
-    Math.max(4, Math.floor(TINY_MERGE_PASSES / 2)),
-    SPECKLE_REGION_PIXELS,
-    regionPolicy.detailProtectMinPixels,
-    DETAIL_PROTECT_LAB_DISTANCE,
-  );
-  labelMap = majorityFilterLabels(
-    merge.labelMap,
-    decoded.imageData.width,
-    decoded.imageData.height,
-    targetColorCount,
-    FINAL_MAJORITY_FILTER_RUNS,
-    smoothed,
-    paletteRgb,
-  );
-  merge = mergeTinyRegions(
-    labelMap,
-    smoothed,
-    paletteRgb,
-    decoded.imageData.width,
-    decoded.imageData.height,
-    SPECKLE_REGION_PIXELS,
-    FINAL_SPECKLE_PASSES,
-    SPECKLE_REGION_PIXELS,
-    DETAIL_SPECKLE_PROTECT_MIN_PIXELS,
-    DETAIL_SPECKLE_PROTECT_LAB_DISTANCE,
-  );
-  labelMap = merge.labelMap;
+  const regionCountBeforeReduce = regionComponents.labels.length;
+  let paletteUsageReintroducedCount = 0;
+  let totalMergeCount = 0;
+  let totalGlobalReassignCount = 0;
+  let totalProtectedSmall = 0;
+  let finalSmallRemaining = 0;
+  let facetBudgetSatisfied = true;
+  let forcedBudgetMergeCount = 0;
   const maximumNumberOfFacets = Math.max(0, Math.floor(settings.maximumNumberOfFacets));
-  if (maximumNumberOfFacets > 0) {
-    let previousBudgetComponentCount = Number.POSITIVE_INFINITY;
-    for (let budgetPass = 0; budgetPass < 5; budgetPass += 1) {
-      const budgetComponents = connectedComponentsForLabels(
-        labelMap,
-        targetColorCount,
-        decoded.imageData.width,
-        decoded.imageData.height,
-      );
-      if (budgetComponents.labels.length <= maximumNumberOfFacets || budgetComponents.labels.length >= previousBudgetComponentCount) {
-        break;
-      }
-      previousBudgetComponentCount = budgetComponents.labels.length;
-      const budgetMinArea = Math.max(minRegionArea, Math.round(minRegionArea * (1.2 + budgetPass * 0.35)));
-      const budgetMerge = mergeTinyRegions(
+  const facetReduceSignature = signature([
+    facetBuildSignature,
+    minRegionArea,
+    maximumNumberOfFacets,
+    regionPolicy.detailProtectMinPixels,
+    TINY_MERGE_PASSES,
+    FINAL_SPECKLE_PASSES,
+    'stable-target-v2',
+  ]);
+  if (canUseCachedStage('facetReduce', facetReduceSignature, previousCache?.afterFacetReduce != null)) {
+    const cached = previousCache?.afterFacetReduce as FreshRegionDebugState;
+    paletteRgb = cached.paletteRgb;
+    regionComponents = cached.components;
+    labelMap = labelMapFromComponents(regionComponents.componentMap, regionComponents.labels);
+    nextCache.afterFacetReduce = cached;
+    addElapsedTiming(timings, 'facetReduce', 0);
+    report('facetReduce', 1, 'Fresh-Regionen nach Reduktion aus Debug-Cache übernommen.');
+    await pushFreshDebugSnapshot(
+      debugSnapshots,
+      'facetReduce',
+      'Facet Reduce',
+      'Source-aware Merge kleiner Restregionen und optionales Flaechenbudget.',
+      settings,
+      [
+        { label: 'Status', value: 'Aus Cache' },
+        { label: 'Regionen', value: String(regionComponents.labels.length) },
+        { label: 'Mindestflaeche', value: `${minRegionArea} px` },
+      ],
+      () => renderFreshDebugImage('Facet Reduce', labelMap, paletteRgb, width, height, regionComponents, 'debugRegions'),
+      0,
+      true,
+      options.onStageSnapshot,
+    );
+  } else {
+    report('facetReduce', 0, 'Kleine Restregionen werden gemerged.');
+    const reduceStarted = nowMs();
+    const accumulateMerge = (mergeResult: MergeResult): void => {
+      totalMergeCount += mergeResult.mergeCount;
+      totalGlobalReassignCount += mergeResult.globalReassignCount;
+      totalProtectedSmall = mergeResult.protectedSmall;
+      finalSmallRemaining = mergeResult.smallRemaining;
+    };
+    let merge = await mergeTinyRegions(
+      labelMap,
+      smoothed,
+      paletteRgb,
+      width,
+      height,
+      minRegionArea,
+      TINY_MERGE_PASSES,
+      SPECKLE_REGION_PIXELS,
+      regionPolicy.detailProtectMinPixels,
+      DETAIL_PROTECT_LAB_DISTANCE,
+      options,
+    );
+    accumulateMerge(merge);
+    labelMap = majorityFilterLabels(
+      merge.labelMap,
+      width,
+      height,
+      paletteColorCount,
+      POST_MAJORITY_FILTER_RUNS,
+      smoothed,
+      paletteRgb,
+    );
+    merge = await mergeTinyRegions(
+      labelMap,
+      smoothed,
+      paletteRgb,
+      width,
+      height,
+      minRegionArea,
+      Math.max(4, Math.floor(TINY_MERGE_PASSES / 2)),
+      SPECKLE_REGION_PIXELS,
+      regionPolicy.detailProtectMinPixels,
+      DETAIL_PROTECT_LAB_DISTANCE,
+      options,
+    );
+    accumulateMerge(merge);
+    labelMap = majorityFilterLabels(
+      merge.labelMap,
+      width,
+      height,
+      paletteColorCount,
+      FINAL_MAJORITY_FILTER_RUNS,
+      smoothed,
+      paletteRgb,
+    );
+    merge = await mergeTinyRegions(
+      labelMap,
+      smoothed,
+      paletteRgb,
+      width,
+      height,
+      SPECKLE_REGION_PIXELS,
+      FINAL_SPECKLE_PASSES,
+      SPECKLE_REGION_PIXELS,
+      DETAIL_SPECKLE_PROTECT_MIN_PIXELS,
+      DETAIL_SPECKLE_PROTECT_LAB_DISTANCE,
+      options,
+    );
+    accumulateMerge(merge);
+    labelMap = merge.labelMap;
+    if (maximumNumberOfFacets > 0) {
+      const budgetResult = await enforceFacetBudget(
         labelMap,
         smoothed,
         paletteRgb,
-        decoded.imageData.width,
-        decoded.imageData.height,
-        budgetMinArea,
-        4,
-        SPECKLE_REGION_PIXELS,
-        regionPolicy.detailProtectMinPixels,
-        DETAIL_PROTECT_LAB_DISTANCE + 4,
+        width,
+        height,
+        maximumNumberOfFacets,
+        options,
       );
-      labelMap = budgetMerge.labelMap;
-      if (budgetMerge.mergeCount === 0) {
-        break;
+      labelMap = budgetResult.labelMap;
+      forcedBudgetMergeCount = budgetResult.mergeCount;
+      totalMergeCount += budgetResult.mergeCount;
+      facetBudgetSatisfied = budgetResult.satisfied;
+      if (!budgetResult.satisfied) {
+        throw new Error(
+          `Fresh facet budget could not be satisfied: ${budgetResult.componentCount} regions remain above ${maximumNumberOfFacets}.`,
+        );
       }
     }
+    const paletteUsage = ensureTargetPaletteUsage(
+      labelMap,
+      smoothed,
+      paletteRgb,
+      width,
+      height,
+      paletteColorCount,
+      minRegionArea,
+    );
+    paletteUsageReintroducedCount = paletteUsage.reintroducedCount;
+    labelMap = paletteUsage.labelMap;
+    paletteRgb = recomputePalette(smoothed, labelMap, paletteColorCount);
+    regionComponents = connectedComponentsForLabels(labelMap, paletteColorCount, width, height);
+    addTiming(timings, 'facetReduce', reduceStarted);
+    report(
+      'facetReduce',
+      1,
+      `${regionComponents.labels.length} finale Regionen erzeugt${paletteUsage.reintroducedCount > 0 ? `, ${paletteUsage.reintroducedCount} Zielfarben reaktiviert` : ''}.`,
+    );
+    nextCache.afterFacetReduce = { paletteRgb, components: regionComponents };
+    await pushFreshDebugSnapshot(
+      debugSnapshots,
+      'facetReduce',
+      'Facet Reduce',
+      'Source-aware Merge kleiner Restregionen und optionales Flaechenbudget.',
+      settings,
+      [
+        { label: 'Regionen vor Merge', value: String(regionCountBeforeReduce) },
+        { label: 'Regionen nach Merge', value: String(regionComponents.labels.length) },
+        { label: 'Mindestflaeche', value: `${minRegionArea} px` },
+        { label: 'Merges', value: String(totalMergeCount) },
+        { label: 'Globale Reassigns', value: String(totalGlobalReassignCount) },
+        { label: 'Geschuetzte kleine Regionen', value: String(totalProtectedSmall) },
+        { label: 'Kleine Restregionen', value: String(finalSmallRemaining) },
+        { label: 'Reaktivierte Farben', value: String(paletteUsageReintroducedCount) },
+        { label: 'Budget-Merges', value: String(forcedBudgetMergeCount) },
+        {
+          label: 'Flaechenbudget',
+          value: maximumNumberOfFacets <= 0
+            ? 'Deaktiviert'
+            : facetBudgetSatisfied
+              ? `Erfuellt (<= ${maximumNumberOfFacets})`
+              : `Nicht erreichbar (${regionComponents.labels.length} > ${maximumNumberOfFacets})`,
+        },
+      ],
+      () => renderFreshDebugImage('Facet Reduce', labelMap, paletteRgb, width, height, regionComponents, 'debugRegions'),
+      timings.facetReduce,
+      false,
+      options.onStageSnapshot,
+    );
   }
-  const paletteUsage = ensureTargetPaletteUsage(
-    labelMap,
-    smoothed,
-    paletteRgb,
-    decoded.imageData.width,
-    decoded.imageData.height,
-    targetColorCount,
-    minRegionArea,
-  );
-  labelMap = paletteUsage.labelMap;
-  paletteRgb = recomputePalette(smoothed, labelMap, targetColorCount);
-  regionComponents = connectedComponentsForLabels(labelMap, targetColorCount, decoded.imageData.width, decoded.imageData.height);
-  addTiming(timings, 'facetReduce', reduceStarted);
-  report(
-    'facetReduce',
-    1,
-    `${regionComponents.labels.length} finale Regionen erzeugt${paletteUsage.reintroducedCount > 0 ? `, ${paletteUsage.reintroducedCount} Zielfarben reaktiviert` : ''}.`,
-  );
+  assertValidLabelMap(labelMap, paletteColorCount, width, height, 'facetReduce');
+  assertValidComponents(regionComponents, width * height, 'facetReduce');
+  facetBudgetSatisfied = maximumNumberOfFacets <= 0 || regionComponents.labels.length <= maximumNumberOfFacets;
+  rememberSignature('facetReduce', facetReduceSignature);
+  await yieldAndCheckCancellation(options);
 
   report('borderTrace', 0, 'Geglaettete Grenzen werden vorbereitet.');
   const borderStarted = nowMs();
   const regionMap = regionComponents.componentMap;
+  const boundaries = boundaryMask(regionMap, width, height);
   addTiming(timings, 'borderTrace', borderStarted);
   report('borderTrace', 1, 'Grenzen vorbereitet.');
+  const boundaryPixelCount = boundaries.reduce((sum, value) => sum + (value === 2 ? 1 : 0), 0);
+  await pushFreshDebugSnapshot(
+    debugSnapshots,
+    'borderTrace',
+    'Border Trace',
+    'Boundary-Layer der finalen Fresh-Regionen.',
+    settings,
+    [
+      { label: 'Regionen', value: String(regionComponents.labels.length) },
+      { label: 'Boundary-Pixel', value: String(boundaryPixelCount) },
+    ],
+    () => renderFreshDebugImage('Border Trace', labelMap, paletteRgb, width, height, regionComponents, 'boundaries'),
+    timings.borderTrace,
+    false,
+    options.onStageSnapshot,
+  );
+  const borderTraceSignature = signature([facetReduceSignature, boundaryPixelCount, 'boundary-v2']);
+  rememberSignature('borderTrace', borderTraceSignature);
+  await yieldAndCheckCancellation(options);
 
-  report('labelPlacement', 0, 'Farbpunkte werden in den Regionen platziert.');
-  const labelStarted = nowMs();
-  const markerPlacements = computeMarkerPlacements(regionComponents, decoded.imageData.width, decoded.imageData.height);
-  addTiming(timings, 'labelPlacement', labelStarted);
-  report('labelPlacement', 1, `${markerPlacements.length} Farbpunkte platziert.`);
+  let markerPlacements: MarkerPlacement[];
+  const labelPlacementSignature = signature([facetReduceSignature, 'distance-transform-v2']);
+  if (canUseCachedStage('labelPlacement', labelPlacementSignature, previousCache?.markerPlacements != null)) {
+    markerPlacements = previousCache?.markerPlacements as MarkerPlacement[];
+    nextCache.markerPlacements = markerPlacements;
+    addElapsedTiming(timings, 'labelPlacement', 0);
+    report('labelPlacement', 1, 'Farbpunkte aus Debug-Cache übernommen.');
+    await pushFreshDebugSnapshot(
+      debugSnapshots,
+      'labelPlacement',
+      'Label Placement',
+      'Farbpunktpositionen fuer die finalen Fresh-Regionen.',
+      settings,
+      [
+        { label: 'Status', value: 'Aus Cache' },
+        { label: 'Marker', value: `${markerPlacements.length} / ${regionComponents.labels.length}` },
+      ],
+      () => renderFreshDebugImage('Label Placement', labelMap, paletteRgb, width, height, regionComponents, 'boundaries', markerPlacements),
+      0,
+      true,
+      options.onStageSnapshot,
+    );
+  } else {
+    report('labelPlacement', 0, 'Farbpunkte werden in den Regionen platziert.');
+    const labelStarted = nowMs();
+    markerPlacements = computeMarkerPlacements(regionComponents, width, height);
+    addTiming(timings, 'labelPlacement', labelStarted);
+    report('labelPlacement', 1, `${markerPlacements.length} Farbpunkte platziert.`);
+    nextCache.markerPlacements = markerPlacements;
+    await pushFreshDebugSnapshot(
+      debugSnapshots,
+      'labelPlacement',
+      'Label Placement',
+      'Farbpunktpositionen fuer die finalen Fresh-Regionen.',
+      settings,
+      [
+        { label: 'Marker', value: `${markerPlacements.length} / ${regionComponents.labels.length}` },
+      ],
+      () => renderFreshDebugImage('Label Placement', labelMap, paletteRgb, width, height, regionComponents, 'boundaries', markerPlacements),
+      timings.labelPlacement,
+      false,
+      options.onStageSnapshot,
+    );
+  }
+  rememberSignature('labelPlacement', labelPlacementSignature);
+  await yieldAndCheckCancellation(options);
 
   report('svgRender', 0, 'Neue Pipeline-Ausgaben werden gerendert.');
   const renderStarted = nowMs();
@@ -1487,21 +2590,47 @@ export async function generatePaintByNumbers(
     throw new Error('No fresh pipeline render variants selected.');
   }
   const variants: GeneratorOutputVariant[] = [];
-  renderConfigs.forEach((config, index) => {
+  for (let index = 0; index < renderConfigs.length; index += 1) {
+    const config = renderConfigs[index];
     const base64 = pngBase64FromRgba(
-      decoded.imageData.width,
-      decoded.imageData.height,
-      renderRgba(labelMap, regionMap, paletteRgb, decoded.imageData.width, decoded.imageData.height, config, markerPlacements),
+      width,
+      height,
+      renderRgba(labelMap, regionMap, paletteRgb, width, height, config, markerPlacements, boundaries),
     );
-    variants.push(createVariant(config, base64, decoded.imageData.width, decoded.imageData.height));
+    const svg = renderFreshVectorSvg(config, labelMap, regionMap, paletteRgb, width, height, markerPlacements);
+    variants.push(createVariant(config, base64, svg, width, height));
     report('svgRender', (index + 1) / renderConfigs.length, `${config.label} gerendert.`);
-  });
+    await yieldAndCheckCancellation(options);
+  }
   const defaultVariant = variants.find((variant) => variant.isDefault) ?? variants[0];
   if (defaultVariant?.pngBase64 == null || defaultVariant.svg == null) {
     throw new Error('Fresh pipeline did not render a default output variant.');
   }
   addTiming(timings, 'svgRender', renderStarted);
   report('svgRender', 1, 'Neue Pipeline-Ausgaben gerendert.');
+  rememberSignature('svgRender', signature([labelPlacementSignature, ...selectedVariantIds, 'vector-svg-v2']));
+  await pushFreshDebugSnapshot(
+    debugSnapshots,
+    'svgRender',
+    'SVG Render',
+    'Final gerenderte Fresh-Debug-Ausgabe.',
+    settings,
+    [
+      { label: 'Varianten', value: String(variants.length) },
+      { label: 'Finale Variante', value: defaultVariant.label },
+      { label: 'Output', value: `${width} x ${height} px` },
+    ],
+    {
+      label: defaultVariant.label,
+      pngBase64: defaultVariant.pngBase64,
+      width,
+      height,
+      byteLength: defaultVariant.pngByteLength,
+    },
+    timings.svgRender,
+    false,
+    options.onStageSnapshot,
+  );
 
   onProgress?.({
     stage: 'done',
@@ -1512,32 +2641,41 @@ export async function generatePaintByNumbers(
   const previewPngBase64 = defaultVariant.pngBase64;
   const svg = defaultVariant.svg;
 
-  if (options.debug?.enabled === true) {
-    options.debug.onCacheUpdated?.({});
+  if (debugEnabled) {
+    options.debug?.onCacheUpdated?.(nextCache);
   }
 
   return {
     svg,
     previewPngBase64,
-    previewPngWidth: decoded.imageData.width,
-    previewPngHeight: decoded.imageData.height,
+    previewPngWidth: width,
+    previewPngHeight: height,
     variants,
-    svgWidth: decoded.imageData.width,
-    svgHeight: decoded.imageData.height,
-    imageWidth: decoded.imageData.width,
-    imageHeight: decoded.imageData.height,
+    svgWidth: width,
+    svgHeight: height,
+    imageWidth: width,
+    imageHeight: height,
     facetCount: regionComponents.labels.length,
     palette: buildPaletteStats(labelMap, paletteRgb),
     timings,
     preparedImage: decoded.prepared,
-    debug: options.debug?.enabled === true
+    debug: debugEnabled
       ? {
           enabled: true,
-          rerunFromStage: options.debug.rerunFromStage,
+          rerunFromStage: options.debug?.rerunFromStage,
           finalVariantId: defaultVariant?.id ?? variants[0]?.id ?? 'cleanColor',
           parameterConfig: { ...settings },
-          stages: [],
+          stages: debugSnapshots ?? [],
         }
       : undefined,
   };
+}
+
+export async function generatePaintByNumbersFreshFromPreparedInput(
+  preparedInput: PreparedFreshGeneratorImage,
+  settings: GeneratorSettings,
+  onProgress?: (progress: GeneratorProgress) => void,
+  options: GeneratePaintByNumbersOptions = {},
+): Promise<GeneratorResult> {
+  return generatePaintByNumbersInternal(preparedInput, settings, onProgress, options);
 }

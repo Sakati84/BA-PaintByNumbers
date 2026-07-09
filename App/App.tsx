@@ -9,7 +9,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import {
   generatePaintByNumbers as generateFreshPaintByNumbers,
   type GeneratorPipelineDebugCache as FreshGeneratorPipelineDebugCache,
-} from './src/features/generator/fresh/generatePaintByNumbersFresh';
+} from './src/features/generator/fresh/generatePaintByNumbersFreshNative';
 import { ensureLocalWebViewBundle } from './src/features/generator/localWebViewLoader';
 import {
   generatePaintByNumbers as generateLegacyPaintByNumbers,
@@ -44,6 +44,7 @@ type ActiveGeneratorOptions = {
   };
   onStageSnapshot?: (snapshot: GeneratorDebugStageSnapshot) => void;
   variantIds?: readonly GeneratorOutputVariantId[];
+  shouldCancel?: () => boolean;
 };
 
 function getActiveGeneratorPipeline(): GeneratorPipelineId {
@@ -52,6 +53,23 @@ function getActiveGeneratorPipeline(): GeneratorPipelineId {
 }
 
 const ACTIVE_GENERATOR_PIPELINE = getActiveGeneratorPipeline();
+const MAX_DEBUG_CACHE_ENTRIES = 1;
+
+function storeBoundedDebugCache(
+  cacheStore: Map<string, GeneratorPipelineDebugCache>,
+  sourceToken: string,
+  cache: GeneratorPipelineDebugCache,
+): void {
+  cacheStore.delete(sourceToken);
+  cacheStore.set(sourceToken, cache);
+  while (cacheStore.size > MAX_DEBUG_CACHE_ENTRIES) {
+    const oldestKey = cacheStore.keys().next().value as string | undefined;
+    if (oldestKey == null) {
+      break;
+    }
+    cacheStore.delete(oldestKey);
+  }
+}
 
 function runActiveGeneratorPipeline(
   asset: ImagePicker.ImagePickerAsset,
@@ -211,6 +229,7 @@ export default function App() {
   const webViewRef = useRef<any>(null);
   const sourceStoreRef = useRef<Map<string, StoredSource>>(new Map());
   const debugCacheStoreRef = useRef<Map<string, GeneratorPipelineDebugCache>>(new Map());
+  const activeGeneratorRunRequestIdRef = useRef<string | null>(null);
   const [bundleUri, setBundleUri] = useState<string | null>(null);
   const [readAccessUri, setReadAccessUri] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -396,6 +415,7 @@ export default function App() {
     debugMode = false,
     debugStartStage?: GeneratorStage,
   ): Promise<void> {
+    activeGeneratorRunRequestIdRef.current = requestId;
     const source = sourceStoreRef.current.get(sourceToken);
     if (source == null) {
       throw new Error(`Die angeforderte Bildquelle ${sourceToken} ist in der Shell nicht mehr vorhanden.`);
@@ -444,6 +464,7 @@ export default function App() {
     }, {
       onStageSnapshot: postStageSnapshot,
       variantIds: debugMode ? ['classic'] : undefined,
+      shouldCancel: () => activeGeneratorRunRequestIdRef.current !== requestId,
       debug: debugMode
         ? {
             enabled: true,
@@ -456,7 +477,7 @@ export default function App() {
         : undefined,
     });
     if (debugMode && updatedDebugCache != null) {
-      debugCacheStoreRef.current.set(sourceToken, updatedDebugCache);
+      storeBoundedDebugCache(debugCacheStoreRef.current, sourceToken, updatedDebugCache);
     }
     const resultWithComparisons = debugMode
       ? generatedResult
@@ -471,6 +492,9 @@ export default function App() {
         result,
       },
     });
+    if (activeGeneratorRunRequestIdRef.current === requestId) {
+      activeGeneratorRunRequestIdRef.current = null;
+    }
   }
 
   async function createAssetComparisonVariant(
@@ -779,6 +803,9 @@ export default function App() {
           request.payload.debugStartStage,
         );
       } catch (error) {
+        if (activeGeneratorRunRequestIdRef.current === request.requestId) {
+          activeGeneratorRunRequestIdRef.current = null;
+        }
         const message = error instanceof Error ? error.message : 'Die Paint-by-Numbers-Verarbeitung ist fehlgeschlagen.';
         postError(request.requestId, 'paintByNumbers', message);
       }
