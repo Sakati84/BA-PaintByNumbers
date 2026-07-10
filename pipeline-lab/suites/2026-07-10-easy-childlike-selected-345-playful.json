@@ -1,0 +1,15 @@
+{
+  "name": "2026-07-10-easy-childlike-selected-345-playful",
+  "sourceRun": "../../prompt-lab/runs/2026-07-10T07-12-16-721Z_2026-07-10-easy-childlike-selected-345-playful",
+  "variants": ["cleanColor"],
+  "matchSourceDifficulty": true,
+  "configs": [
+    {
+      "id": "fresh-easy-8",
+      "label": "Fresh Easy 8 · Selected 3/4/5 Playful",
+      "pipeline": "fresh",
+      "difficulty": "easy",
+      "colorCount": 8
+    }
+  ]
+}

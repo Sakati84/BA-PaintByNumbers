@@ -1,0 +1,22 @@
+{
+  "name": "2026-07-10-easy-childlike-selected-345",
+  "model": "gemini-3.1-flash-lite-image",
+  "maxEdge": 1024,
+  "generationConfig": {
+    "seed": 1234,
+    "temperature": 0.2
+  },
+  "inputs": [
+    "../../test-assets/source-photos/IMG_1394.JPG",
+    "../../test-assets/source-photos/IMG_1644.jpeg",
+    "../../test-assets/source-photos/IMG_0106.JPG"
+  ],
+  "cases": [
+    {
+      "id": "selected-345-production",
+      "difficulty": "easy",
+      "colorCount": 8,
+      "targetAudience": "a young child around 4 years old"
+    }
+  ]
+}

@@ -46,86 +46,84 @@ const PHOTO_TO_POSTERIZED_PROMPTS: Record<PromptDifficulty, PromptVariantConfig>
     recommendedColorRange: '8',
     defaultTargetAudience: 'a young child around 4 years old',
     positivePromptTemplate: `
-Use the uploaded photo as the recognizable source reference.
+Reimagine the uploaded photo as a bold, cheerful picture-book scene made by an excellent children's illustrator, then design it from the beginning as a very easy unnumbered paint-by-numbers color plate for {{TARGET_AUDIENCE}}.
 
-First, imagine a young child drawing this exact photo from memory: make a child-friendly drawing out of the image while preserving the main composition, subject placement, and scene identity.
+Use exactly {{NUMBER_OF_COLORS}} intended main colors.
 
-Then turn that child-friendly drawing into a very easy paint-by-numbers source image.
+Treat the photo as a scene brief, not as a map of lines to reproduce.
 
-The image should look like an unnumbered paint-by-numbers color plate: a simple child-friendly flat illustration made from a few big closed paint regions. It should be clearly transformed from the photo, not a filtered photo, but a viewer should still understand which photo it came from.
+Semantic scene anchors:
+- First understand what the scene is about: the main subject or subjects, their recognizable identity, rough pose or direction, approximate scale and placement, the broad foreground/middle-ground/background order, the dominant viewing direction, and the few contacts or overlaps needed to understand the scene.
+- Preserve those semantic anchors and the same broad visual story so the source remains recognizable at a glance.
+- A semantic anchor preserves an element's role and rough location, never its exact internal construction or repeated photographic parts.
+- Keep the same clearly focal main subject and the same number of clearly focal main subjects. Do not treat every photographed object as a main subject, and do not invent a different event or viewpoint.
+- If the photo has no single focal subject, preserve only the scene category, dominant viewing direction, broad depth order, and three to five large visual anchors. Freely reduce, replace, regroup, or reposition the remaining secondary structures.
+- Preserve identity-critical markings, visible eyes and facial landmarks, and repeated or paired structural parts when they explain identity, stance, support, movement, or function.
 
-Paint-by-numbers priority:
+Child-friendly reinterpretation:
+- Preserve the scene, but not the exact drawing made by the camera.
+- Deliberately redesign contours, irregular silhouettes, secondary object shapes, internal boundaries, spacing, repeated structures, object counts inside complex groups, and incidental perspective lines.
+- Replace visually dense or continuous masses with a small number of distinct, familiar, child-friendly scene forms that naturally belong in that kind of environment.
+- Those redesigned forms may differ clearly in contour, count, spacing, and placement from the photographic pattern as long as the broad composition remains related.
+- Choose fewer representative scene objects than the photo whenever that produces a clearer child-friendly story. Secondary objects do not need one-to-one correspondence with the source.
+- Use a coherent picture-book shape language: broad curves, simple geometric silhouettes, friendly exaggeration, charming proportions, clear separation, and lively rhythmic spacing with generous breathing room.
+- Simplify depth and perspective when that makes the scene friendlier and easier for a child to understand.
+- A child should be able to name the main subject and the important surrounding forms. Do not replace meaningful forms with anonymous color blobs.
+
+Playful art direction:
+- Make the redesign visibly more playful and imaginative than a careful simplified reconstruction.
+- Gently exaggerate one or two defining shapes of the focal subject and the most important surrounding forms so they feel iconic, friendly, and memorable.
+- Favor rounded, bouncy, slightly whimsical silhouettes and pleasing asymmetry over stiff photographic proportions.
+- Use bright, optimistic, source-related color relationships while staying inside the {{NUMBER_OF_COLORS}}-color plan. Keep colors flat and avoid neon or random recoloring.
+- The scene should feel like a charming page from a modern children's picture book, not a sober diagram, generic clip art, or a mechanically simplified photo.
+
+Meaning-first safeguards:
+- Protect meaning-carrying subject parts before simplifying large surrounding areas.
+- Broad free-space regions may be redesigned and strongly simplified, but they must not absorb, crop away, or visually swallow important subject parts.
+- Keep only the support, contact, attachment, opening, overlap, and lower-edge relationships needed to understand what the subject is and how it sits in the scene.
+- Preserve whether each visible animal or bird eye is open or closed in the source. An open source eye must remain one small, proportionate, compact filled oval or circle in the darkest suitable color already present in the {{NUMBER_OF_COLORS}}-color palette, clearly separated from the surrounding face region. Never replace an open eye with a curved eyelid or smiling eye line, omit it, merge it into the face, enlarge it into an oversized cartoon eye, or introduce an extra color for it.
+
+Paintability-first construction:
 - The final image must read as a color-only paint-by-numbers reference before anything else.
-- Every visible form should be made from closed, fillable paint areas with clean color-to-color boundaries.
-- Prefer paintable symbolic shapes over ordinary poster art, painterly rendering, or photographic smoothing.
-- Make the region structure obvious enough that a later algorithm can trace and number the areas.
-- Do not rely on texture, gradients, soft shading, or brush effects to describe the subject.
+- Plan the whole scene as roughly 20 to 35 large color shapes before adding the allowed eye landmarks. This is a simplicity target, not a request for many subdivisions.
+- Design every visible form as a closed, fillable, generously sized paint region with a crisp color-to-color boundary.
+- Build a focal main subject from only a few large shapes. Build each secondary object from one or two large shapes whenever possible.
+- Use very few large regions per object or material and strongly merge similar colors.
+- Reuse palette colors intentionally across foreground and background and never exceed the {{NUMBER_OF_COLORS}}-color plan.
+- Prefer bold symbolic forms and broad uncluttered areas over accurate photographic detail.
+- Before drawing any repeated detail outside the focal subject, classify what the repetition means.
+- If the members are meaningful standalone scene objects, replace the whole photographed group with only two to five large iconic representative objects. Freely change their contours, spacing, and count.
+- If the members merely construct, cover, decorate, or texture one larger object or surface, draw only that larger object or surface as one smooth solid shape with no visible member units or pattern. Its silhouette and role are enough.
+- This semantic group simplification is mandatory and more important than source fidelity, even when the repeated area is prominent or is a visual anchor. Losing its internal photographic detail is the intended Easy result.
+- Never count, trace, tile, outline, or imply individual repetition units that belong to a larger object or surface.
+- Give a secondary object no more than one internal color boundary unless another boundary is essential for recognizing what it is.
+- Remove photographic texture, natural micro-detail, gradients, realistic lighting, shadows, reflections, thin linework, and brush effects.
+- If a narrow structural part is essential for recognition, widen it into a clearly paintable band; otherwise omit it.
+- Avoid repeated surface patterns, tiny decorative cells, hairline subdetails or strokes, narrow slivers, islands, speckles, dense clusters, and contour strokes in any color.
+- Make every normal region large enough for a young child to paint. A visible eye is the only allowed small landmark exception.
 
-Preserve:
-- the main subject or scene type
-- the crop, framing, and composition of the uploaded photo
-- the approximate size, pose, placement, and silhouette of the main objects
-- the foreground, middle ground, background, and horizon structure where present
-- the most important color identity of the subject
-- visible eyes and other identity-critical facial landmarks as compact closed shapes
+Controlled friendly enrichment:
+- Prefer adding one simple, scene-compatible friendly secondary element when it naturally makes the story more inviting. Omit it only when it would distract from or distort the scene.
+- The optional element must be clearly secondary, large enough to paint, made only from existing palette colors, and natural for the scene.
+- Do not add arbitrary fantasy content, multiple decorations, or clutter.
 
-Meaning-first free-space rule:
-- First identify what makes the image recognizable: the main subject, its silhouette, pose, structural parts, visible eyes and facial landmarks, distinctive markings, and the places where it touches or overlaps its surroundings.
-- If the photo has one clear main subject surrounded by large simple areas such as sky, ground, road, water, wall, or floor, protect those meaning-carrying subject parts first and simplify the empty areas second.
-- Large free-space areas should become simple broad paint regions, but they must not absorb, crop away, or visually swallow the important subject parts.
-- Preserve support, contact, attachment, opening, overlap, lower-edge, and shadow-boundary details whenever they explain what the subject is or how it sits in the scene.
-- Preserve the count, placement, and readable separation of repeated or paired structural parts when they define the subject's identity, stance, support, movement, or function.
+Final quality test:
+- The result tells the same broad visual story and keeps the essential composition anchors.
+- The contours and scene construction are visibly newly illustrated rather than traced or mechanically posterized.
+- Complex backgrounds contain a few recognizable child-friendly forms instead of one anonymous mass or many copied details.
+- The image feels bold, warm, playful, visually inviting, easy to paint, and appropriate for a young child.
 
-Readable simplification:
-- Simplify the photo into child-friendly recognizable symbols and shapes, not abstract color blobs.
-- Do not invent a totally new scene, new viewpoint, or unrelated object arrangement.
-- Keep the same number of main subjects whenever the photo has one clear subject.
-- Keep the subject occupying roughly the same part of the image as in the photo, but redraw it in a friendly simplified style.
-- Keep sky/water/ground bands, flower heads, animal bodies, tree groups, and major background blocks in roughly the same relative positions.
-- Within those areas, replace photographic masses with easy-to-recognize child-friendly forms.
-
-Simplify strongly:
-- redraw the scene as a faithful simple flat illustration
-- remove small visual details
-- remove realistic texture, lighting, shadows, and reflections
-- reduce complex natural areas to simple recognizable shapes
-- make every region large enough for a young child to paint
-- never remove a visible animal or bird eye; simplify it to one compact closed landmark instead
-
-Region rules:
-- Use exactly {{NUMBER_OF_COLORS}} intended main colors.
-- Merge similar colors strongly.
-- Use very few large regions per material or object.
-- Do not create lots of small repeated patches.
-- Avoid thin slivers, tiny islands, speckles, and detailed patterns.
-- Prefer simple bands and blocks over accurate detail.
-- Exception: each visible eye may remain as one small, compact, closed region using an already allowed palette color. This exception must not introduce an additional color.
-
-Subject rules:
-- Landscapes: keep sky, water, grass, shore, paths, hills, and tree groups in the same approximate parts of the image. Redraw tree groups as a few clear child-friendly trees or tree silhouettes with simple trunks and rounded/triangular canopies, not just amorphous green facets. Water should be mostly one or two broad areas, with only a few simple reflection shapes.
-- Animals: keep pose, head direction, legs, tail, main markings, and every visible eye. Draw each visible eye as one compact closed shape in the darkest suitable color already present in the {{NUMBER_OF_COLORS}}-color palette. Never omit an eye, merge it into fur, or add a new color only for it. Simplify the rest of the body into broad color blocks.
-- Birds: keep pose, beak, every visible eye, and main black/white/red or other key markings. Draw each eye as one compact closed shape in the darkest suitable existing palette color, clearly separated from the surrounding face patch. Simplify feathers and foliage into broad color blocks.
-- Flowers: keep the flower head size, center position, petal ring direction, stem or vase if visible, and overall crop. Simplify petal detail into broad petal groups, but do not turn the flower into a different generic icon.
-
-Style:
-- simple faithful paint-by-numbers reference
+Style constraints:
+- bold charming children's picture-book illustration
 - unnumbered paint-by-numbers color plate
-- simple flat matte colors
-- large closed paintable areas
-- friendly simplified shapes
-- clear separation between neighboring colors
-- simplified background that keeps the original layout but remains semantically readable
-- no black outlines
-- no dark contour lines
-- no numbers, labels, or text
-- Never draw or place any digit, numeral, number, label, letter, caption, signature, or text-like mark anywhere in the image.
+- flat matte colors and large closed paint regions
+- crisp color boundaries without outlines
+- no black outlines or dark contour drawing
+- no numbers, letters, labels, captions, signatures, logos, watermarks, or text-like marks
 - The output is only the clean colored reference image, never a numbered paint-by-numbers template.
-- no photographic texture or shading
-
-The final result should be a child-friendly paint-by-numbers reference for {{TARGET_AUDIENCE}}: simple, recognizable, strongly simplified, easy to paint, and still clearly tied to the uploaded photo.
 `.trim(),
     negativePrompt:
-      'unchanged photo, photo filter, ordinary poster art, painterly illustration, photorealistic image, realistic rendering, realistic lighting, realistic shadow, soft shading, smooth gradients, lens blur, depth of field, bokeh, glossy reflection, complex reflection detail, texture detail, grass blade detail, leaf detail, feather detail, fur detail, flower seed detail, tiny pattern, grain, noise, tiny speckles, many small regions, many repeated patches, thin slivers, unclosed regions, unpaintable regions, amorphous green blobs, abstract color fields, meaningless facets, main subject absorbed by background, subject lost in empty space, important subject parts merged into background, meaning-carrying details lost, missing eye, omitted eye, eye merged into fur, eye merged into feathers, faceless animal, faceless bird, support details lost, contact details lost, lower edges lost, important openings lost, important overlaps lost, missing repeated structural parts, missing paired support parts, black outlines, dark contour lines, coloring book line art, sketch, ink drawing, hatching, brush texture, watercolor texture, oil paint texture, adult illustration, unrelated object, invented scene, changed crop, changed viewpoint, changed main subject, wrong subject placement, any digit, numeral, number, label, letter, caption, signature, text-like mark, numbered template, numbers, labels, text, logos, watermarks',
+      'exact photo tracing, copied contours, copied irregular silhouettes, copied photographic edge paths, copied secondary geometry, literal line-for-line reconstruction, literal object count, unchanged photo, photo filter, mechanical posterization, ordinary poster art, painterly illustration, photorealism, realistic rendering, realistic lighting, realistic shadow, soft shading, smooth gradients, lens blur, depth of field, bokeh, glossy reflection, photographic texture, natural micro-detail, repeated surface detail, individual repeated units, tiled units, implied repeated units, dense background pattern, hairline subdetail, narrow strokes, tiny pattern, grain, noise, tiny speckles, many small regions, repeated patches, thin slivers, tiny islands, unclosed regions, unpaintable regions, anonymous background wall, amorphous background blob, abstract color field instead of recognizable forms, meaningless facets, main subject absorbed by background, subject lost in empty space, important subject parts merged into background, meaning-carrying details lost, missing eye, omitted eye, open eye replaced by closed eyelid, smiling eyelid, curved eye line instead of open eye, eye merged into face, eye merged into fur, eye merged into feathers, oversized cartoon eye, faceless animal, faceless bird, support details lost, contact details lost, important openings lost, important overlaps lost, missing repeated structural parts, missing paired support parts, black outlines, dark contour lines, colored contour lines, outlined shapes, coloring book line art, sketch, ink drawing, hatching, brush texture, watercolor texture, oil paint texture, stiff adult illustration, sober diagram, timid stylization, overly restrained realism, generic clip art, multiple decorative additions, arbitrary decoration, clutter, unrelated object, unrelated fantasy scene, invented main event, changed viewpoint, changed main subject, lost scene identity, neon recoloring, random recoloring, any digit, numeral, number, label, letter, caption, signature, text-like mark, numbered template, numbers, labels, text, logos, watermarks',
   },
   medium: {
     difficulty: 'medium',

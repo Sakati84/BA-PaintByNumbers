@@ -1,6 +1,6 @@
 # Technische Architektur: Happy Numbers Paint-by-Numbers
 
-Stand: 2026-07-09
+Stand: 2026-07-10
 
 Dieses Dokument beschreibt den aktuellen technischen Aufbau des Projekts, den KI-gestuetzten Bildvorbereitungsschritt, die drei Prompt-Varianten und die lokale Paint-by-Numbers-Pipeline. Es ist als Arbeitsdokument fuer Entwicklung, Agenten und Projektverstaendnis gedacht. Wenn sich Architektur, KI-Call, Prompting, Pipeline-Stufen, Komplexitaetslogik oder Exportvarianten aendern, muss dieses Dokument mit aktualisiert werden.
 
@@ -435,48 +435,75 @@ Easy soll aus dem Foto eine stark vereinfachte, kinderfreundliche, wiedererkennb
 
 Wichtige positive Anforderungen:
 
-- Hauptmotiv, Komposition, Crop und Objektplatzierung beibehalten
-- Vordergrund, Mittelgrund, Hintergrund und Horizontstruktur grob erhalten
+- Foto als semantisches Szenenbriefing statt als nachzuzeichnende Linienkarte behandeln
+- Hauptmotiv, grobe Pose/Richtung, ungefaehre Groesse und Platzierung, Tiefenreihenfolge, Blickrichtung sowie notwendige Kontakte als Szenenanker erhalten
+- dieselbe grobe visuelle Geschichte und Zahl klar fokussierter Hauptmotive erhalten, aber nicht jedes fotografierte Objekt als Hauptmotiv behandeln
+- Szenen ohne einzelnes Fokusmotiv nur ueber Szenenkategorie, dominante Blickrichtung, grobe Tiefenordnung und drei bis fuenf grosse visuelle Anker binden; uebrige Nebenstrukturen duerfen reduziert, ersetzt, neu gruppiert oder verschoben werden
+- ein semantischer Anker schuetzt nur Rolle und ungefaehre Lage, niemals die exakte interne Konstruktion oder wiederholte Fototeile
+- keine exakten Fotokonturen oder Neben-Geometrien kopieren
+- Konturen, unregelmaessige Silhouetten, Abstaende, innere Unterteilungen, wiederholte Strukturen, Objektzahlen in komplexen Gruppen und unwichtige Perspektivlinien aktiv neu entwerfen
+- dichte oder durchgehende Fotomassen durch wenige klar benennbare, kindgerechte Szenenformen ersetzen, die natuerlich in dieselbe Art von Umgebung passen
+- weniger stellvertretende Szenenobjekte als im Foto waehlen, wenn die kindliche Erzaehlung dadurch klarer wird; Nebenobjekte benoetigen keine Eins-zu-eins-Entsprechung
+- breite Kurven, einfache geometrische Silhouetten, freundliche Uebertreibung, charmante Proportionen und lebendige Rhythmik mit grosszuegigem Freiraum als gemeinsame Bilderbuch-Formensprache verwenden
+- ein bis zwei definierende Formen des Fokusmotivs und der wichtigsten Umgebungselemente sanft uebertreiben, damit sie ikonisch, freundlich und einpraegsam wirken
+- runde, schwungvolle und leicht verspielte Silhouetten sowie angenehme Asymmetrie gegenueber steifen Fotoproportionen bevorzugen
+- helle, optimistische, quellbezogene Farbbeziehungen innerhalb des bestehenden Farbplans bevorzugen, ohne Neon- oder Zufallsfarben einzufuehren
 - Ausgabe als unnummerierte Paint-by-Numbers-Farbplatte priorisieren
 - alle sichtbaren Formen als geschlossene, fuellbare Malflaechen mit klaren Farbkanten anlegen
 - Bedeutung tragende Motivteile vor grossen Freiflaechen schuetzen
 - sichtbare Augen und andere identitaetskritische Gesichtsmerkmale als kompakte geschlossene Formen erhalten
 - wiederholte/gepaarte Strukturteile erhalten, wenn sie fuer Identitaet, Haltung, Stuetzung, Bewegung oder Funktion wichtig sind
-- Foto stark vereinfachen
+- Perspektive und Tiefe vereinfachen, wenn das Bild dadurch freundlicher und leichter lesbar wird
 - realistische Textur, Licht, Schatten und Reflexionen entfernen
+- die gesamte Szene zuerst als ungefaehr 20 bis 35 grosse Farbformen planen; sichtbare Augen bleiben die einzige ausdruecklich kleine Ausnahme
+- jedes Nebenobjekt nach Moeglichkeit aus nur einer oder zwei grossen Formen bauen
 - wenige grosse Regionen pro Material oder Objekt
+- wiederholte Details ausserhalb des Fokusmotivs vor dem Zeichnen semantisch klassifizieren: eigenstaendige Szenenobjekte oder blosse Konstruktions-/Oberflaecheneinheiten
+- eine fotografierte Gruppe eigenstaendiger Szenenobjekte durch nur zwei bis fuenf grosse, frei neu gestaltete Symbolobjekte ersetzen
+- Wiederholungseinheiten, die nur ein groesseres Objekt oder eine Oberflaeche konstruieren, bedecken, dekorieren oder texturieren, vollstaendig in eine glatte einfarbige Gesamtform ohne sichtbare Einheiten oder Muster ueberfuehren
+- diese Gruppenvereinfachung hat auch bei prominenten visuellen Ankern Vorrang vor Fototreue; verlorene interne Fotodetails sind fuer Easy ausdruecklich beabsichtigt
+- Nebenobjekte nach Moeglichkeit ohne innere Farbgrenze, hoechstens aber mit einer fuer die Erkennbarkeit notwendigen inneren Grenze bauen
+- notwendige schmale Strukturteile zu malbaren Baendern verbreitern und unwichtige schmale Teile weglassen
 - keine duennen Splitter, Inseln, Speckles oder Detailmuster; pro sichtbarem Auge ist genau eine kleine geschlossene Landmark-Flaeche ausdruecklich erlaubt
 - kindgerecht erkennbare Formen statt abstrakter Farbflecken
+- nach Moeglichkeit ein grosses, einfaches, szenenpassendes Nebendetail aus vorhandenen Palettenfarben ergaenzen; nur weglassen, wenn es die Szene verzerren oder ablenken wuerde; mehrere Dekorationen und beliebige Fantasieobjekte bleiben verboten
 - keine schwarzen Outlines
 - keine Zahlen, Labels, Buchstaben oder textartigen Markierungen
 
-Motivregeln:
+Generische Bedeutungssicherung:
 
-- Landschaften behalten Himmel, Wasser, Gras, Ufer, Wege, Huegel und Baumgruppen an ungefaehr gleicher Position.
-- Tiere behalten Pose, Kopfhaltung, Beine, Schwanz, Hauptmarkierungen und jedes sichtbare Auge. Ein Auge nutzt die dunkelste passende, bereits in der 8er-Palette vorhandene Farbe und darf keine neunte Farbe erzeugen.
-- Voegel behalten Pose, Schnabel, jedes sichtbare Auge und wichtige Farbmarkierungen. Das Auge bleibt als kompakte geschlossene Form lesbar vom Gesichtsfeld getrennt.
-- Blumen behalten Bluetenkopf, Zentrum, Petalstruktur, Stiel/Vase und Crop.
+- Die Regeln nennen bewusst keine feste Liste von Landschafts-, Architektur-, Pflanzen- oder Tierobjekten. Das Modell soll aus der jeweiligen Szene selbst ableiten, welche Formen fuer Erkennbarkeit und kindliche Lesbarkeit notwendig sind.
+- Grosse Freiflaechen duerfen stark vereinfacht und neu gestaltet werden, duerfen aber wichtige Motivteile nicht verschlucken.
+- Nur Kontakt-, Stuetz-, Oeffnungs-, Ueberlappungs- und Unterkantenbeziehungen, die das Motiv erklaeren, muessen erhalten bleiben.
+- Der Offen-/Geschlossen-Zustand jedes sichtbaren Tier- oder Vogelauges bleibt wie in der Quelle. Ein offenes Auge wird als kleine, proportionale, gefuellte ovale oder runde Form in der dunkelsten passenden, bereits vorhandenen Palettenfarbe klar vom Gesicht getrennt; es darf weder zu einem geschlossenen Laechel-Lidstrich werden, uebergross ausfallen noch eine zusaetzliche Farbe erzeugen.
 
 Negative Prompt verhindert insbesondere:
 
 - unveraendertes Foto oder Fotofilter
+- exaktes Nachzeichnen von Fotokonturen, Silhouetten, Kantenpfaden, Neben-Geometrien oder Objektzahlen komplexer Gruppen
 - normale Poster-Art oder malerische Illustration ohne klare Malregionen
 - Fotorealismus
 - realistische Beleuchtung/Schatten
 - weiche Schattierung, glatte Gradienten und ungeschlossene/unmalbare Regionen
 - kleine Texturen wie Gras, Blaetter, Federn, Fell, Bluetensamen
 - viele kleine Regionen und wiederholte Patches
-- amorphe gruene Flecken
+- einzeln dargestellte Konstruktions- oder Oberflaecheneinheiten dichter Wiederholungsgruppen sowie Konturstriche in beliebigen Farben
+- anonyme Hintergrundwaende und amorphe Farbflecken statt erkennbarer Formen
 - abstrakte bedeutungslose Facetten
 - verlorene Bedeutungstraeger, Motivteile, Kontaktbereiche, Stuetzdetails oder wichtige Oeffnungen
 - fehlende, ausgelassene oder mit Fell/Federn verschmolzene Augen bei sichtbaren Tier- und Vogelkoepfen
 - schwarze Konturen
 - Coloring-Book-Lineart
+- mehrere dekorative Ergaenzungen, beliebige Dekoration, unpassende Fantasieobjekte und Clutter
 - Text, Nummern, Logos, Wasserzeichen
 
 Beispielwirkung:
 
-Ein Foto eines Baums am See wird nicht in viele Blaetter und Reflexionslinien zerlegt. Easy soll daraus wenige grosse Bloecke machen: Himmel, Wasser, Ufer, Baumkrone, Stamm, eventuell eine einfache Spiegelungsform. Diese groben Bloecke passen spaeter zur lokalen Pipeline, weil kleine Regionen seltener entstehen und grosse Flaechen leichter nummerierbar sind.
+Eine komplexe reale Szene wird nicht in ihre vielen fotografischen Kanten und Texturen zerlegt. Easy behaelt, worum es in der Szene geht und wie Hauptmotiv und Tiefenzonen grob zueinander liegen, gestaltet die einzelnen Konturen und Hintergrundgruppen aber mit wenigen einfachen Bilderbuchformen neu. Dadurch bleiben semantisch lesbare Objekte statt einer anonymen Farbwand erhalten, ohne dass das Ergebnis die exakten Linien des Fotos kopiert.
+
+Ausgewaehlte Prompt-Lab-Synthese vom 2026-07-10:
+
+Die fuenf generischen Alternativen in `prompt-lab/2026-07-10-easy-childlike-composition-iterations.md` wurden auf See, Hirsch und Friesenwall unter identischen Easy-8-Bedingungen getestet. Ausgewaehlt wurde eine Synthese aus Iteration 3, 4 und 5: Bilderbuch-Neuinterpretation als Basis, bewusste Formfreiheit bei Konturen und komplexen Massen sowie klare Guardrails fuer Szenenanker und Wiedererkennbarkeit. Nach der ersten Produktionsvalidierung wurde die Mischung auf Nutzerwunsch einen Tick weiter Richtung Iteration 4 verschoben: mutigere Bilderbuchformen, sanfte ikonische Uebertreibung, lebendigere Rhythmik und bevorzugt genau ein passendes grosses Nebendetail. Die Flaechen-, Augen- und Clutter-Grenzen bleiben bestehen. Diese Synthese ist jetzt die produktive Easy-Variante in `react-app/src/prompts/paintByNumbersPosterizePrompt.ts`.
 
 ### 5.2 Medium
 
@@ -1249,6 +1276,8 @@ Realer Korpuslauf ueber den vorhandenen Pipeline-Lab-Runner:
 - Der Report persistiert PNG und echte SVG-Ausgaben des TypeScript-Kerns, Facet-/Palettenmetriken und Stage-Timings.
 - Der Detailerhalt-Vergleich vom 2026-07-09 ist in `pipeline-lab/2026-07-09-fresh-perceptual-token-detail-preservation.md` dokumentiert. Der komplette neue 33er-Lauf liegt lokal unter `pipeline-lab/runs/2026-07-09T21-11-26-123Z_current-fresh-typescript-presets/`. Alle Presets halten 8/12/24 Farben exakt ein; bei Expert sinkt der mittlere RGB-Abstand zum KI-Bild ueber alle elf Motive von `8.81` auf `7.48`.
 - Die Easy-Augenregel und lokale Landmark-Restaurierung sind in `prompt-lab/2026-07-10-easy-eye-landmarks.md` dokumentiert. Die reproduzierbare Prompt-Suite liegt in `prompt-lab/suites/2026-07-10-ki-testbilder-easy8-eye-landmarks.json`; der zugehoerige Fresh-Lauf nutzt `pipeline-lab/suites/2026-07-10-easy8-eye-landmarks.json`.
+- Die fuenf Easy-Neuinterpretationsvarianten vom 2026-07-10 sind in `prompt-lab/2026-07-10-easy-childlike-composition-iterations.md` dokumentiert. Die zugehoerigen Prompt- und Pipeline-Suites erzeugen 15 direkt vergleichbare See-, Hirsch- und Friesenwall-Ausgaben. Die ausgewaehlte produktive Variante kombiniert die Bilderbuch-Basis aus Iteration 3, die Formfreiheit aus Iteration 4 und die Kompositions-Guardrails aus Iteration 5.
+- Die erste 3/4/5-Basisvalidierung liegt in `prompt-lab/runs/2026-07-10T07-03-31-879Z_2026-07-10-easy-childlike-selected-345/` und `pipeline-lab/runs/2026-07-10T07-04-06-852Z_2026-07-10-easy-childlike-selected-345/`. Die auf Nutzerwunsch spielerischer nachgeschaerfte Produktionsfassung wurde danach ueber `prompt-lab/runs/2026-07-10T07-12-16-721Z_2026-07-10-easy-childlike-selected-345-playful/` und `pipeline-lab/runs/2026-07-10T07-13-29-155Z_2026-07-10-easy-childlike-selected-345-playful/` validiert. See, Hirsch und Friesenwall enden mit 60, 38 und 120 Fresh-Flaechen bei jeweils acht Farben. Der Friesenwall bleibt eine dokumentierte Modellgrenze; das offene Hirschauge bleibt nach der Nachschaerfung erhalten, wird aber sichtbar illustrativer interpretiert.
 
 Die Python-Datei `pipeline-lab/fresh_region_pipeline.py` bleibt fuer OpenCV-Mean-Shift-Vergleiche wertvoll, ist aber nicht mehr der einzige automatisierbare Fresh-Qualitaetsnachweis.
 
