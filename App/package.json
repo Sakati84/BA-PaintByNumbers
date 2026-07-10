@@ -10,6 +10,7 @@
     "prompt:lab": "node ./scripts/prompt-lab.mjs",
     "pipeline:lab": "node ./scripts/pipeline-lab.mjs",
     "pipeline:fresh:regression": "node ./scripts/run-fresh-pipeline-regression.mjs",
+    "pipeline:fresh:diagnostic": "node ./scripts/run-fresh-stage-diagnostic.mjs",
     "sync:webview-local": "node ./scripts/sync-local-webview.mjs",
     "typecheck": "tsc --noEmit"
   },

@@ -254,6 +254,7 @@ function normalizeSuite(suite, options) {
     configs: suite.configs,
     configIds: [...new Set(options.configIds)],
     variants,
+    matchSourceDifficulty: Boolean(suite.matchSourceDifficulty),
     limitSources: options.limitSources,
     limitConfigs: options.limitConfigs,
     outRoot,
@@ -423,7 +424,7 @@ function configMetaHtml(config) {
   </div>`;
 }
 
-function resultCellHtml(runDir, result, variantId) {
+function resultCellHtml(runDir, result, variantId, configLabel = null) {
   if (result == null) {
     return '<td class="missing">missing</td>';
   }
@@ -442,6 +443,7 @@ function resultCellHtml(runDir, result, variantId) {
   const paletteHref = pathHref(runDir, result.palettePath);
   return `<td>
     <a href="${htmlEscape(imageHref)}"><img src="${htmlEscape(imageHref)}" alt="${htmlEscape(result.configId)} ${htmlEscape(variantId)}"></a>
+    ${configLabel == null ? '' : `<div class="meta"><strong>${htmlEscape(configLabel)}</strong></div>`}
     <div class="meta">facets: ${htmlEscape(result.facetCount)}</div>
     <div class="meta">palette: ${htmlEscape(result.paletteCount)}</div>
     <div class="links"><a href="${htmlEscape(configHref)}">settings</a> <a href="${htmlEscape(paletteHref)}">palette</a></div>
@@ -450,13 +452,24 @@ function resultCellHtml(runDir, result, variantId) {
 
 async function writeContactSheet(runDir, manifest) {
   const configs = manifest.configs;
+  const matchSourceDifficulty = manifest.matchSourceDifficulty === true;
   const resultsBySourceConfig = new Map(manifest.results.map((result) => [`${result.sourceId}/${result.configId}`, result]));
   const renderedVariantIds = manifest.variants ?? allVariantIds;
   const variantSections = renderedVariantIds.map((variantId) => {
     const rows = manifest.sources.map((source) => {
       const sourceHref = pathHref(runDir, source.localAiImagePath);
       const originalHref = source.localOriginalInputPath == null ? null : pathHref(runDir, source.localOriginalInputPath);
-      const cells = configs.map((config) => resultCellHtml(runDir, resultsBySourceConfig.get(`${source.id}/${config.id}`), variantId)).join('\n');
+      const matchingConfig = matchSourceDifficulty
+        ? configs.find((config) => config.difficulty === source.difficulty)
+        : null;
+      const cells = matchSourceDifficulty
+        ? resultCellHtml(
+            runDir,
+            matchingConfig == null ? null : resultsBySourceConfig.get(`${source.id}/${matchingConfig.id}`),
+            variantId,
+            matchingConfig?.label ?? null,
+          )
+        : configs.map((config) => resultCellHtml(runDir, resultsBySourceConfig.get(`${source.id}/${config.id}`), variantId)).join('\n');
       return `<tr>
         <th>
           <a href="${htmlEscape(sourceHref)}"><img src="${htmlEscape(sourceHref)}" alt="${htmlEscape(source.id)} AI source"></a>
@@ -474,7 +487,9 @@ async function writeContactSheet(runDir, manifest) {
         <thead>
           <tr>
             <th>AI Source</th>
-            ${configs.map((config) => `<th>${configMetaHtml(config)}</th>`).join('\n')}
+            ${matchSourceDifficulty
+              ? '<th>Fresh Clean · passendes Preset</th>'
+              : configs.map((config) => `<th>${configMetaHtml(config)}</th>`).join('\n')}
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -533,13 +548,15 @@ manifest = json.loads(Path(manifest_path).read_text())
 configs = manifest["configs"]
 sources = manifest["sources"]
 results = {(r["sourceId"], r["configId"]): r for r in manifest["results"]}
+match_source_difficulty = bool(manifest.get("matchSourceDifficulty"))
+display_configs = [{"label": "Fresh Clean · passendes Preset"}] if match_source_difficulty else configs
 
 thumb_w, thumb_h = 260, 190
 label_h = 58
 pad = 12
 header_h = 84
 source_w = 260
-width = pad + source_w + pad + len(configs) * (thumb_w + pad)
+width = pad + source_w + pad + len(display_configs) * (thumb_w + pad)
 height = pad + header_h + pad + len(sources) * (thumb_h + label_h + pad)
 canvas = Image.new("RGB", (width, height), (247, 248, 250))
 draw = ImageDraw.Draw(canvas)
@@ -576,15 +593,16 @@ def paste_thumb(image_path, box):
 
 draw.text((pad, pad), "AI Source", font=font_bold, fill=(31, 41, 51))
 x = pad + source_w + pad
-for config in configs:
+for config in display_configs:
     draw.rounded_rectangle((x, pad, x + thumb_w, pad + header_h), radius=4, fill=(240, 244, 248), outline=(217, 226, 236))
     fit_text(config["label"], x + 8, pad + 8, thumb_w - 16, font_bold)
-    settings = config["settings"]
-    area_ratio = settings.get('removeFacetsSmallerThanImageRatio', 0)
-    similar = "similar on" if settings.get('mergeSimilarAdjacentRegions') else "similar off"
-    near_identical = settings.get('nearIdenticalPaletteMergeLabDistance', 0)
-    meta = f"{settings['kMeansNrOfClusters']}c near {near_identical:.2f} area {area_ratio:.6f} {similar} cleanup {settings['narrowPixelStripCleanupRuns']} protr {settings['nrOfTimesToHalveBorderSegments']}"
-    fit_text(meta, x + 8, pad + 42, thumb_w - 16, font_small, fill=(82, 96, 109), max_lines=2)
+    if not match_source_difficulty:
+        settings = config["settings"]
+        area_ratio = settings.get('removeFacetsSmallerThanImageRatio', 0)
+        similar = "similar on" if settings.get('mergeSimilarAdjacentRegions') else "similar off"
+        near_identical = settings.get('nearIdenticalPaletteMergeLabDistance', 0)
+        meta = f"{settings['kMeansNrOfClusters']}c near {near_identical:.2f} area {area_ratio:.6f} {similar} cleanup {settings['narrowPixelStripCleanupRuns']} protr {settings['nrOfTimesToHalveBorderSegments']}"
+        fit_text(meta, x + 8, pad + 42, thumb_w - 16, font_small, fill=(82, 96, 109), max_lines=2)
     x += thumb_w + pad
 
 y = pad + header_h + pad
@@ -594,7 +612,8 @@ for source in sources:
     fit_text(f"{source['inputId']} / {source['caseId']}", pad + 8, y + thumb_h + 8, source_w - 16, font_bold, max_lines=1)
     fit_text(f"prompt colors {source.get('promptColorCount')}", pad + 8, y + thumb_h + 30, source_w - 16, font_small, fill=(82, 96, 109), max_lines=1)
     x = pad + source_w + pad
-    for config in configs:
+    row_configs = [next(config for config in configs if config.get("difficulty") == source.get("difficulty"))] if match_source_difficulty else configs
+    for config in row_configs:
         result = results[(source["id"], config["id"])]
         draw.rectangle((x, y, x + thumb_w, y + thumb_h + label_h), fill=(255, 255, 255), outline=(217, 226, 236))
         if result["status"] == "ok":
@@ -602,6 +621,8 @@ for source in sources:
             if variant is not None:
                 paste_thumb(variant["pngPath"], (x, y, thumb_w, thumb_h))
             fit_text(f"facets {result.get('facetCount')} palette {result.get('paletteCount')}", x + 8, y + thumb_h + 8, thumb_w - 16, font_small, fill=(82, 96, 109), max_lines=1)
+            if match_source_difficulty:
+                fit_text(config.get("label", ""), x + 8, y + thumb_h + 28, thumb_w - 16, font_small, fill=(82, 96, 109), max_lines=1)
         else:
             fit_text(result.get("error", result["status"]), x + 8, y + 8, thumb_w - 16, font_small, fill=(155, 28, 28))
         x += thumb_w + pad
@@ -633,7 +654,7 @@ async function main() {
     suite.sourceRun,
     suite.sourceCases,
   );
-  let sources = limitList(allSources, suite.limitSources, '--limit-sources');
+  let sources = allSources;
 
   let configs = suite.configs.map((config) => runtime.resolvePipelineLabConfig(config));
   if (suite.configIds.length > 0) {
@@ -644,6 +665,14 @@ async function main() {
   if (configs.length === 0) {
     throw new Error('No pipeline configs selected.');
   }
+  if (suite.matchSourceDifficulty) {
+    const selectedDifficulties = new Set(configs.map((config) => config.difficulty));
+    sources = sources.filter((source) => selectedDifficulties.has(source.difficulty));
+    if (sources.length === 0) {
+      throw new Error('No prompt-lab sources match the selected pipeline config difficulties.');
+    }
+  }
+  sources = limitList(sources, suite.limitSources, '--limit-sources');
 
   const manifest = {
     name: suite.name,
@@ -654,6 +683,7 @@ async function main() {
     promptManifestPath,
     promptManifestName: promptManifest.name ?? null,
     variants: suite.variants,
+    matchSourceDifficulty: suite.matchSourceDifficulty,
     sources: [],
     configs,
     results: [],
@@ -686,6 +716,9 @@ async function main() {
     });
 
     for (const config of configs) {
+      if (suite.matchSourceDifficulty && config.difficulty !== source.difficulty) {
+        continue;
+      }
       const configDir = path.join(sourceDir, config.id);
       await mkdir(configDir, { recursive: true });
       const settingsPath = path.join(configDir, 'settings.json');

@@ -1,7 +1,8 @@
 {
   "name": "current-fresh-typescript-presets",
-  "sourceRun": "../../prompt-lab/runs/2026-06-30T19-40-19-250Z_nano-banana-2-lite-easy-medium-expert",
-  "variants": ["cleanColor", "coloredEdges", "coloredEdgesWithDots"],
+  "sourceRun": "../../prompt-lab/runs/2026-07-07T17-46-16-266Z_2026-07-07-ki-testbilder-easy8-medium12-expert24",
+  "variants": ["cleanColor"],
+  "matchSourceDifficulty": true,
   "configs": [
     { "id": "fresh-easy-8", "label": "Fresh Easy 8", "pipeline": "fresh", "difficulty": "easy", "colorCount": 8 },
     { "id": "fresh-medium-12", "label": "Fresh Medium 12", "pipeline": "fresh", "difficulty": "medium", "colorCount": 12 },
