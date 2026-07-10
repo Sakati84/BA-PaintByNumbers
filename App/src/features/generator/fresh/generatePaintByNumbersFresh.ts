@@ -22,9 +22,8 @@ import { encodeRgbaDebugImage } from '../debugSnapshots';
 import { renderFreshVectorSvg } from './freshVectorRenderer';
 
 const WORK_MAX_EDGE = 1400;
-const FRESH_PIPELINE_CACHE_VERSION = 2;
-const TOKEN_BINS_PER_CHANNEL = 4;
-const TOKEN_COLOR_COUNT = TOKEN_BINS_PER_CHANNEL * TOKEN_BINS_PER_CHANNEL * TOKEN_BINS_PER_CHANNEL;
+const FRESH_PIPELINE_CACHE_VERSION = 4;
+const TOKEN_CHROMA_RANGE = 96;
 const PALETTE_WEIGHT_POWER = 0.78;
 const MAJORITY_FILTER_RUNS = 2;
 const POST_MAJORITY_FILTER_RUNS = 1;
@@ -42,6 +41,17 @@ const DETAIL_PROTECT_MIN_PIXELS = 80;
 const DETAIL_PROTECT_LAB_DISTANCE = 26;
 const DETAIL_SPECKLE_PROTECT_MIN_PIXELS = 18;
 const DETAIL_SPECKLE_PROTECT_LAB_DISTANCE = 34;
+const EASY_LANDMARK_MIN_PIXELS = 12;
+const EASY_LANDMARK_MAX_COUNT = 12;
+const EASY_LANDMARK_MAX_AREA_MULTIPLIER = 2.5;
+const EASY_LANDMARK_MAX_SPAN = 72;
+const EASY_LANDMARK_MIN_FILL_RATIO = 0.28;
+const EASY_LANDMARK_MAX_ASPECT_RATIO = 3.2;
+const EASY_LANDMARK_MIN_ENCLOSURE = 0.55;
+const EASY_LANDMARK_MIN_COMPACTNESS = 0.08;
+const EASY_LANDMARK_MIN_SOURCE_LAB_DISTANCE = 20;
+const EASY_LANDMARK_MAX_PALETTE_LAB_DISTANCE = 32;
+const EASY_LANDMARK_MIN_OUTPUT_LAB_DISTANCE = 12;
 const SOURCE_AWARE_MAJORITY_RGB_TOLERANCE = 22;
 const SOURCE_AWARE_MAJORITY_ABSOLUTE_RGB_LIMIT = 46;
 const SOURCE_MERGE_MAX_LAB_DISTANCE = 28;
@@ -68,6 +78,13 @@ const DEFAULT_FRESH_OUTPUT_VARIANT_IDS: readonly GeneratorOutputVariantId[] = [
 
 type PipelineStage = Exclude<GeneratorStage, 'done'>;
 type LabelMap = Uint8Array;
+type TokenLabelMap = Uint16Array;
+
+type TokenPolicy = {
+  lumaBins: number;
+  chromaBins: number;
+  colorCount: number;
+};
 
 export type PreparedFreshGeneratorImage = {
   prepared: PreparedImage;
@@ -164,6 +181,22 @@ type FacetBudgetResult = {
   mergeCount: number;
   componentCount: number;
   satisfied: boolean;
+};
+
+type EasyLandmarkCandidate = {
+  componentId: number;
+  area: number;
+  sourceContrast: number;
+  enclosure: number;
+  compactness: number;
+  score: number;
+};
+
+type EasyLandmarkRestoreResult = {
+  labelMap: LabelMap;
+  candidateCount: number;
+  restoredCount: number;
+  restoredPixelCount: number;
 };
 
 type Rgb = [number, number, number];
@@ -455,23 +488,53 @@ function edgePreservingSmooth(image: SimpleImageData): Uint8ClampedArray {
   return output;
 }
 
-function tokenForRgb(data: Uint8ClampedArray, offset: number): number {
-  const rBin = Math.min(TOKEN_BINS_PER_CHANNEL - 1, Math.floor((data[offset] * TOKEN_BINS_PER_CHANNEL) / 256));
-  const gBin = Math.min(TOKEN_BINS_PER_CHANNEL - 1, Math.floor((data[offset + 1] * TOKEN_BINS_PER_CHANNEL) / 256));
-  const bBin = Math.min(TOKEN_BINS_PER_CHANNEL - 1, Math.floor((data[offset + 2] * TOKEN_BINS_PER_CHANNEL) / 256));
-  return (rBin * TOKEN_BINS_PER_CHANNEL + gBin) * TOKEN_BINS_PER_CHANNEL + bBin;
+function tokenPolicyForColorCount(colorCount: number): TokenPolicy {
+  const [lumaBins, chromaBins] = colorCount <= 11
+    ? [10, 5]
+    : colorCount <= 17
+      ? [14, 7]
+      : [18, 9];
+  return {
+    lumaBins,
+    chromaBins,
+    colorCount: lumaBins * chromaBins * chromaBins,
+  };
 }
 
-function buildTokenLabels(data: Uint8ClampedArray, width: number, height: number): LabelMap {
-  const labels = new Uint8Array(width * height);
+function quantizeTokenChroma(value: number, bins: number): number {
+  const normalized = (Math.max(-TOKEN_CHROMA_RANGE, Math.min(TOKEN_CHROMA_RANGE, value)) + TOKEN_CHROMA_RANGE)
+    / (TOKEN_CHROMA_RANGE * 2);
+  return Math.min(bins - 1, Math.floor(normalized * bins));
+}
+
+function tokenForRgb(data: Uint8ClampedArray, offset: number, policy: TokenPolicy): number {
+  const r = data[offset];
+  const g = data[offset + 1];
+  const b = data[offset + 2];
+  const luma = (r + g * 2 + b) / 4;
+  const orangeBlue = r - b;
+  const greenMagenta = g - (r + b) / 2;
+  const lumaBin = Math.min(policy.lumaBins - 1, Math.floor((luma * policy.lumaBins) / 256));
+  const orangeBlueBin = quantizeTokenChroma(orangeBlue, policy.chromaBins);
+  const greenMagentaBin = quantizeTokenChroma(greenMagenta, policy.chromaBins);
+  return (lumaBin * policy.chromaBins + orangeBlueBin) * policy.chromaBins + greenMagentaBin;
+}
+
+function buildTokenLabels(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+  policy: TokenPolicy,
+): TokenLabelMap {
+  const labels = new Uint16Array(width * height);
   for (let index = 0; index < labels.length; index += 1) {
-    labels[index] = tokenForRgb(data, index * 4);
+    labels[index] = tokenForRgb(data, index * 4, policy);
   }
   return labels;
 }
 
 function connectedComponentsForLabels(
-  labelMap: LabelMap,
+  labelMap: LabelMap | TokenLabelMap,
   labelCount: number,
   width: number,
   height: number,
@@ -931,6 +994,220 @@ function nearestPaletteLabelForComponent(
     }
   }
   return { label, distance };
+}
+
+function findEasyLandmarkCandidates(
+  sourceComponents: Components,
+  width: number,
+  height: number,
+  minRegionArea: number,
+): EasyLandmarkCandidate[] {
+  const imageAreaRatio = Math.max(
+    1 / 16,
+    Math.min(1, (width * height) / (WORK_MAX_EDGE * WORK_MAX_EDGE)),
+  );
+  const linearScale = Math.sqrt(imageAreaRatio);
+  const minimumArea = Math.max(4, Math.round(EASY_LANDMARK_MIN_PIXELS * imageAreaRatio));
+  const maximumArea = Math.max(
+    minimumArea,
+    Math.round(Math.max(
+      minRegionArea * EASY_LANDMARK_MAX_AREA_MULTIPLIER,
+      EASY_LANDMARK_MAX_SPAN * EASY_LANDMARK_MAX_SPAN * imageAreaRatio * 0.16,
+    )),
+  );
+  const maximumSpan = Math.max(8, Math.round(EASY_LANDMARK_MAX_SPAN * linearScale));
+  const componentLab = componentLabColors(sourceComponents.meanRgb);
+  const adjacency = buildAdjacency(sourceComponents.componentMap, width, height);
+  const candidates: EasyLandmarkCandidate[] = [];
+
+  for (let componentId = 0; componentId < sourceComponents.labels.length; componentId += 1) {
+    const area = sourceComponents.areas[componentId];
+    if (area < minimumArea || area > maximumArea) {
+      continue;
+    }
+    const minX = sourceComponents.minX[componentId];
+    const minY = sourceComponents.minY[componentId];
+    const maxX = sourceComponents.maxX[componentId];
+    const maxY = sourceComponents.maxY[componentId];
+    if (minX <= 0 || minY <= 0 || maxX >= width - 1 || maxY >= height - 1) {
+      continue;
+    }
+    const boundingWidth = maxX - minX + 1;
+    const boundingHeight = maxY - minY + 1;
+    if (boundingWidth > maximumSpan || boundingHeight > maximumSpan) {
+      continue;
+    }
+    const aspectRatio = Math.max(boundingWidth, boundingHeight) / Math.max(1, Math.min(boundingWidth, boundingHeight));
+    if (aspectRatio > EASY_LANDMARK_MAX_ASPECT_RATIO) {
+      continue;
+    }
+    const fillRatio = area / Math.max(1, boundingWidth * boundingHeight);
+    if (fillRatio < EASY_LANDMARK_MIN_FILL_RATIO) {
+      continue;
+    }
+
+    const neighbors = adjacency.get(componentId);
+    if (neighbors == null || neighbors.size === 0) {
+      continue;
+    }
+    let totalBorder = 0;
+    let dominantNeighborId = -1;
+    let dominantBorder = 0;
+    for (const [neighborId, borderCount] of neighbors) {
+      totalBorder += borderCount;
+      if (borderCount > dominantBorder) {
+        dominantNeighborId = neighborId;
+        dominantBorder = borderCount;
+      }
+    }
+    if (dominantNeighborId < 0 || totalBorder <= 0) {
+      continue;
+    }
+    const enclosure = dominantBorder / totalBorder;
+    if (enclosure < EASY_LANDMARK_MIN_ENCLOSURE) {
+      continue;
+    }
+    const compactness = (4 * Math.PI * area) / Math.max(1, totalBorder * totalBorder);
+    if (compactness < EASY_LANDMARK_MIN_COMPACTNESS) {
+      continue;
+    }
+    const sourceContrast = labDistance(componentLab, componentId, componentLab, dominantNeighborId);
+    if (sourceContrast < EASY_LANDMARK_MIN_SOURCE_LAB_DISTANCE) {
+      continue;
+    }
+    const sizePreference = Math.max(0, 12 - Math.log1p(area) * 1.35);
+    const score = sourceContrast * 1.5
+      + enclosure * 20
+      + Math.min(1, compactness) * 16
+      + sizePreference
+      - aspectRatio * 2;
+    candidates.push({
+      componentId,
+      area,
+      sourceContrast,
+      enclosure,
+      compactness,
+      score,
+    });
+  }
+
+  return candidates
+    .sort((left, right) => right.score - left.score || right.area - left.area || left.componentId - right.componentId)
+    .slice(0, EASY_LANDMARK_MAX_COUNT);
+}
+
+function restoreEasyLandmarks(
+  labelMap: LabelMap,
+  sourceComponents: Components,
+  paletteRgb: Float32Array,
+  width: number,
+  height: number,
+  minRegionArea: number,
+): EasyLandmarkRestoreResult {
+  const candidates = findEasyLandmarkCandidates(sourceComponents, width, height, minRegionArea);
+  if (candidates.length === 0) {
+    return { labelMap, candidateCount: 0, restoredCount: 0, restoredPixelCount: 0 };
+  }
+
+  const colorCount = paletteRgb.length / 3;
+  const sourceLab = componentLabColors(sourceComponents.meanRgb);
+  const paletteLabColors = paletteLab(paletteRgb);
+  let next: LabelMap | null = null;
+  let restoredCount = 0;
+  let restoredPixelCount = 0;
+
+  for (const candidate of candidates) {
+    const nearestPalette = nearestPaletteLabelForComponent(
+      sourceLab,
+      candidate.componentId,
+      paletteLabColors,
+      colorCount,
+    );
+    if (nearestPalette.distance > EASY_LANDMARK_MAX_PALETTE_LAB_DISTANCE) {
+      continue;
+    }
+
+    const borderLabelCounts = new Int32Array(colorCount);
+    let targetPixelCount = 0;
+    const minX = sourceComponents.minX[candidate.componentId];
+    const minY = sourceComponents.minY[candidate.componentId];
+    const maxX = sourceComponents.maxX[candidate.componentId];
+    const maxY = sourceComponents.maxY[candidate.componentId];
+    const current = next ?? labelMap;
+    for (let y = minY; y <= maxY; y += 1) {
+      for (let x = minX; x <= maxX; x += 1) {
+        const index = y * width + x;
+        if (sourceComponents.componentMap[index] !== candidate.componentId) {
+          continue;
+        }
+        if (current[index] === nearestPalette.label) {
+          targetPixelCount += 1;
+        }
+        const neighborIndexes = [index - width, index + width, index - 1, index + 1];
+        for (const neighborIndex of neighborIndexes) {
+          if (
+            neighborIndex < 0
+            || neighborIndex >= current.length
+            || sourceComponents.componentMap[neighborIndex] === candidate.componentId
+          ) {
+            continue;
+          }
+          const neighborLabel = current[neighborIndex];
+          if (neighborLabel >= 0 && neighborLabel < colorCount) {
+            borderLabelCounts[neighborLabel] += 1;
+          }
+        }
+      }
+    }
+    if (targetPixelCount >= candidate.area * 0.6) {
+      continue;
+    }
+
+    let surroundingLabel = -1;
+    let surroundingCount = 0;
+    for (let label = 0; label < colorCount; label += 1) {
+      if (borderLabelCounts[label] > surroundingCount) {
+        surroundingLabel = label;
+        surroundingCount = borderLabelCounts[label];
+      }
+    }
+    if (
+      surroundingLabel < 0
+      || surroundingLabel === nearestPalette.label
+      || labDistance(paletteLabColors, nearestPalette.label, paletteLabColors, surroundingLabel)
+        < EASY_LANDMARK_MIN_OUTPUT_LAB_DISTANCE
+    ) {
+      continue;
+    }
+
+    if (next == null) {
+      next = new Uint8Array(labelMap);
+    }
+    let changedPixels = 0;
+    for (let y = minY; y <= maxY; y += 1) {
+      for (let x = minX; x <= maxX; x += 1) {
+        const index = y * width + x;
+        if (
+          sourceComponents.componentMap[index] === candidate.componentId
+          && next[index] !== nearestPalette.label
+        ) {
+          next[index] = nearestPalette.label;
+          changedPixels += 1;
+        }
+      }
+    }
+    if (changedPixels > 0) {
+      restoredCount += 1;
+      restoredPixelCount += changedPixels;
+    }
+  }
+
+  return {
+    labelMap: next ?? labelMap,
+    candidateCount: candidates.length,
+    restoredCount,
+    restoredPixelCount,
+  };
 }
 
 async function mergeTinyRegions(
@@ -1994,11 +2271,14 @@ async function generatePaintByNumbersInternal(
   await yieldAndCheckCancellation(options);
 
   const { width, height } = decoded.imageData;
+  const tokenPolicy = tokenPolicyForColorCount(targetColorCount);
   const kmeansSignature = signature([
     decodeSignature,
-    TOKEN_BINS_PER_CHANNEL,
+    tokenPolicy.lumaBins,
+    tokenPolicy.chromaBins,
+    TOKEN_CHROMA_RANGE,
     PALETTE_WEIGHT_POWER,
-    'smooth-34-v2',
+    'perceptual-tokens-v3',
   ]);
   let smoothed: Uint8ClampedArray;
   let tokenComponents: Components;
@@ -2019,11 +2299,12 @@ async function generatePaintByNumbersInternal(
       debugSnapshots,
       'kmeans',
       'Fresh Tokenisierung',
-      'Kantenbewusst geglaettetes Bild und 64 RGB-Token als Startregionen.',
+      'Kantenbewusst geglaettetes Bild und detailabhaengige Helligkeits-/Chroma-Token als Startregionen.',
       settings,
       [
         { label: 'Status', value: 'Aus Cache' },
-        { label: 'Farb-Token', value: String(TOKEN_COLOR_COUNT) },
+        { label: 'Farb-Token', value: String(tokenPolicy.colorCount) },
+        { label: 'Token-Raster', value: `${tokenPolicy.lumaBins} x ${tokenPolicy.chromaBins} x ${tokenPolicy.chromaBins}` },
         { label: 'Startregionen', value: String(tokenComponents.labels.length) },
       ],
       () => encodeRgbaDebugImage('Fresh Tokenisierung', width, height, smoothed),
@@ -2035,12 +2316,12 @@ async function generatePaintByNumbersInternal(
     report('kmeans', 0.1, 'Farben werden kantenbewusst geglaettet.');
     const colorStarted = nowMs();
     smoothed = edgePreservingSmooth(decoded.imageData);
-    report('kmeans', 0.45, '64 Farb-Token werden aufgebaut.');
-    const tokenLabels = buildTokenLabels(smoothed, width, height);
+    report('kmeans', 0.45, `${tokenPolicy.colorCount} wahrnehmungsnahe Farb-Token werden aufgebaut.`);
+    const tokenLabels = buildTokenLabels(smoothed, width, height, tokenPolicy);
     report('kmeans', 0.7, 'Zusammenhaengende Farbregionen werden gesucht.');
     tokenComponents = connectedComponentsForLabels(
       tokenLabels,
-      TOKEN_COLOR_COUNT,
+      tokenPolicy.colorCount,
       width,
       height,
       smoothed,
@@ -2053,10 +2334,11 @@ async function generatePaintByNumbersInternal(
       debugSnapshots,
       'kmeans',
       'Fresh Tokenisierung',
-      'Kantenbewusst geglaettetes Bild und 64 RGB-Token als Startregionen.',
+      'Kantenbewusst geglaettetes Bild und detailabhaengige Helligkeits-/Chroma-Token als Startregionen.',
       settings,
       [
-        { label: 'Farb-Token', value: String(TOKEN_COLOR_COUNT) },
+        { label: 'Farb-Token', value: String(tokenPolicy.colorCount) },
+        { label: 'Token-Raster', value: `${tokenPolicy.lumaBins} x ${tokenPolicy.chromaBins} x ${tokenPolicy.chromaBins}` },
         { label: 'Startregionen', value: String(tokenComponents.labels.length) },
       ],
       () => encodeRgbaDebugImage('Fresh Tokenisierung', width, height, smoothed),
@@ -2322,6 +2604,9 @@ async function generatePaintByNumbersInternal(
 
   const regionCountBeforeReduce = regionComponents.labels.length;
   let paletteUsageReintroducedCount = 0;
+  let easyLandmarkCandidateCount = 0;
+  let easyLandmarkRestoredCount = 0;
+  let easyLandmarkRestoredPixelCount = 0;
   let totalMergeCount = 0;
   let totalGlobalReassignCount = 0;
   let totalProtectedSmall = 0;
@@ -2336,7 +2621,18 @@ async function generatePaintByNumbersInternal(
     regionPolicy.detailProtectMinPixels,
     TINY_MERGE_PASSES,
     FINAL_SPECKLE_PASSES,
-    'stable-target-v2',
+    EASY_LANDMARK_MIN_PIXELS,
+    EASY_LANDMARK_MAX_COUNT,
+    EASY_LANDMARK_MAX_AREA_MULTIPLIER,
+    EASY_LANDMARK_MAX_SPAN,
+    EASY_LANDMARK_MIN_FILL_RATIO,
+    EASY_LANDMARK_MAX_ASPECT_RATIO,
+    EASY_LANDMARK_MIN_ENCLOSURE,
+    EASY_LANDMARK_MIN_COMPACTNESS,
+    EASY_LANDMARK_MIN_SOURCE_LAB_DISTANCE,
+    EASY_LANDMARK_MAX_PALETTE_LAB_DISTANCE,
+    EASY_LANDMARK_MIN_OUTPUT_LAB_DISTANCE,
+    'stable-target-v3-easy-landmarks',
   ]);
   if (canUseCachedStage('facetReduce', facetReduceSignature, previousCache?.afterFacetReduce != null)) {
     const cached = previousCache?.afterFacetReduce as FreshRegionDebugState;
@@ -2463,13 +2759,47 @@ async function generatePaintByNumbersInternal(
     );
     paletteUsageReintroducedCount = paletteUsage.reintroducedCount;
     labelMap = paletteUsage.labelMap;
+    if (targetColorCount <= 11) {
+      const landmarkRestore = restoreEasyLandmarks(
+        labelMap,
+        tokenComponents,
+        paletteRgb,
+        width,
+        height,
+        minRegionArea,
+      );
+      easyLandmarkCandidateCount = landmarkRestore.candidateCount;
+      easyLandmarkRestoredCount = landmarkRestore.restoredCount;
+      easyLandmarkRestoredPixelCount = landmarkRestore.restoredPixelCount;
+      labelMap = landmarkRestore.labelMap;
+      if (maximumNumberOfFacets > 0 && landmarkRestore.restoredCount > 0) {
+        const budgetResult = await enforceFacetBudget(
+          labelMap,
+          smoothed,
+          paletteRgb,
+          width,
+          height,
+          maximumNumberOfFacets,
+          options,
+        );
+        labelMap = budgetResult.labelMap;
+        forcedBudgetMergeCount += budgetResult.mergeCount;
+        totalMergeCount += budgetResult.mergeCount;
+        facetBudgetSatisfied = budgetResult.satisfied;
+        if (!budgetResult.satisfied) {
+          throw new Error(
+            `Fresh facet budget could not be satisfied after landmark restoration: ${budgetResult.componentCount} regions remain above ${maximumNumberOfFacets}.`,
+          );
+        }
+      }
+    }
     paletteRgb = recomputePalette(smoothed, labelMap, paletteColorCount);
     regionComponents = connectedComponentsForLabels(labelMap, paletteColorCount, width, height);
     addTiming(timings, 'facetReduce', reduceStarted);
     report(
       'facetReduce',
       1,
-      `${regionComponents.labels.length} finale Regionen erzeugt${paletteUsage.reintroducedCount > 0 ? `, ${paletteUsage.reintroducedCount} Zielfarben reaktiviert` : ''}.`,
+      `${regionComponents.labels.length} finale Regionen erzeugt${paletteUsage.reintroducedCount > 0 ? `, ${paletteUsage.reintroducedCount} Zielfarben reaktiviert` : ''}${easyLandmarkRestoredCount > 0 ? `, ${easyLandmarkRestoredCount} Easy-Landmarks restauriert` : ''}.`,
     );
     nextCache.afterFacetReduce = { paletteRgb, components: regionComponents };
     await pushFreshDebugSnapshot(
@@ -2487,6 +2817,9 @@ async function generatePaintByNumbersInternal(
         { label: 'Geschuetzte kleine Regionen', value: String(totalProtectedSmall) },
         { label: 'Kleine Restregionen', value: String(finalSmallRemaining) },
         { label: 'Reaktivierte Farben', value: String(paletteUsageReintroducedCount) },
+        { label: 'Easy-Landmark-Kandidaten', value: String(easyLandmarkCandidateCount) },
+        { label: 'Restaurierte Easy-Landmarks', value: String(easyLandmarkRestoredCount) },
+        { label: 'Restaurierte Landmark-Pixel', value: String(easyLandmarkRestoredPixelCount) },
         { label: 'Budget-Merges', value: String(forcedBudgetMergeCount) },
         {
           label: 'Flaechenbudget',

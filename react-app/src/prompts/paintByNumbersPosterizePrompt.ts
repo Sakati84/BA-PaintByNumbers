@@ -67,9 +67,10 @@ Preserve:
 - the approximate size, pose, placement, and silhouette of the main objects
 - the foreground, middle ground, background, and horizon structure where present
 - the most important color identity of the subject
+- visible eyes and other identity-critical facial landmarks as compact closed shapes
 
 Meaning-first free-space rule:
-- First identify what makes the image recognizable: the main subject, its silhouette, pose, structural parts, distinctive markings, and the places where it touches or overlaps its surroundings.
+- First identify what makes the image recognizable: the main subject, its silhouette, pose, structural parts, visible eyes and facial landmarks, distinctive markings, and the places where it touches or overlaps its surroundings.
 - If the photo has one clear main subject surrounded by large simple areas such as sky, ground, road, water, wall, or floor, protect those meaning-carrying subject parts first and simplify the empty areas second.
 - Large free-space areas should become simple broad paint regions, but they must not absorb, crop away, or visually swallow the important subject parts.
 - Preserve support, contact, attachment, opening, overlap, lower-edge, and shadow-boundary details whenever they explain what the subject is or how it sits in the scene.
@@ -89,6 +90,7 @@ Simplify strongly:
 - remove realistic texture, lighting, shadows, and reflections
 - reduce complex natural areas to simple recognizable shapes
 - make every region large enough for a young child to paint
+- never remove a visible animal or bird eye; simplify it to one compact closed landmark instead
 
 Region rules:
 - Use exactly {{NUMBER_OF_COLORS}} intended main colors.
@@ -97,11 +99,12 @@ Region rules:
 - Do not create lots of small repeated patches.
 - Avoid thin slivers, tiny islands, speckles, and detailed patterns.
 - Prefer simple bands and blocks over accurate detail.
+- Exception: each visible eye may remain as one small, compact, closed region using an already allowed palette color. This exception must not introduce an additional color.
 
 Subject rules:
 - Landscapes: keep sky, water, grass, shore, paths, hills, and tree groups in the same approximate parts of the image. Redraw tree groups as a few clear child-friendly trees or tree silhouettes with simple trunks and rounded/triangular canopies, not just amorphous green facets. Water should be mostly one or two broad areas, with only a few simple reflection shapes.
-- Animals: keep pose, head direction, legs, tail, and main markings, but simplify the body into broad color blocks.
-- Birds: keep pose, beak, eye area, and main black/white/red or other key markings, but simplify feathers and foliage into broad color blocks.
+- Animals: keep pose, head direction, legs, tail, main markings, and every visible eye. Draw each visible eye as one compact closed shape in the darkest suitable color already present in the {{NUMBER_OF_COLORS}}-color palette. Never omit an eye, merge it into fur, or add a new color only for it. Simplify the rest of the body into broad color blocks.
+- Birds: keep pose, beak, every visible eye, and main black/white/red or other key markings. Draw each eye as one compact closed shape in the darkest suitable existing palette color, clearly separated from the surrounding face patch. Simplify feathers and foliage into broad color blocks.
 - Flowers: keep the flower head size, center position, petal ring direction, stem or vase if visible, and overall crop. Simplify petal detail into broad petal groups, but do not turn the flower into a different generic icon.
 
 Style:
@@ -122,7 +125,7 @@ Style:
 The final result should be a child-friendly paint-by-numbers reference for {{TARGET_AUDIENCE}}: simple, recognizable, strongly simplified, easy to paint, and still clearly tied to the uploaded photo.
 `.trim(),
     negativePrompt:
-      'unchanged photo, photo filter, ordinary poster art, painterly illustration, photorealistic image, realistic rendering, realistic lighting, realistic shadow, soft shading, smooth gradients, lens blur, depth of field, bokeh, glossy reflection, complex reflection detail, texture detail, grass blade detail, leaf detail, feather detail, fur detail, flower seed detail, tiny pattern, grain, noise, tiny speckles, many small regions, many repeated patches, thin slivers, unclosed regions, unpaintable regions, amorphous green blobs, abstract color fields, meaningless facets, main subject absorbed by background, subject lost in empty space, important subject parts merged into background, meaning-carrying details lost, support details lost, contact details lost, lower edges lost, important openings lost, important overlaps lost, missing repeated structural parts, missing paired support parts, black outlines, dark contour lines, coloring book line art, sketch, ink drawing, hatching, brush texture, watercolor texture, oil paint texture, adult illustration, unrelated object, invented scene, changed crop, changed viewpoint, changed main subject, wrong subject placement, any digit, numeral, number, label, letter, caption, signature, text-like mark, numbered template, numbers, labels, text, logos, watermarks',
+      'unchanged photo, photo filter, ordinary poster art, painterly illustration, photorealistic image, realistic rendering, realistic lighting, realistic shadow, soft shading, smooth gradients, lens blur, depth of field, bokeh, glossy reflection, complex reflection detail, texture detail, grass blade detail, leaf detail, feather detail, fur detail, flower seed detail, tiny pattern, grain, noise, tiny speckles, many small regions, many repeated patches, thin slivers, unclosed regions, unpaintable regions, amorphous green blobs, abstract color fields, meaningless facets, main subject absorbed by background, subject lost in empty space, important subject parts merged into background, meaning-carrying details lost, missing eye, omitted eye, eye merged into fur, eye merged into feathers, faceless animal, faceless bird, support details lost, contact details lost, lower edges lost, important openings lost, important overlaps lost, missing repeated structural parts, missing paired support parts, black outlines, dark contour lines, coloring book line art, sketch, ink drawing, hatching, brush texture, watercolor texture, oil paint texture, adult illustration, unrelated object, invented scene, changed crop, changed viewpoint, changed main subject, wrong subject placement, any digit, numeral, number, label, letter, caption, signature, text-like mark, numbered template, numbers, labels, text, logos, watermarks',
   },
   medium: {
     difficulty: 'medium',

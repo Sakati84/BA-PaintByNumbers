@@ -1,0 +1,15 @@
+{
+  "name": "2026-07-10-easy8-eye-landmarks",
+  "sourceRun": "../../prompt-lab/runs/2026-07-10T05-18-48-179Z_2026-07-10-ki-testbilder-easy8-eye-landmarks",
+  "variants": ["cleanColor"],
+  "matchSourceDifficulty": true,
+  "configs": [
+    {
+      "id": "fresh-easy-8",
+      "label": "Fresh Easy 8 · Eye Landmarks",
+      "pipeline": "fresh",
+      "difficulty": "easy",
+      "colorCount": 8
+    }
+  ]
+}

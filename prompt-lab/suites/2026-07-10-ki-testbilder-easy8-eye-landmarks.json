@@ -1,0 +1,30 @@
+{
+  "name": "2026-07-10-ki-testbilder-easy8-eye-landmarks",
+  "model": "gemini-3.1-flash-lite-image",
+  "maxEdge": 1024,
+  "generationConfig": {
+    "seed": 1234,
+    "temperature": 0.2
+  },
+  "inputs": [
+    "../../test-assets/source-photos/IMG_0106.JPG",
+    "../../test-assets/source-photos/IMG_1394.JPG",
+    "../../test-assets/source-photos/IMG_1618.JPG",
+    "../../test-assets/source-photos/IMG_1644.jpeg",
+    "../../test-assets/source-photos/IMG_1681.PNG",
+    "../../test-assets/source-photos/IMG_1704.JPG",
+    "../../test-assets/source-photos/IMG_1706.JPG",
+    "../../test-assets/source-photos/IMG_1841.JPG",
+    "../../test-assets/source-photos/IMG_1852.JPG",
+    "../../test-assets/source-photos/IMG_1998.JPG",
+    "../../test-assets/source-photos/IMG_2051.JPG"
+  ],
+  "cases": [
+    {
+      "id": "easy-8-eye-landmarks",
+      "difficulty": "easy",
+      "colorCount": 8,
+      "targetAudience": "beginners or children"
+    }
+  ]
+}

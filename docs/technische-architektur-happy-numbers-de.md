@@ -440,11 +440,12 @@ Wichtige positive Anforderungen:
 - Ausgabe als unnummerierte Paint-by-Numbers-Farbplatte priorisieren
 - alle sichtbaren Formen als geschlossene, fuellbare Malflaechen mit klaren Farbkanten anlegen
 - Bedeutung tragende Motivteile vor grossen Freiflaechen schuetzen
+- sichtbare Augen und andere identitaetskritische Gesichtsmerkmale als kompakte geschlossene Formen erhalten
 - wiederholte/gepaarte Strukturteile erhalten, wenn sie fuer Identitaet, Haltung, Stuetzung, Bewegung oder Funktion wichtig sind
 - Foto stark vereinfachen
 - realistische Textur, Licht, Schatten und Reflexionen entfernen
 - wenige grosse Regionen pro Material oder Objekt
-- keine duennen Splitter, Inseln, Speckles oder Detailmuster
+- keine duennen Splitter, Inseln, Speckles oder Detailmuster; pro sichtbarem Auge ist genau eine kleine geschlossene Landmark-Flaeche ausdruecklich erlaubt
 - kindgerecht erkennbare Formen statt abstrakter Farbflecken
 - keine schwarzen Outlines
 - keine Zahlen, Labels, Buchstaben oder textartigen Markierungen
@@ -452,8 +453,8 @@ Wichtige positive Anforderungen:
 Motivregeln:
 
 - Landschaften behalten Himmel, Wasser, Gras, Ufer, Wege, Huegel und Baumgruppen an ungefaehr gleicher Position.
-- Tiere behalten Pose, Kopfhaltung, Beine, Schwanz und Hauptmarkierungen.
-- Voegel behalten Pose, Schnabel, Augenbereich und wichtige Farbmarkierungen.
+- Tiere behalten Pose, Kopfhaltung, Beine, Schwanz, Hauptmarkierungen und jedes sichtbare Auge. Ein Auge nutzt die dunkelste passende, bereits in der 8er-Palette vorhandene Farbe und darf keine neunte Farbe erzeugen.
+- Voegel behalten Pose, Schnabel, jedes sichtbare Auge und wichtige Farbmarkierungen. Das Auge bleibt als kompakte geschlossene Form lesbar vom Gesichtsfeld getrennt.
 - Blumen behalten Bluetenkopf, Zentrum, Petalstruktur, Stiel/Vase und Crop.
 
 Negative Prompt verhindert insbesondere:
@@ -468,6 +469,7 @@ Negative Prompt verhindert insbesondere:
 - amorphe gruene Flecken
 - abstrakte bedeutungslose Facetten
 - verlorene Bedeutungstraeger, Motivteile, Kontaktbereiche, Stuetzdetails oder wichtige Oeffnungen
+- fehlende, ausgelassene oder mit Fell/Federn verschmolzene Augen bei sichtbaren Tier- und Vogelkoepfen
 - schwarze Konturen
 - Coloring-Book-Lineart
 - Text, Nummern, Logos, Wasserzeichen
@@ -648,6 +650,18 @@ Der aktive TypeScript-Fresh-Port in `App/src/features/generator/fresh/generatePa
 
 Diese Werte ersetzen im Fresh-Port nicht die UI-Komplexitaetslogik, sondern uebersetzen sie in eine fuer Region-First passende Merge-Policy. `removeFacetsSmallerThanImageRatio` kann die Fresh-Mindestflaeche im Debug oder durch Settings nur anheben; die farbanzahlabhaengige Fresh-Policy bleibt die Untergrenze. Expert respektiert zusaetzlich das bestehende `maximumNumberOfFacets = 2600` als kontrastgeschuetztes hartes Flaechenbudget. Nach dem normalen source-aware Cleanup fuehrt der Fresh-Kern bei Bedarf stabile Least-Cost-Merge-Batches aus, bis das Budget erreicht ist. Hochkontrast-Details bekommen dabei einen hohen Merge-Preis, koennen bei einem expliziten harten Budget aber nicht unbegrenzt alle Reduktion blockieren.
 
+Seit 2026-07-09 nutzt die Fresh-Tokenisierung kein festes `4 x 4 x 4`-RGB-Raster mehr. Dieses Raster konnte mehrere benachbarte, niedrig kontrastierende KI-Facets schon vor dem Palettenlernen zu einer einzigen Startregion verbinden. Stattdessen quantisiert der Kern getrennt nach Helligkeit und zwei Chroma-Achsen. Die Aufloesung waechst mit der angeforderten Detailstufe:
+
+| Farbanzahl | Helligkeits-Bins | Chroma-Bins je Achse | moegliche Token |
+| ---: | ---: | ---: | ---: |
+| 8-11 | 10 | 5 | 250 |
+| 12-17 | 14 | 7 | 686 |
+| 18-24 | 18 | 9 | 1458 |
+
+Die Tokenzahl ist nur eine Uebersegmentierung fuer die Connected Components und keine Ausgabefarbzahl. Das nachfolgende regionengewichtete K-Means bleibt strikt auf `kMeansNrOfClusters` begrenzt. Unterschiedliche Quellfacets koennen dadurch passende Farben derselben vorhandenen Zielpalette wiederverwenden, statt bereits in `colorMap` untrennbar zu verschmelzen.
+
+Easy besitzt seit 2026-07-10 zusaetzlich eine begrenzte Landmark-Restaurierung am Ende von `facetReduce`. Sie betrachtet die Token-Components des KI-Quellbilds vor dem Merge und waehlt hoechstens zwoelf kleine, vollstaendig eingebettete Hochkontrastformen aus. Kandidaten muessen kompakt sein (`fill ratio >= 0.28`, Seitenverhaeltnis hoechstens `3.2`, Compactness mindestens `0.08`), zu mindestens `55 %` von derselben Nachbarregion umschlossen sein und zur Quellumgebung mindestens `20 LAB` Abstand besitzen. Wenn ein solcher Kandidat im normalen Cleanup verschwunden ist, wird seine Quellform mit der naechsten bereits vorhandenen Easy-Palettenfarbe restauriert. Die Palettendistanz ist auf `32 LAB` begrenzt und die restaurierte Farbe muss zur finalen Umgebung mindestens `12 LAB` Kontrast haben. Dadurch koennen Augen und vergleichbare Identitaets-Landmarks unterhalb der normalen Easy-Mindestflaeche erhalten bleiben, ohne mehr als acht Farben zu verwenden. Ein explizites `maximumNumberOfFacets` bleibt anschliessend ein hartes Postcondition-Budget.
+
 Fresh nutzt im `narrowCleanup` zwei feste source-aware Majority-Basisdurchlaeufe. `narrowPixelStripCleanupRuns` addiert im Fresh-Port optionale weitere Durchlaeufe. `nrOfTimesToHalveBorderSegments` ist im Fresh-Port kein Legacy-Protrusion-Tracer, sondern ein optionaler weiterer source-aware Beruhigungsdurchlauf vor `facetBuild`; der UI-Default `0` laesst diesen Zusatzschritt unveraendert.
 
 ## 7. Lokale Paint-by-Numbers-Pipeline nach der KI
@@ -696,7 +710,7 @@ Unterschiede im Debug Mode:
 - Die Expo-Shell haelt fuer den zuletzt verwendeten `sourceToken` einen begrenzten nativen In-Memory-Cache mit Rohdaten fuer die aktive Pipeline. Im Legacy-Pfad sind das Decode-, K-Means-, ColorMap- und Raster-Zwischenstaende; im Fresh-Pfad sind es Decode, geglaettetes Bild, Token-Components, kompakte `Uint8`-Farblabelkarten, nicht redundant gespeicherte Region-Components und Markerpositionen. Diese Rohdaten werden nicht ueber die WebView serialisiert.
 - Fresh-Cache-Eintraege tragen eine Cache-Version, Source-Signatur und kumulative Stage-Signaturen aus Bildgroesse, Pipeline-Konstanten und allen relevanten Upstream-Settings. Ein fehlender oder unpassender Checkpoint invalidiert automatisch alle nachfolgenden Cache-Stufen. Dadurch ist ein Teil-Rerun mit geaenderter Farbanzahl oder Resize-Konfiguration nicht mehr mit alten Labelkarten kombinierbar.
 - Wiederverwendete Fresh-Checkpoints teilen unveraenderliche Typed-Array-Referenzen statt fuer jeden Rerun alle Vollbildpuffer erneut zu klonen. Die Shell behaelt maximal einen Fresh-/Legacy-Debug-Cache und verwirft den aeltesten Eintrag.
-- Beide aktiven Pipelinepfade liefern im Debug Mode Snapshots fuer alle zehn Bridge-Stufen von `decode` bis `svgRender`. Im Fresh-Pfad entspricht `kmeans` intern der kantenbewussten Glaettung plus 64-RGB-Tokenisierung; `borderSegment` ist dort ein optionaler source-aware Zusatzfilter vor dem Region-Build.
+- Beide aktiven Pipelinepfade liefern im Debug Mode Snapshots fuer alle zehn Bridge-Stufen von `decode` bis `svgRender`. Im Fresh-Pfad entspricht `kmeans` intern der kantenbewussten Glaettung plus detailabhaengiger Helligkeits-/Chroma-Tokenisierung; `borderSegment` ist dort ein optionaler source-aware Zusatzfilter vor dem Region-Build.
 - Wenn ein Rerun ab einer spaeteren Stage gestartet wird und der Cache noch vorhanden ist, werden vorherige Stufen aus dem Cache uebernommen und nur die gewaehlte Stage plus nachfolgende Stufen neu berechnet.
 - Wenn der Cache fehlt, faellt der Lauf automatisch auf die noetigen vorherigen Berechnungen zurueck.
 - Die React-UI bekommt nur JSON-sichere Debugdaten: Parameter, Metriken, Timings, Cache-Hit-Flags und kompakte PNG-Snapshots.
@@ -720,7 +734,7 @@ Im Fresh-Pfad:
 | Stage | Editierbare Parameter |
 | --- | --- |
 | `decode` | `resizeImageWidth`, `resizeImageHeight` |
-| `kmeans` | keine Fresh-spezifischen Editierparameter; zeigt Glaettung, 64 Token und Startregionen |
+| `kmeans` | keine Fresh-spezifischen Editierparameter; zeigt Glaettung, Token-Raster/-zahl und Startregionen |
 | `colorMap` | `kMeansNrOfClusters`, `randomSeed` |
 | `narrowCleanup` | `narrowPixelStripCleanupRuns` als Zusatzdurchlaeufe auf zwei festen Fresh-Basisdurchlaeufen |
 | `borderSegment` | `nrOfTimesToHalveBorderSegments` als optionale weitere source-aware Beruhigung |
@@ -1150,7 +1164,7 @@ Der Ansatz startet bewusst nicht mit der produktiven Pixel-K-Means-Pipeline. Sta
 
 1. KI-Output aus einem Prompt-Lab-Lauf laden.
 2. Im Python-Lab mit OpenCV `pyrMeanShiftFiltering` und Median-Filter Farbrauschen und weiche Uebergaenge kantenbewusst glaetten. Im App-Port wird dieser Schritt durch eine schnelle lokale kantenbewusste Glaettung ersetzt, weil OpenCV in der Expo-JS-Laufzeit nicht verfuegbar ist.
-3. Das geglaettete Bild in eine uebersegmentierte 64-Farb-Tokenkarte aufteilen. Im Python-Lab passiert das per K-Means-Tokenkarte, im App-Port per 4x4x4-RGB-Binning fuer bessere Laufzeit.
+3. Das geglaettete Bild in eine uebersegmentierte Farb-Tokenkarte aufteilen. Im Python-Lab passiert das per K-Means-Tokenkarte. Der App-Port quantisiert eine schnelle RGB-abgeleitete Helligkeitsachse und zwei Chroma-Achsen. Easy nutzt `10 x 5 x 5`, Medium `14 x 7 x 7` und Expert `18 x 9 x 9` Token-Bins. So bleiben auch niedrig kontrastierende, aber grossflaechige KI-Facets getrennte Startregionen.
 4. Per Connected Components aus den Tokenkarten zusammenhaengende Regionen bauen.
 5. Pro Region die mittlere Farbe berechnen und darauf eine gewichtete 24-Farb-Palette lernen. Die Gewichtung nutzt `area^0.78`, damit grosse Flaechen stabil bleiben, kleine Detailregionen aber nicht komplett gegen grosse Hintergruende verlieren.
 6. Das Ziel-Farb-Labelbild mit einem source-aware Mehrheitsfilter stabilisieren. Ein Pixel darf nur zur lokalen Mehrheitsfarbe wechseln, wenn diese Zielpalette fuer die lokale KI-Quellfarbe nicht deutlich schlechter passt. Im App-Port laufen zwei feste Basisdurchlaeufe; `narrowPixelStripCleanupRuns` kann weitere Durchlaeufe addieren.
@@ -1159,10 +1173,11 @@ Der Ansatz startet bewusst nicht mit der produktiven Pixel-K-Means-Pipeline. Sta
 9. Wenn kein farblich plausibler Nachbar existiert, darf eine relevante kleine Region auf die naechstpassende globale Zielpalettenfarbe wechseln. Dieser Fallback ist auf Detailschutzgroesse oder kontrastreiche Speckles ab `18 px` begrenzt, damit Hintergrundtextur nicht als tausende Mikrokonturen stehen bleibt.
 10. Leere K-Means-Cluster werden waehrend des Palettenlernens deterministisch mit einer weit entfernten gewichteten Quellregion neu initialisiert. Fehlende Zielpalettenfarben werden vor der finalen Palette-Neuberechnung nur dann reaktiviert, wenn die fehlende Farbe absolut innerhalb des LAB-Limits liegt, die Quellregion gegenueber ihrem aktuellen Label messbar verbessert und keine andere Farbe komplett geleert wird. Kann diese Qualitaetsbedingung nicht erfuellt werden, darf die Ausgabe bewusst weniger als die angeforderte Farbanzahl nutzen.
 11. Echte Speckles unter `48 px` werden in einem finalen Cleanup bevorzugt entfernt; kontrastreiche Details koennen ab `18 px` geschuetzt bleiben.
-12. Wenn `maximumNumberOfFacets` groesser als `0` ist, erzwingt der Fresh-Port danach dasselbe Flaechenbudget mit stabilen, kostenbewerteten Merge-Batches. Die Debug-Metriken zeigen Budget-Merges und Budgetstatus explizit.
-13. Markerpositionen werden per lokaler Distance Transform am breitesten Innenpunkt jeder finalen Region bestimmt. Der Kreisradius wird sowohl von der Regionflaeche als auch vom gemessenen Innenabstand begrenzt, damit Marker bei duennen oder konkaven Formen nicht in Nachbarregionen ragen.
-14. PNG-Ausgaben werden aus dem gecachten globalen Boundary-Mask-Layer gerendert. Zwischen teuren Stufen, Merge-Paessen und Varianten gibt der Kern die JS-Event-Loop frei und prueft, ob der Lauf durch einen neueren Request abgeloest wurde.
-15. Jede Fresh-Variante erhaelt zusaetzlich ein echtes SVG aus Vektor-Fuellpfaden, zusammengefassten horizontalen/vertikalen Boundary-Pfaden und optionalen `<circle>`-Markern. Fresh-SVGs enthalten kein eingebettetes Base64-PNG mehr.
+12. Easy prueft danach hoechstens zwoelf kompakte, umschlossene Hochkontrast-Landmarks aus der urspruenglichen Tokenkarte. Im Cleanup verlorene Kandidaten werden mit der naechsten bereits vorhandenen 8er-Palettenfarbe restauriert; es wird keine neue Farbe erzeugt.
+13. Wenn `maximumNumberOfFacets` groesser als `0` ist, erzwingt der Fresh-Port danach dasselbe Flaechenbudget mit stabilen, kostenbewerteten Merge-Batches. Die Debug-Metriken zeigen Budget-Merges, restaurierte Landmark-Anzahl/-Pixel und Budgetstatus explizit.
+14. Markerpositionen werden per lokaler Distance Transform am breitesten Innenpunkt jeder finalen Region bestimmt. Der Kreisradius wird sowohl von der Regionflaeche als auch vom gemessenen Innenabstand begrenzt, damit Marker bei duennen oder konkaven Formen nicht in Nachbarregionen ragen.
+15. PNG-Ausgaben werden aus dem gecachten globalen Boundary-Mask-Layer gerendert. Zwischen teuren Stufen, Merge-Paessen und Varianten gibt der Kern die JS-Event-Loop frei und prueft, ob der Lauf durch einen neueren Request abgeloest wurde.
+16. Jede Fresh-Variante erhaelt zusaetzlich ein echtes SVG aus Vektor-Fuellpfaden, zusammengefassten horizontalen/vertikalen Boundary-Pfaden und optionalen `<circle>`-Markern. Fresh-SVGs enthalten kein eingebettetes Base64-PNG mehr.
 
 Aktuelle App-Ausgabevarianten des TypeScript-Ports:
 
@@ -1210,19 +1225,30 @@ Schnelle synthetische Regression:
 - `npm run pipeline:fresh:regression --prefix ./App`
 - prueft Einfarbbild ohne erfundene Palettenfarben
 - prueft den frueher moeglichen Zwei-Regionen-Labeltausch
+- prueft vier niedrig kontrastierende, im alten RGB-Raster kollidierende Grossfacets und die harte 24-Farben-Grenze
+- prueft ein nur `3 x 3 px` grosses Easy-Auge, das nach dem normalen Cleanup mit einer vorhandenen Palettenfarbe restauriert werden muss, ohne eine neunte Farbe zu erzeugen
 - prueft das harte Flaechenbudget auf einem Checkerboard-Worst-Case
 - prueft monotone Fortschrittswerte und deterministische Ergebnis-Hashes
 - prueft einen Marker pro finaler Region
 - prueft, dass Fresh-SVGs Vektorgeometrie statt eingebetteter PNGs enthalten
 - prueft, dass ein inkompatibler Debug-Cache-Rerun dasselbe Ergebnis wie ein kompletter sauberer Lauf liefert
 
+Stufendiagnose fuer ein bereits vorbereitetes PNG:
+
+- `npm run pipeline:fresh:diagnostic --prefix ./App -- --input <input.prepared.png> --settings <settings.json> --out <zielordner>`
+- schreibt die zehn Debug-PNGs von `decode` bis `svgRender` sowie `stages.json` und `result.json`
+- wurde fuer `img-0106` genutzt, um den Detailverlust eindeutig vor `narrowCleanup` und `facetReduce` in `colorMap` zu lokalisieren
+
 Realer Korpuslauf ueber den vorhandenen Pipeline-Lab-Runner:
 
 - Suite: `pipeline-lab/suites/current-fresh-presets.json`
+- Die aktuelle Suite nutzt den vollstaendigen kuratierten Korpus mit 11 Motiven in Easy, Medium und Expert, rendert nur `cleanColor` und setzt `matchSourceDifficulty: true`. Dadurch wird jedes KI-Bild nur mit dem passenden Fresh-Preset 8/12/24 verarbeitet; Kontaktbogen und Overview zeigen eine einzelne direkte Spalte `AI Source` gegen `Fresh Clean`.
 - Beispiel: `npm run pipeline:lab --prefix ./App -- --suite ../pipeline-lab/suites/current-fresh-presets.json --limit-sources 1 --limit-configs 1`
 - `App/scripts/pipeline-lab-runtime.ts` routet pro Config ueber `pipeline: "fresh"` oder `pipeline: "legacy"`.
 - Fresh-Configs werden vor der Bildvorbereitung auf die echte Arbeitskante von `1400 px` begrenzt.
 - Der Report persistiert PNG und echte SVG-Ausgaben des TypeScript-Kerns, Facet-/Palettenmetriken und Stage-Timings.
+- Der Detailerhalt-Vergleich vom 2026-07-09 ist in `pipeline-lab/2026-07-09-fresh-perceptual-token-detail-preservation.md` dokumentiert. Der komplette neue 33er-Lauf liegt lokal unter `pipeline-lab/runs/2026-07-09T21-11-26-123Z_current-fresh-typescript-presets/`. Alle Presets halten 8/12/24 Farben exakt ein; bei Expert sinkt der mittlere RGB-Abstand zum KI-Bild ueber alle elf Motive von `8.81` auf `7.48`.
+- Die Easy-Augenregel und lokale Landmark-Restaurierung sind in `prompt-lab/2026-07-10-easy-eye-landmarks.md` dokumentiert. Die reproduzierbare Prompt-Suite liegt in `prompt-lab/suites/2026-07-10-ki-testbilder-easy8-eye-landmarks.json`; der zugehoerige Fresh-Lauf nutzt `pipeline-lab/suites/2026-07-10-easy8-eye-landmarks.json`.
 
 Die Python-Datei `pipeline-lab/fresh_region_pipeline.py` bleibt fuer OpenCV-Mean-Shift-Vergleiche wertvoll, ist aber nicht mehr der einzige automatisierbare Fresh-Qualitaetsnachweis.
 
