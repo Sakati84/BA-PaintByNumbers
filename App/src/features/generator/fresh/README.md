@@ -22,11 +22,11 @@ Der Port ist eine app-taugliche Annaeherung an die Python-Referenz in
 8. Leere Palettencluster neu initialisieren und fehlende Zielpalettenfarben nur bei messbar besserem LAB-Fit reaktivieren.
 9. Ein konfiguriertes Flaechenbudget mit kontrastbewerteten Least-Cost-Merges hart einhalten.
 10. Marker per Distance Transform sicher innerhalb finaler Regionen platzieren.
-11. `cleanColor`, `coloredEdges` und `coloredEdgesWithDots` als PNG und echtes Vektor-SVG rendern.
+11. `cleanColor`, `coloredEdges`, `coloredEdgesWithDots` und `circlesOnly` als PNG und echtes Vektor-SVG rendern.
 
 Nummern, Labelplatzierung und die vollstaendige alte Variantenliste sind in diesem Port noch nicht
 implementiert. Fuer App-Kompatibilitaet liefert der Port im normalen Flow `cleanColor`,
-`coloredEdges` und `coloredEdgesWithDots`; `classic` bleibt fuer gezielte Debug-Renders verfuegbar.
+`coloredEdges`, `coloredEdgesWithDots` und `circlesOnly`; `classic` bleibt fuer gezielte Debug-Renders verfuegbar.
 
 Validierung:
 

@@ -1,6 +1,6 @@
 # Technische Architektur: Happy Numbers Paint-by-Numbers
 
-Stand: 2026-07-10
+Stand: 2026-07-14
 
 Dieses Dokument beschreibt den aktuellen technischen Aufbau des Projekts, den KI-gestuetzten Bildvorbereitungsschritt, die drei Prompt-Varianten und die lokale Paint-by-Numbers-Pipeline. Es ist als Arbeitsdokument fuer Entwicklung, Agenten und Projektverstaendnis gedacht. Wenn sich Architektur, KI-Call, Prompting, Pipeline-Stufen, Komplexitaetslogik oder Exportvarianten aendern, muss dieses Dokument mit aktualisiert werden.
 
@@ -673,9 +673,11 @@ Der aktive TypeScript-Fresh-Port in `App/src/features/generator/fresh/generatePa
 | ---: | ---: | ---: | ---: |
 | 8-11 | `0.00022` | `220 px` | `80 px` |
 | 12-17 | `0.00014` | `130 px` | `64 px` |
-| 18-24 | `0.00012` | `72 px` | `56 px` |
+| 18-24 | `0.000012` | `18 px` | `56 px` |
 
 Diese Werte ersetzen im Fresh-Port nicht die UI-Komplexitaetslogik, sondern uebersetzen sie in eine fuer Region-First passende Merge-Policy. `removeFacetsSmallerThanImageRatio` kann die Fresh-Mindestflaeche im Debug oder durch Settings nur anheben; die farbanzahlabhaengige Fresh-Policy bleibt die Untergrenze. Expert respektiert zusaetzlich das bestehende `maximumNumberOfFacets = 2600` als kontrastgeschuetztes hartes Flaechenbudget. Nach dem normalen source-aware Cleanup fuehrt der Fresh-Kern bei Bedarf stabile Least-Cost-Merge-Batches aus, bis das Budget erreicht ist. Hochkontrast-Details bekommen dabei einen hohen Merge-Preis, koennen bei einem expliziten harten Budget aber nicht unbegrenzt alle Reduktion blockieren.
+
+Seit 2026-07-14 entspricht der Fresh-Floor fuer Expert dem Expert-UI-Verhaeltnis `0.000012` und besitzt nur noch einen absoluten Mindestwert von `18 px`. Zuvor setzte Fresh fuer Expert unabhaengig vom UI-Wert mindestens `0.00012` beziehungsweise `72 px` an. Die Absenkung laesst kleine Expert-Facets frueher in der source-aware Merge-Logik bestehen; Palettenlernen, Cleanup-Ablauf, Detailschutzschwellen und das harte `maximumNumberOfFacets = 2600` bleiben unveraendert.
 
 Seit 2026-07-09 nutzt die Fresh-Tokenisierung kein festes `4 x 4 x 4`-RGB-Raster mehr. Dieses Raster konnte mehrere benachbarte, niedrig kontrastierende KI-Facets schon vor dem Palettenlernen zu einer einzigen Startregion verbinden. Stattdessen quantisiert der Kern getrennt nach Helligkeit und zwei Chroma-Achsen. Die Aufloesung waechst mit der angeforderten Detailstufe:
 
@@ -1211,10 +1213,11 @@ Aktuelle App-Ausgabevarianten des TypeScript-Ports:
 - `cleanColor`: Fresh Clean, farbige Region-First-Ausgabe ohne Grenzen oder Marker. Diese Variante ist der Default im normalen Fresh-Port.
 - `coloredEdges`: weisse Vorlage mit farbigen Regionenkanten.
 - `coloredEdgesWithDots`: weisse Vorlage mit farbigen Regionenkanten und Farbpunkten pro finaler Region.
+- `circlesOnly`: weisse Vorlage mit schwarzen Regionenkanten und Farbkreisen pro finaler Region.
 
 Fuer Debug-Reruns bleibt `classic` als interne Variante verfuegbar, wenn `variantIds: ['classic']` angefordert wird. Sie wird im normalen Output nicht mehr angeboten.
 
-Jede dieser drei Fresh-Generatorvarianten liefert `pngBase64` und ein echtes Vektor-`svg`. Farbfuellungen werden als zeilenweise zusammengefasste Vektorpfade geschrieben, gemeinsame Grenzen als eindeutige horizontale/vertikale Pfade und Farbpunkte als `<circle>`. Dadurch wird kein Base64-PNG doppelt im SVG gehalten und der Export bleibt frei skalierbar. Nummern, echte Textlabels und die vollstaendige alte Variantenliste sind im TypeScript-Port weiterhin nicht implementiert.
+Jede dieser vier Fresh-Generatorvarianten liefert `pngBase64` und ein echtes Vektor-`svg`. Farbfuellungen werden als zeilenweise zusammengefasste Vektorpfade geschrieben, gemeinsame Grenzen als eindeutige horizontale/vertikale Pfade und Farbpunkte als `<circle>`. Dadurch wird kein Base64-PNG doppelt im SVG gehalten und der Export bleibt frei skalierbar. Nummern, echte Textlabels und die vollstaendige alte Variantenliste sind im TypeScript-Port weiterhin nicht implementiert.
 
 Der wichtigste Unterschied zur produktiven Pipeline:
 
@@ -1311,7 +1314,7 @@ Fuer das Teilen nutzt die Shell `expo-sharing`.
 
 Wenn die UI ein SVG aus einer PNG-Variante anfordert, erzeugt die Shell ein SVG, das das PNG als Base64-Image einbettet. Das ist kein echtes Vektor-SVG der Regionen, aber ein kompatibler SVG-Container fuer die PNG-Ausgabe.
 
-Im Fresh-Pipeline-Port liefern die drei Generatorvarianten selbst bereits je ein PNG und ein SVG. `persistResultAssets()` schreibt deshalb pro Generatorvariante beide Dateien, zum Beispiel `happy-numbers-cleanColor-<timestamp>.png` und `happy-numbers-cleanColor-<timestamp>.svg`. Der normale Fresh-Output umfasst aktuell zuerst `cleanColor`, `coloredEdges` und `coloredEdgesWithDots`; danach folgen die Vergleichsvarianten `inputImage` und `aiPosterizedImage`.
+Im Fresh-Pipeline-Port liefern die vier Generatorvarianten selbst bereits je ein PNG und ein SVG. `persistResultAssets()` schreibt deshalb pro Generatorvariante beide Dateien, zum Beispiel `happy-numbers-cleanColor-<timestamp>.png` und `happy-numbers-cleanColor-<timestamp>.svg`. Der normale Fresh-Output umfasst aktuell zuerst `cleanColor`, `coloredEdges`, `coloredEdgesWithDots` und `circlesOnly`; danach folgen die Vergleichsvarianten `inputImage` und `aiPosterizedImage`.
 
 ## 9. Debugdaten im Result-Screen
 

@@ -30,10 +30,10 @@ const POST_MAJORITY_FILTER_RUNS = 1;
 const FINAL_MAJORITY_FILTER_RUNS = 1;
 const EASY_MIN_REGION_RATIO = 0.00022;
 const MEDIUM_MIN_REGION_RATIO = 0.00014;
-const EXPERT_MIN_REGION_RATIO = 0.00012;
+const EXPERT_MIN_REGION_RATIO = 0.000012;
 const EASY_MIN_REGION_PIXELS = 220;
 const MEDIUM_MIN_REGION_PIXELS = 130;
-const EXPERT_MIN_REGION_PIXELS = 72;
+const EXPERT_MIN_REGION_PIXELS = 18;
 const TINY_MERGE_PASSES = 12;
 const SPECKLE_REGION_PIXELS = 48;
 const FINAL_SPECKLE_PASSES = 8;
@@ -74,6 +74,7 @@ const DEFAULT_FRESH_OUTPUT_VARIANT_IDS: readonly GeneratorOutputVariantId[] = [
   'cleanColor',
   'coloredEdges',
   'coloredEdgesWithDots',
+  'circlesOnly',
 ];
 
 type PipelineStage = Exclude<GeneratorStage, 'done'>;
@@ -247,6 +248,14 @@ const FRESH_RENDER_VARIANTS: FreshRenderConfig[] = [
     description: 'Weiße Vorlage mit farbigen Regionenkanten und Farbpunkten.',
     fillMode: 'white',
     boundaryMode: 'color',
+    markerMode: 'circles',
+  },
+  {
+    id: 'circlesOnly',
+    label: 'Nur Kreise',
+    description: 'Weiße Vorlage mit schwarzen Regionenkanten und Farbkreisen.',
+    fillMode: 'white',
+    boundaryMode: 'black',
     markerMode: 'circles',
   },
   {

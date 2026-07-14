@@ -187,19 +187,33 @@ async function run(): Promise<void> {
     checkerboard,
     budgetSettings,
     (update) => progress.push(update.progress),
-    { variantIds: ['cleanColor', 'coloredEdgesWithDots'] },
   );
   assert.ok(firstBudgetResult.facetCount <= 20, 'maximumNumberOfFacets must be a real postcondition.');
   assert.ok(progress.every((value, index) => index === 0 || value >= progress[index - 1]), 'Progress must be monotonic.');
+  assert.deepEqual(
+    firstBudgetResult.variants?.map((variant) => variant.id),
+    ['cleanColor', 'coloredEdges', 'coloredEdgesWithDots', 'circlesOnly'],
+    'The normal Fresh run must expose every exportable product variant.',
+  );
   const markerSvg = firstBudgetResult.variants?.find((variant) => variant.id === 'coloredEdgesWithDots')?.svg ?? '';
   assert.equal((markerSvg.match(/<circle /g) ?? []).length, firstBudgetResult.facetCount, 'Every final region needs one marker.');
+  const circlesOnlyVariant = firstBudgetResult.variants?.find((variant) => variant.id === 'circlesOnly');
+  assert.ok(circlesOnlyVariant?.pngBase64 != null, 'Circles-only needs a PNG export.');
+  const circlesOnlyPng = decode(Buffer.from(circlesOnlyVariant.pngBase64, 'base64'));
+  assert.equal(circlesOnlyPng.width, checkerboard.prepared.width, 'Circles-only PNG width must match the render size.');
+  assert.equal(circlesOnlyPng.height, checkerboard.prepared.height, 'Circles-only PNG height must match the render size.');
+  assert.ok(circlesOnlyVariant.svg?.startsWith('<svg'), 'Circles-only needs a vector SVG export.');
+  assert.ok(circlesOnlyVariant.svg?.includes('stroke="rgb(22,29,31)"'), 'Circles-only SVG needs black region edges.');
+  assert.equal(
+    (circlesOnlyVariant.svg?.match(/<circle /g) ?? []).length,
+    firstBudgetResult.facetCount,
+    'Circles-only SVG needs one circle per final region.',
+  );
   assertVectorOutputs(firstBudgetResult);
 
   const secondBudgetResult = await generatePaintByNumbersFreshFromPreparedInput(
     checkerboard,
     budgetSettings,
-    undefined,
-    { variantIds: ['cleanColor', 'coloredEdgesWithDots'] },
   );
   assert.equal(hashResult(firstBudgetResult), hashResult(secondBudgetResult), 'Fresh output must be deterministic.');
 
