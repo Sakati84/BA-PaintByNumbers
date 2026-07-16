@@ -1,0 +1,49 @@
+{
+  "name": "2026-07-15-expert-semantic-detail-restoration",
+  "sourceRun": "../../prompt-lab/runs/2026-07-07T17-46-16-266Z_2026-07-07-ki-testbilder-easy8-medium12-expert24",
+  "sourceCases": ["expert-24-current"],
+  "variants": ["classic", "cleanColor", "debugUnlabeled"],
+  "configs": [
+    {
+      "id": "expert-before-semantic-detail-floor-600",
+      "label": "01 Previous / 0.00060 without Expert detail restoration",
+      "description": "Pinned previous production geometry for a stable comparison without the new Expert semantic-detail restoration.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "classic-safe",
+      "settings": {
+        "resizeImageWidth": 1400,
+        "resizeImageHeight": 1400,
+        "removeFacetsSmallerThanImageRatio": 0.0006
+      }
+    },
+    {
+      "id": "expert-floor-500-no-restoration",
+      "label": "02 Control / 0.00050 without restoration",
+      "description": "Isolation control for the lower merge-candidate floor without the new semantic-detail restoration.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "classic-safe",
+      "settings": {
+        "resizeImageWidth": 1400,
+        "resizeImageHeight": 1400,
+        "removeFacetsSmallerThanImageRatio": 0.0005
+      }
+    },
+    {
+      "id": "expert-semantic-detail-production-default",
+      "label": "03 Historical 2026-07-15 production / 0.00050 + semantic detail restoration",
+      "description": "Pinned 2026-07-15 Expert app default with the then-lower merge-candidate floor and bounded palette-safe restoration of lost high-contrast source components.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "settings": {
+        "resizeImageWidth": 1400,
+        "resizeImageHeight": 1400,
+        "removeFacetsSmallerThanImageRatio": 0.0005
+      }
+    }
+  ]
+}

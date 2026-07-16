@@ -44,6 +44,7 @@ Options:
   --suite <file>          Pipeline benchmark suite. Default: ./pipeline-lab/suites/current-presets.json.
   --source-run <dir>      Prompt Lab run directory to use as AI-image source.
   --source-case <id>      Only use a Prompt Lab case. Can be passed more than once.
+  --input-id <id>         Only use a Prompt Lab input image. Can be passed more than once.
   --config-id <id>        Only run a pipeline config. Can be passed more than once.
   --variant <id>          Output variant to render. Can be passed more than once. Default comes from suite.
   --limit-sources <n>     Limit source AI images, useful for smoke tests.
@@ -56,6 +57,7 @@ Options:
 function parseArgs(argv) {
   const options = {
     sourceCases: [],
+    inputIds: [],
     configIds: [],
     variants: [],
     dryRun: false,
@@ -84,6 +86,8 @@ function parseArgs(argv) {
       options.sourceRun = next;
     } else if (arg === '--source-case') {
       options.sourceCases.push(next);
+    } else if (arg === '--input-id') {
+      options.inputIds.push(next);
     } else if (arg === '--config-id') {
       options.configIds.push(next);
     } else if (arg === '--variant') {
@@ -251,6 +255,7 @@ function normalizeSuite(suite, options) {
     baseDir,
     sourceRun,
     sourceCases: [...new Set([...(suite.sourceCases ?? []), ...options.sourceCases])],
+    inputIds: [...new Set([...(suite.inputIds ?? []), ...options.inputIds])],
     configs: suite.configs,
     configIds: [...new Set(options.configIds)],
     variants,
@@ -412,6 +417,7 @@ function configMetaHtml(config) {
     <div>${htmlEscape(config.description ?? '')}</div>
     <code>${htmlEscape(JSON.stringify({
       pipeline: config.pipeline,
+      freshPaintabilityProfile: config.freshPaintabilityProfile ?? 'current',
       colors: settings.kMeansNrOfClusters,
       nearIdentical: settings.nearIdenticalPaletteMergeLabDistance,
       minAreaRatio: settings.removeFacetsSmallerThanImageRatio,
@@ -456,6 +462,9 @@ async function writeContactSheet(runDir, manifest) {
   const resultsBySourceConfig = new Map(manifest.results.map((result) => [`${result.sourceId}/${result.configId}`, result]));
   const renderedVariantIds = manifest.variants ?? allVariantIds;
   const variantSections = renderedVariantIds.map((variantId) => {
+    const variantLabel = manifest.results
+      .flatMap((result) => result.variants ?? [])
+      .find((variant) => variant.id === variantId)?.label ?? variantId;
     const rows = manifest.sources.map((source) => {
       const sourceHref = pathHref(runDir, source.localAiImagePath);
       const originalHref = source.localOriginalInputPath == null ? null : pathHref(runDir, source.localOriginalInputPath);
@@ -482,13 +491,13 @@ async function writeContactSheet(runDir, manifest) {
     }).join('\n');
 
     return `<section id="${htmlEscape(variantId)}">
-      <h2>${htmlEscape(variantId)}</h2>
+      <h2>${htmlEscape(variantLabel)} <span class="variant-id">${htmlEscape(variantId)}</span></h2>
       <table>
         <thead>
           <tr>
             <th>AI Source</th>
             ${matchSourceDifficulty
-              ? '<th>Fresh Clean · passendes Preset</th>'
+              ? `<th>${htmlEscape(variantLabel)} · passendes Preset</th>`
               : configs.map((config) => `<th>${configMetaHtml(config)}</th>`).join('\n')}
           </tr>
         </thead>
@@ -507,6 +516,7 @@ async function writeContactSheet(runDir, manifest) {
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 24px; color: #1f2933; background: #f7f8fa; }
     h1 { font-size: 24px; margin: 0 0 8px; }
     h2 { font-size: 20px; margin: 32px 0 12px; }
+    .variant-id { color: #7b8794; font-size: 13px; font-weight: 500; margin-left: 6px; }
     .summary, .meta, .links { color: #52606d; font-size: 12px; }
     .summary { margin-bottom: 16px; }
     nav { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 24px; }
@@ -549,7 +559,8 @@ configs = manifest["configs"]
 sources = manifest["sources"]
 results = {(r["sourceId"], r["configId"]): r for r in manifest["results"]}
 match_source_difficulty = bool(manifest.get("matchSourceDifficulty"))
-display_configs = [{"label": "Fresh Clean · passendes Preset"}] if match_source_difficulty else configs
+variant_label = next((variant.get("label", variant_id) for result in manifest["results"] for variant in result.get("variants", []) if variant.get("id") == variant_id), variant_id)
+display_configs = [{"label": f"{variant_label} · passendes Preset"}] if match_source_difficulty else configs
 
 thumb_w, thumb_h = 260, 190
 label_h = 58
@@ -655,6 +666,13 @@ async function main() {
     suite.sourceCases,
   );
   let sources = allSources;
+  if (suite.inputIds.length > 0) {
+    const inputIdSet = new Set(suite.inputIds);
+    sources = sources.filter((source) => inputIdSet.has(source.inputId));
+    if (sources.length === 0) {
+      throw new Error('No prompt-lab sources match the selected input ids.');
+    }
+  }
 
   let configs = suite.configs.map((config) => runtime.resolvePipelineLabConfig(config));
   if (suite.configIds.length > 0) {
@@ -756,6 +774,7 @@ async function main() {
         }, {
           variantIds: suite.variants,
           pipeline: config.pipeline,
+          freshPaintabilityProfile: config.freshPaintabilityProfile,
         });
         const variants = await writePipelineResultFiles(configDir, result);
         const palettePath = path.join(configDir, 'palette.json');

@@ -1,0 +1,225 @@
+{
+  "name": "2026-07-15-expert-classic-iterations",
+  "sourceRun": "../../prompt-lab/runs/2026-07-07T17-46-16-266Z_2026-07-07-ki-testbilder-easy8-medium12-expert24",
+  "sourceCases": ["expert-24-current"],
+  "inputIds": ["img-1644"],
+  "variants": ["classic", "cleanColor", "debugUnlabeled"],
+  "configs": [
+    {
+      "id": "expert-current-render-fixed",
+      "label": "01 Current segmentation + corrected Classic renderer",
+      "description": "Control: current geometry, with the orthogonal Fresh boundary-mask bug fixed.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "current",
+      "settings": { "resizeImageWidth": 1400, "resizeImageHeight": 1400 }
+    },
+    {
+      "id": "expert-opening-v1",
+      "label": "02 Recovered opening-v1",
+      "description": "Exact preferred direction: one unrestricted pre-facet opening, geometry-v1 score, no terminal cleanup loop.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "opening-v1",
+      "settings": { "resizeImageWidth": 1400, "resizeImageHeight": 1400 }
+    },
+    {
+      "id": "expert-opening-v1-bands",
+      "label": "03 Opening-v1 + gradient-band merge",
+      "description": "Adds conservative removal of long narrow Lab-intermediate sandwich facets that create double contours.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "opening-v1-bands",
+      "settings": { "resizeImageWidth": 1400, "resizeImageHeight": 1400 }
+    },
+    {
+      "id": "expert-opening-v1-coarse",
+      "label": "04 Opening-v1 + calmer Expert tokens",
+      "description": "Uses 14x7x7 instead of 18x9x9 Expert tokens to stop preserving low-contrast background texture.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "opening-v1-coarse",
+      "settings": { "resizeImageWidth": 1400, "resizeImageHeight": 1400 }
+    },
+    {
+      "id": "expert-classic-balanced",
+      "label": "05 Classic-balanced",
+      "description": "Combines calmer Expert tokens, recovered pre-facet opening, and conservative gradient-band removal.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "classic-balanced",
+      "settings": { "resizeImageWidth": 1400, "resizeImageHeight": 1400 }
+    },
+    {
+      "id": "expert-classic-strong",
+      "label": "06 Strong low-contrast ribbon suppression",
+      "description": "Opening-v1 plus broader low-contrast narrow-sandwich and enclosing-band removal.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "classic-strong",
+      "settings": { "resizeImageWidth": 1400, "resizeImageHeight": 1400 }
+    },
+    {
+      "id": "expert-classic-strong-floor-250",
+      "label": "07 Strong ribbons + 0.00025 floor",
+      "description": "Raises the Expert region floor to about 276 px on this image after low-contrast ribbon suppression.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "classic-strong",
+      "settings": {
+        "resizeImageWidth": 1400,
+        "resizeImageHeight": 1400,
+        "removeFacetsSmallerThanImageRatio": 0.00025
+      }
+    },
+    {
+      "id": "expert-classic-strong-floor-400",
+      "label": "08 Strong ribbons + 0.00040 floor",
+      "description": "Raises the Expert region floor to about 441 px, prioritizing physically paintable cells over local source fit.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "classic-strong",
+      "settings": {
+        "resizeImageWidth": 1400,
+        "resizeImageHeight": 1400,
+        "removeFacetsSmallerThanImageRatio": 0.0004
+      }
+    },
+    {
+      "id": "expert-classic-strong-floor-325",
+      "label": "08a Strong ribbons + 0.000325 floor",
+      "description": "Intermediate Expert region floor between the clearer 0.00025 and calmer 0.00040 candidates.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "classic-strong",
+      "settings": {
+        "resizeImageWidth": 1400,
+        "resizeImageHeight": 1400,
+        "removeFacetsSmallerThanImageRatio": 0.000325
+      }
+    },
+    {
+      "id": "expert-classic-strong-floor-600",
+      "label": "09 Strong ribbons + 0.00060 floor",
+      "description": "Aggressive upper-bound candidate with an approximately 662 px Expert minimum-region target.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "classic-strong",
+      "settings": {
+        "resizeImageWidth": 1400,
+        "resizeImageHeight": 1400,
+        "removeFacetsSmallerThanImageRatio": 0.0006
+      }
+    },
+    {
+      "id": "expert-classic-strong-coarse",
+      "label": "10 Strong ribbons + calmer Expert tokens",
+      "description": "Combines strong ribbon suppression with 14x7x7 Expert tokenization at the normal area floor.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "classic-strong-coarse",
+      "settings": { "resizeImageWidth": 1400, "resizeImageHeight": 1400 }
+    },
+    {
+      "id": "expert-classic-safe",
+      "label": "11 Safe gradient bands / baseline area threshold",
+      "description": "Source-aware opening plus two-pass opposite-side Lab-gradient detection, without raising the Expert merge threshold.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "classic-safe",
+      "settings": { "resizeImageWidth": 1400, "resizeImageHeight": 1400 }
+    },
+    {
+      "id": "expert-classic-safe-floor-250",
+      "label": "12 Safe gradient bands + 0.00025 threshold",
+      "description": "Production candidate: guarded opening, opposite-side gradient bands, baseline soft-thin cap, and conservative Expert merge threshold.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "classic-safe",
+      "settings": {
+        "resizeImageWidth": 1400,
+        "resizeImageHeight": 1400,
+        "removeFacetsSmallerThanImageRatio": 0.00025
+      }
+    },
+    {
+      "id": "expert-classic-production",
+      "label": "13 Expert Classic production default",
+      "description": "Same guarded candidate selected automatically for Expert, including its internal 0.00025 merge threshold.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "classic-production",
+      "settings": { "resizeImageWidth": 1400, "resizeImageHeight": 1400 }
+    },
+    {
+      "id": "expert-classic-safe-floor-400",
+      "label": "14 Safe bands + 0.00040 merge threshold",
+      "description": "Guarded candidate with a wider small-region candidate set while retaining the baseline soft-thin/source protections.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "classic-safe",
+      "settings": {
+        "resizeImageWidth": 1400,
+        "resizeImageHeight": 1400,
+        "removeFacetsSmallerThanImageRatio": 0.0004
+      }
+    },
+    {
+      "id": "expert-classic-safe-floor-600",
+      "label": "15 Safe bands + 0.00060 merge threshold",
+      "description": "Higher guarded merge threshold; high-contrast details remain protected by source-fit instead of a forced thin merge.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "classic-safe",
+      "settings": {
+        "resizeImageWidth": 1400,
+        "resizeImageHeight": 1400,
+        "removeFacetsSmallerThanImageRatio": 0.0006
+      }
+    },
+    {
+      "id": "expert-classic-safe-floor-1000",
+      "label": "16 Safe bands + 0.00100 merge threshold",
+      "description": "Diagnostic upper bound for guarded whole-region merging without broadening the soft-thin deletion cap.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "classic-safe",
+      "settings": {
+        "resizeImageWidth": 1400,
+        "resizeImageHeight": 1400,
+        "removeFacetsSmallerThanImageRatio": 0.001
+      }
+    },
+    {
+      "id": "expert-classic-safe-floor-800",
+      "label": "15a Safe bands + 0.00080 merge threshold",
+      "description": "Intermediate guarded candidate between the clearer 0.00100 and higher-recall 0.00060 settings.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "classic-safe",
+      "settings": {
+        "resizeImageWidth": 1400,
+        "resizeImageHeight": 1400,
+        "removeFacetsSmallerThanImageRatio": 0.0008
+      }
+    }
+  ]
+}

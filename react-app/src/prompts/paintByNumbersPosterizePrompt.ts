@@ -239,16 +239,14 @@ Paint-by-numbers priority:
 - Preserve expert-level subject detail only when it remains practical as bounded paint regions.
 - Make the region structure obvious enough that a later algorithm can trace and number the areas.
 
-Apply the transformation uniformly to every part of the image:
-- main subject
-- background
-- foliage
-- grass
-- water
-- reflections
-- flower centers
-- sky and clouds
-- small supporting objects
+Apply a balanced expert-level detail hierarchy across the whole scene:
+- Keep substantial, clearly visible region structure in the main subject, foreground, middle ground, and background. The main subject may receive the highest region density, but the surrounding scene must still look richly structured and unmistakably more detailed than Medium.
+- Put the highest region density into the main subject, identity-defining parts, important foreground structures, and the boundaries needed to understand pose, attachment, overlap, or function.
+- Preserve distinct facial and identity landmarks such as eyes, mouth or proboscis, muzzle, head boundary, antennae, horns, beak, and characteristic markings as clearly separated paintable cells.
+- Preserve a readable selection of meaningful structural units in important constructed foreground objects, such as the individual large stones that make a fieldstone wall recognizable. They may be grouped, but the object must not collapse into a single anonymous slab.
+- Simplify homogeneous, repetitive, low-importance background microtexture only moderately. Grass behind or beneath a subject, distant bushes, dense foliage behind a bird, soil texture, and similar areas may use somewhat larger grouped cells than the focal subject, but they must retain several representative color changes, depth layers, silhouette breaks, and internal shape groups.
+- Do not reproduce every blade of grass, leaf, twig, pebble, or tiny repeated variation. Preserve enough grouped variation that bushes, foliage, grass, terrain, and other substantial background areas never collapse into only one or two broad flat shapes.
+- Background simplification must never absorb the silhouette, head, face, mouth, limbs, or other meaning-carrying parts of the main subject.
 
 Required output:
 - exactly {{NUMBER_OF_COLORS}} intended main colors
@@ -268,6 +266,8 @@ Preserve:
 - object placement and pose
 - recognizable color relationships
 - important markings and structural detail
+- readable separation of the head and face from the background
+- small but identity-critical mouth, muzzle, proboscis, eye, antenna, horn, beak, and attachment regions when visible
 
 Meaning-first free-space rule:
 - First identify what makes the image recognizable: the main subject, its silhouette, pose, structural parts, distinctive markings, and the places where it touches or overlaps its surroundings.
@@ -281,15 +281,16 @@ Convert:
 - all photographic texture into grouped color cells
 - all gradients into stepped color regions
 - all shadows and highlights into separate flat shapes
-- all foliage into clustered leaf-mass cells
-- all grass into grouped patch cells
+- distant or homogeneous foliage and bushes into multiple clustered masses with representative internal color cells, depth layers, and silhouette variation
+- homogeneous grass into multiple grouped patch cells that preserve visible color and depth variation without individual blades or dense micro-segmentation
 - all reflections into simplified layered cells
 - all flower centers into grouped circular/radial cells
 
 Expert difference from Medium:
 - Medium has broad simplified regions.
-- Expert should have more local structure inside each object and material.
+- Expert should have more local structure throughout the focal subject, meaningful foreground structures, and substantial background forms, with the highest density reserved for the focal subject.
 - Expert should preserve more subject-specific detail, but as clean cells, never as raw texture.
+- Expert may moderately consolidate semantically unimportant homogeneous grass, bushes, foliage, soil, and other background filler, but it must remain clearly more varied and detailed than Medium and must not become a minimal one- or two-shape backdrop.
 - Do not leave any area looking like the original photograph.
 - The landscape, flower, bird background, and grass must also be visibly posterized.
 
@@ -308,7 +309,7 @@ Style:
 The final result should be an expert-level paint-by-numbers reference for {{TARGET_AUDIENCE}}: more detailed than Medium, uniformly transformed, visibly posterized, and made from clean paintable cells.
 `.trim(),
     negativePrompt:
-      'photo enhancement, unchanged photo, lightly filtered photo, photo filter, ordinary poster art, painterly illustration, raw photo pixels, photorealistic image, photographic rendering, realistic lighting, realistic shadows, realistic texture, continuous gradients, soft shading, lens blur, depth of field, bokeh, glossy reflection, grass blade texture, leaf texture, feather micro-detail, fur hair detail, flower seed noise, bark noise, water ripple noise, grain, sensor noise, random speckles, unclosed regions, unpaintable regions, unpaintable micro-fragments, main subject absorbed by background, subject lost in empty space, important subject parts merged into background, meaning-carrying details lost, support details lost, contact details lost, lower edges lost, important openings lost, important overlaps lost, missing repeated structural parts, missing paired support parts, black outlines, dark contour lines, coloring book line art, sketch, ink, brush texture, watercolor texture, oil paint texture, generic cartoon, preschool style, decorative symbol, sparkle, star, unrelated objects, changed main subject, any digit, numeral, number, label, letter, caption, signature, text-like mark, numbered template, numbers, labels, text, logos, watermarks',
+      'photo enhancement, unchanged photo, lightly filtered photo, photo filter, ordinary poster art, painterly illustration, raw photo pixels, photorealistic image, photographic rendering, realistic lighting, realistic shadows, realistic texture, continuous gradients, soft shading, lens blur, depth of field, bokeh, glossy reflection, grass blade texture, leaf texture, microscopic leaf-by-leaf segmentation, every tiny background variation treated as equally important, feather micro-detail, fur hair detail, flower seed noise, bark noise, water ripple noise, grain, sensor noise, random speckles, unclosed regions, unpaintable regions, unpaintable micro-fragments, oversimplified background, background collapsed into one or two shapes, bush collapsed into one or two flat shapes, foliage collapsed into one or two flat shapes, grass collapsed into one or two flat shapes, missing background depth, missing representative background variation, main subject absorbed by background, subject lost in empty space, head merged into background, face merged into background, mouth merged into ground, missing mouth, missing muzzle, missing proboscis, important subject parts merged into background, meaning-carrying details lost, support details lost, contact details lost, lower edges lost, important openings lost, important overlaps lost, fieldstone wall collapsed into one slab, all large fieldstones merged away, missing repeated structural parts, missing paired support parts, black outlines, dark contour lines, coloring book line art, sketch, ink, brush texture, watercolor texture, oil paint texture, generic cartoon, preschool style, decorative symbol, sparkle, star, unrelated objects, changed main subject, any digit, numeral, number, label, letter, caption, signature, text-like mark, numbered template, numbers, labels, text, logos, watermarks',
   },
 };
 

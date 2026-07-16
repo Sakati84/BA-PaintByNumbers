@@ -1,6 +1,6 @@
 # Technische Architektur: Happy Numbers Paint-by-Numbers
 
-Stand: 2026-07-14
+Stand: 2026-07-16
 
 Dieses Dokument beschreibt den aktuellen technischen Aufbau des Projekts, den KI-gestuetzten Bildvorbereitungsschritt, die drei Prompt-Varianten und die lokale Paint-by-Numbers-Pipeline. Es ist als Arbeitsdokument fuer Entwicklung, Agenten und Projektverstaendnis gedacht. Wenn sich Architektur, KI-Call, Prompting, Pipeline-Stufen, Komplexitaetslogik oder Exportvarianten aendern, muss dieses Dokument mit aktualisiert werden.
 
@@ -567,14 +567,18 @@ Default:
 
 Ziel:
 
-Expert soll ein detailliertes flaches Zellbild erzeugen. Es soll mehr lokale Struktur als Medium behalten, aber weiterhin komplett nicht-fotografisch und aus geschlossenen malbaren Regionen bestehen.
+Expert soll ein detailliertes flaches Zellbild erzeugen. Es soll mehr lokale Struktur als Medium behalten, aber weiterhin komplett nicht-fotografisch und aus geschlossenen malbaren Regionen bestehen. Die Detaildichte wird bewusst, aber ausgewogen nach Bedeutung verteilt: Das Hauptmotiv und wichtige Vordergrundstrukturen erhalten die meisten Zellen; auch Mittel- und Hintergrund muessen jedoch mehrere repraesentative Farbwechsel, Tiefenebenen, Silhouettenvariationen und interne Formgruppen behalten. Nur fotografische Mikrotextur wird stark konsolidiert.
 
 Wichtige positive Anforderungen:
 
 - ganzes Bild als detaillierte flache posterisierte Illustration neu aufbauen
 - Ergebnis als unnummerierte Expert-Paint-by-Numbers-Farbplatte aus tracebaren, geschlossenen Malzellen erzeugen
 - Detail nur behalten, wenn es als klar begrenzte Paint-Cell-Struktur praktisch malbar bleibt
-- Transformation gleichmaessig auf Hauptmotiv, Hintergrund, Gras, Wasser, Reflexionen, Himmel, Wolken und Nebenobjekte anwenden
+- Transformation vollstaendig auf Hauptmotiv und Hintergrund anwenden; das Hauptmotiv darf die hoechste Detaildichte haben, der Hintergrund muss aber klar detailreicher als Medium bleiben
+- Mund/Ruessel, Schnauze, Augen, Kopfgrenze, Fuehler, Geweih, Schnabel und charakteristische Markierungen als getrennte malbare Zellen erhalten
+- bei wichtigen konstruierten Vordergrundobjekten eine lesbare Auswahl repraesentativer Einheiten erhalten, etwa grosse Steine einer Feldsteinmauer
+- homogenen Rasen, entfernte Buesche, dichte Hintergrundblaetter und aehnlichen visuellen Fuellstoff nur moderat gruppieren: keine Einzelblaetter oder Grashalme, aber mehrere lesbare Farb-, Tiefen- und Formgruppen
+- groessere Hintergrundbereiche wie Busch, Baumkrone, Rasen oder Boden niemals auf nur ein bis zwei flache Grossformen reduzieren
 - viele geschlossene malbare Regionen
 - mehr Detail und mehr Regionen als Medium
 - keine Fototextur, keine Gradienten, keine Rohfoto-Pixel
@@ -594,7 +598,10 @@ Negative Prompt verhindert insbesondere:
 - kontinuierliche Gradienten
 - weiche Schattierung und ungeschlossene/unmalbare Regionen
 - realistische Texturen
-- Mikrodetails wie Grasblaetter, Fellhaare, Federn, Samen, Rindenrauschen
+- Mikrodetails wie Grasblaetter, Fellhaare, Federn, Samen, Rindenrauschen und mikroskopische Blatt-fuer-Blatt-Segmentierung
+- uebermaessig vereinfachte Hintergruende, fehlende Hintergrundtiefe sowie auf nur ein bis zwei Flaechen kollabierte Buesche, Belaubung oder Rasenbereiche
+- in Boden oder Hintergrund verschmolzene Mund-, Kopf-, Gesichts- oder Schnauzenbereiche
+- eine zu einer anonymen Flaeche kollabierte Feldsteinmauer
 - unmalbare Mikrofragmente
 - verlorene Bedeutungstraeger, wichtige Motivteile oder Kontakt-/Stuetzdetails, die in einfachen Freiflaechen verschwinden
 - generischen Cartoon- oder Preschool-Stil
@@ -602,7 +609,11 @@ Negative Prompt verhindert insbesondere:
 
 Beispielwirkung:
 
-Ein Blumenfoto darf im Expert-Modus mehr Petalstruktur, Zentrumsschattierung und Hintergrundvariation behalten. Diese Details muessen aber als klare Zellen erscheinen. Die lokale Pipeline bekommt dadurch mehr plausible Regionen, reduziert aber weiterhin zu kleine oder zu duenne Flaechen.
+Ein Tier- oder Insektenfoto darf im Expert-Modus mehr Identitaetsdetail am Hauptmotiv behalten. Rasen und Buesche werden gegenueber dem Foto von Mikrotextur befreit, behalten aber mehrere repraesentative Farbgruppen, Tiefenebenen und Formwechsel. Bei einer Feldsteinmauer sollen einige grosse repraesentative Steine lesbar bleiben, ohne jeden Kiesel nachzuzeichnen. Die lokale Pipeline bekommt dadurch mehr semantisch plausible Regionen, reduziert aber weiterhin zu kleine oder zu duenne Flaechen.
+
+Der End-to-End-Lauf unter `prompt-lab/runs/2026-07-15T21-19-40-783Z_2026-07-15-all-11-current-prompts-easy-medium-expert/` dokumentiert die unmittelbar vorherige, staerker vereinfachende Zwischenfassung. Alle elf Originalfotos wurden darin als Easy 8, Medium 12 und Expert 24 neu erzeugt; 33 von 33 Gemini-Requests waren erfolgreich. Feldsteinmauer, Elchkopf und Fliegen-Kopf-/Mundbereich profitierten sichtbar von der Bedeutungsgewichtung. In weiteren visuellen Ergebnissen reduzierte diese Fassung homogene Hintergruende jedoch teilweise auf nur zwei Flaechen. Die aktuelle Promptkorrektur behaelt deshalb den Schutz semantischer Motivdetails, fordert fuer Expert im Hintergrund aber wieder mehrere repraesentative Farb-, Tiefen- und Formgruppen.
+
+Die korrigierte Expert-Fassung wurde am 2026-07-16 auf denselben elf Originalfotos mit identischem Modell, 24 Farben, Seed `1234` und Temperatur `0.2` validiert. 11 von 11 Gemini-Requests waren erfolgreich. Mit derselben Fresh-Expert-Konfiguration steigt die Gesamtzahl der finalen Regionen von 2385 auf 3005 (`+26.0 %`) und der Classic-Grenz-Footprint von `14.03 %` auf `17.06 %`. Niedrig kontrastierende R5-coreless Regionen sinken zugleich von 53 auf 42 und der niedrig kontrastierende Doppelkontur-Anteil von `4.55 %` auf `4.16 %`. Alle elf Ausgaben verwenden exakt 24 Farben und enthalten keine Region ohne Cross-Core. Sieben Motive gewinnen klar Hintergrund- oder Materialstruktur, drei bleiben stabil; die Fliege wird trotz weniger finaler Regionen sauberer als Paint-Cell-Motiv aufgebaut. Kein Motiv kollabiert erneut in einen Hintergrund aus nur ein bis zwei anonymen Grossflaechen. `img-1644` und besonders `img-1704` markieren die obere Expert-Detailgrenze. Der direkte Vergleich liegt unter `prompt-lab/comparisons/2026-07-16-expert-background-detail-restoration/`.
 
 ### 5.4 Warum die KI vor der lokalen Pipeline steht
 
@@ -669,15 +680,17 @@ Fresh-Port-Zusatz:
 
 Der aktive TypeScript-Fresh-Port in `App/src/features/generator/fresh/generatePaintByNumbersFresh.ts` liest weiterhin `kMeansNrOfClusters`, `randomSeed` und `maximumNumberOfFacets` aus den UI-Settings, validiert und begrenzt alle numerischen Eingaben am Core-Einstieg und nutzt fuer seine Region-First-Geometrie eigene farbanzahlabhaengige Mindestflaechen:
 
-| Farbanzahl | Fresh-Min-Ratio | Fresh-Min-Pixel | Detailschutz ab |
-| ---: | ---: | ---: | ---: |
-| 8-11 | `0.00022` | `220 px` | `80 px` |
-| 12-17 | `0.00014` | `130 px` | `64 px` |
-| 18-24 | `0.000012` | `18 px` | `56 px` |
+| Farbanzahl | Fresh-Basis-Min-Ratio | Fresh-Basis-Min-Pixel | produktives Merge-Kandidaten-Ratio | Detailschutz ab |
+| ---: | ---: | ---: | ---: | ---: |
+| 8-11 | `0.00022` | `220 px` | wie Basis | `80 px` |
+| 12-17 | `0.00014` | `130 px` | wie Basis | `64 px` |
+| 18-24 | `0.00012` | `72 px` | `0.0003` im Profil `classic-production` | `56 px` |
 
-Diese Werte ersetzen im Fresh-Port nicht die UI-Komplexitaetslogik, sondern uebersetzen sie in eine fuer Region-First passende Merge-Policy. `removeFacetsSmallerThanImageRatio` kann die Fresh-Mindestflaeche im Debug oder durch Settings nur anheben; die farbanzahlabhaengige Fresh-Policy bleibt die Untergrenze. Expert respektiert zusaetzlich das bestehende `maximumNumberOfFacets = 2600` als kontrastgeschuetztes hartes Flaechenbudget. Nach dem normalen source-aware Cleanup fuehrt der Fresh-Kern bei Bedarf stabile Least-Cost-Merge-Batches aus, bis das Budget erreicht ist. Hochkontrast-Details bekommen dabei einen hohen Merge-Preis, koennen bei einem expliziten harten Budget aber nicht unbegrenzt alle Reduktion blockieren.
+Diese Werte ersetzen im Fresh-Port nicht die UI-Komplexitaetslogik, sondern uebersetzen sie in eine fuer Region-First passende Merge-Policy. `removeFacetsSmallerThanImageRatio` kann die wirksame Fresh-Mindestflaeche im Debug oder durch Settings nur anheben. Easy und Medium verwenden weiterhin das Profil `current` und damit ihre bisherigen Basiswerte. Ab 18 Farben wird ohne expliziten Lab-Override automatisch `classic-production` aufgeloest. Dieses Expert-Profil hebt die Flaeche, unterhalb derer eine Region Merge-Kandidat ist, auf `0.0003` der vorbereiteten Bildflaeche an. Der niedrigere Expert-Basiswert `0.00012` beziehungsweise `72 px` bleibt getrennt davon als Referenz fuer den Soft-thin-Schutz erhalten; dadurch wird die hoehere Merge-Kandidatenschwelle nicht automatisch zu einem aggressiven Duennheitszwang fuer alle Regionen. Die frueheren `0.0005`-, `0.0006`- und `0.0008`-Staende waren ruhiger, verloren im Nutzervergleich aber sichtbar zu viel Motiv- und Schattierungsdetail; sie bleiben als direkte Referenzen im Pipeline-Lab erhalten.
 
-Seit 2026-07-14 entspricht der Fresh-Floor fuer Expert dem Expert-UI-Verhaeltnis `0.000012` und besitzt nur noch einen absoluten Mindestwert von `18 px`. Zuvor setzte Fresh fuer Expert unabhaengig vom UI-Wert mindestens `0.00012` beziehungsweise `72 px` an. Die Absenkung laesst kleine Expert-Facets frueher in der source-aware Merge-Logik bestehen; Palettenlernen, Cleanup-Ablauf, Detailschutzschwellen und das harte `maximumNumberOfFacets = 2600` bleiben unveraendert.
+Expert respektiert zusaetzlich `maximumNumberOfFacets = 2600` als hartes Flaechenbudget. Nach dem normalen source-aware Cleanup fuehrt der Fresh-Kern bei Bedarf stabile Least-Cost-Merge-Batches aus, bis das Budget erreicht ist. Hochkontrast-Details bekommen dabei einen hohen Merge-Preis, koennen bei einem expliziten harten Budget aber nicht unbegrenzt alle Reduktion blockieren. Im aktuellen Expert-Korpus liegt `classic-production` bereits deutlich unter diesem Notfallbudget.
+
+Historischer Kontext: Eine am 2026-07-14 getestete Absenkung des Expert-Floors auf `0.000012` beziehungsweise `18 px` erhoehte die mittlere Regionenzahl von 864,1 auf 1504,7 (`+74 %`) und den Anteil duenn bewerteter Regionen stark, waehrend RGB-MAE nur rund `3,1 %` besser wurde. Auch der danach entwickelte terminale attached-protrusion-Fixpunkt loeste die im `classic`-Bild sichtbaren Gradienten-Doppelkonturen nicht ausreichend. Beide Zustaende sind deshalb keine produktiven Expert-Ziele mehr. Die aktuelle Semantik traegt Fresh-Cache-Version `10`; alle Profil-, Opening-, Gradientenband-, Soft-thin-, Expert-Detailrestaurations- und Palettennutzungsparameter sind Bestandteil der kumulativen Cache-Signaturen.
 
 Seit 2026-07-09 nutzt die Fresh-Tokenisierung kein festes `4 x 4 x 4`-RGB-Raster mehr. Dieses Raster konnte mehrere benachbarte, niedrig kontrastierende KI-Facets schon vor dem Palettenlernen zu einer einzigen Startregion verbinden. Stattdessen quantisiert der Kern getrennt nach Helligkeit und zwei Chroma-Achsen. Die Aufloesung waechst mit der angeforderten Detailstufe:
 
@@ -689,9 +702,11 @@ Seit 2026-07-09 nutzt die Fresh-Tokenisierung kein festes `4 x 4 x 4`-RGB-Raster
 
 Die Tokenzahl ist nur eine Uebersegmentierung fuer die Connected Components und keine Ausgabefarbzahl. Das nachfolgende regionengewichtete K-Means bleibt strikt auf `kMeansNrOfClusters` begrenzt. Unterschiedliche Quellfacets koennen dadurch passende Farben derselben vorhandenen Zielpalette wiederverwenden, statt bereits in `colorMap` untrennbar zu verschmelzen.
 
-Easy besitzt seit 2026-07-10 zusaetzlich eine begrenzte Landmark-Restaurierung am Ende von `facetReduce`. Sie betrachtet die Token-Components des KI-Quellbilds vor dem Merge und waehlt hoechstens zwoelf kleine, vollstaendig eingebettete Hochkontrastformen aus. Kandidaten muessen kompakt sein (`fill ratio >= 0.28`, Seitenverhaeltnis hoechstens `3.2`, Compactness mindestens `0.08`), zu mindestens `55 %` von derselben Nachbarregion umschlossen sein und zur Quellumgebung mindestens `20 LAB` Abstand besitzen. Wenn ein solcher Kandidat im normalen Cleanup verschwunden ist, wird seine Quellform mit der naechsten bereits vorhandenen Easy-Palettenfarbe restauriert. Die Palettendistanz ist auf `32 LAB` begrenzt und die restaurierte Farbe muss zur finalen Umgebung mindestens `12 LAB` Kontrast haben. Dadurch koennen Augen und vergleichbare Identitaets-Landmarks unterhalb der normalen Easy-Mindestflaeche erhalten bleiben, ohne mehr als acht Farben zu verwenden. Ein explizites `maximumNumberOfFacets` bleibt anschliessend ein hartes Postcondition-Budget.
+Easy besitzt seit 2026-07-10 zusaetzlich eine begrenzte Landmark-Restaurierung am Ende von `facetReduce`. Sie betrachtet die Token-Components des KI-Quellbilds vor dem Merge und waehlt hoechstens zwoelf kleine, vollstaendig eingebettete Hochkontrastformen aus. Kandidaten muessen kompakt sein (`fill ratio >= 0.28`, Seitenverhaeltnis hoechstens `3.2`, Compactness mindestens `0.08`), zu mindestens `55 %` von derselben Nachbarregion umschlossen sein und zur Quellumgebung mindestens `20 LAB` Abstand besitzen. Hard-unpaintable Quellkomponenten sind ausgeschlossen. Wenn ein gueltiger Kandidat im normalen Cleanup verschwunden ist, wird seine Quellform mit der naechsten bereits vorhandenen Easy-Palettenfarbe restauriert. Die Palettendistanz ist auf `32 LAB` begrenzt und die restaurierte Farbe muss zur finalen Umgebung mindestens `12 LAB` Kontrast haben. Dadurch koennen Augen und vergleichbare Identitaets-Landmarks unterhalb der normalen Easy-Mindestflaeche erhalten bleiben, ohne mehr als acht Farben zu verwenden. Ein explizites `maximumNumberOfFacets` bleibt anschliessend ein hartes Postcondition-Budget.
 
-Fresh nutzt im `narrowCleanup` zwei feste source-aware Majority-Basisdurchlaeufe. `narrowPixelStripCleanupRuns` addiert im Fresh-Port optionale weitere Durchlaeufe. `nrOfTimesToHalveBorderSegments` ist im Fresh-Port kein Legacy-Protrusion-Tracer, sondern ein optionaler weiterer source-aware Beruhigungsdurchlauf vor `facetBuild`; der UI-Default `0` laesst diesen Zusatzschritt unveraendert.
+Fresh nutzt im `narrowCleanup` zwei feste source-aware Majority-Basisdurchlaeufe. `narrowPixelStripCleanupRuns` addiert optionale weitere Durchlaeufe. `nrOfTimesToHalveBorderSegments` steuert im Fresh-Port keinen Legacy-Endpoint-Peel, sondern zusaetzliche source-aware Radius-1-Cross-Openings mit gleichzeitigem richtungsweisendem Refill vor `facetBuild`; der UI-Default bleibt `0`.
+
+Das produktive Expert-Profil fuehrt unabhaengig vom UI-Wert genau einen solchen fruehen, geometrisch unbeschraenkten Cross-Opening-Durchlauf aus. „Unbeschraenkt“ bezeichnet hier nur die Kandidatenform; der Refill bleibt source-aware und darf Source-Fit nicht fuer reine Paintability erzwingen. Post-Merge- und terminale Openings sind fuer dieses Profil deaktiviert. Stattdessen werden hard-unpaintable Whole Regions weiterhin gemerged und lange, niedrig kontrastierende Zwischenbaender in zwei getrennten, jeweils auf einen Pass begrenzten Phasen erkannt. Easy und Medium behalten dagegen die bisherige `current`-Policy mit attached Post-Merge-Opening und terminaler Stabilitaetspruefung.
 
 ## 7. Lokale Paint-by-Numbers-Pipeline nach der KI
 
@@ -737,9 +752,9 @@ Unterschiede im Debug Mode:
 - Der `runPaintByNumbers`-Bridge-Request sendet `debugMode: true`.
 - Ein Rerun aus dem Debug-Inspector sendet zusaetzlich `debugStartStage`, zum Beispiel `kmeans`, `borderSegment` oder `facetReduce`.
 - Die Expo-Shell haelt fuer den zuletzt verwendeten `sourceToken` einen begrenzten nativen In-Memory-Cache mit Rohdaten fuer die aktive Pipeline. Im Legacy-Pfad sind das Decode-, K-Means-, ColorMap- und Raster-Zwischenstaende; im Fresh-Pfad sind es Decode, geglaettetes Bild, Token-Components, kompakte `Uint8`-Farblabelkarten, nicht redundant gespeicherte Region-Components und Markerpositionen. Diese Rohdaten werden nicht ueber die WebView serialisiert.
-- Fresh-Cache-Eintraege tragen eine Cache-Version, Source-Signatur und kumulative Stage-Signaturen aus Bildgroesse, Pipeline-Konstanten und allen relevanten Upstream-Settings. Ein fehlender oder unpassender Checkpoint invalidiert automatisch alle nachfolgenden Cache-Stufen. Dadurch ist ein Teil-Rerun mit geaenderter Farbanzahl oder Resize-Konfiguration nicht mehr mit alten Labelkarten kombinierbar.
+- Fresh-Cache-Eintraege tragen aktuell Version `9`, eine Source-Signatur und kumulative Stage-Signaturen aus Bildgroesse, Pipeline-/Geometrie-/Opening-Konstanten, Paintability-Profil, Gradientenband-Policy, Palette-Postcondition und allen relevanten Upstream-Settings. Ein fehlender oder unpassender Checkpoint invalidiert automatisch alle nachfolgenden Cache-Stufen. Dadurch ist ein Teil-Rerun mit geaenderter Farbanzahl, Resize-Konfiguration oder Paintability-Semantik nicht mehr mit alten Labelkarten kombinierbar.
 - Wiederverwendete Fresh-Checkpoints teilen unveraenderliche Typed-Array-Referenzen statt fuer jeden Rerun alle Vollbildpuffer erneut zu klonen. Die Shell behaelt maximal einen Fresh-/Legacy-Debug-Cache und verwirft den aeltesten Eintrag.
-- Beide aktiven Pipelinepfade liefern im Debug Mode Snapshots fuer alle zehn Bridge-Stufen von `decode` bis `svgRender`. Im Fresh-Pfad entspricht `kmeans` intern der kantenbewussten Glaettung plus detailabhaengiger Helligkeits-/Chroma-Tokenisierung; `borderSegment` ist dort ein optionaler source-aware Zusatzfilter vor dem Region-Build.
+- Beide aktiven Pipelinepfade liefern im Debug Mode Snapshots fuer alle zehn Bridge-Stufen von `decode` bis `svgRender`. Im Fresh-Pfad entspricht `kmeans` intern der kantenbewussten Glaettung plus detailabhaengiger Helligkeits-/Chroma-Tokenisierung; `borderSegment` ist dort die source-aware Cross-Opening/Protrusion-Pruning-Stufe vor dem Region-Build. Sie ist fuer Expert durch `classic-production` einmal aktiv und fuer Easy/Medium nur durch einen expliziten Zusatz-Run aktiv.
 - Wenn ein Rerun ab einer spaeteren Stage gestartet wird und der Cache noch vorhanden ist, werden vorherige Stufen aus dem Cache uebernommen und nur die gewaehlte Stage plus nachfolgende Stufen neu berechnet.
 - Wenn der Cache fehlt, faellt der Lauf automatisch auf die noetigen vorherigen Berechnungen zurueck.
 - Die React-UI bekommt nur JSON-sichere Debugdaten: Parameter, Metriken, Timings, Cache-Hit-Flags und kompakte PNG-Snapshots.
@@ -766,7 +781,7 @@ Im Fresh-Pfad:
 | `kmeans` | keine Fresh-spezifischen Editierparameter; zeigt Glaettung, Token-Raster/-zahl und Startregionen |
 | `colorMap` | `kMeansNrOfClusters`, `randomSeed` |
 | `narrowCleanup` | `narrowPixelStripCleanupRuns` als Zusatzdurchlaeufe auf zwei festen Fresh-Basisdurchlaeufen |
-| `borderSegment` | `nrOfTimesToHalveBorderSegments` als optionale weitere source-aware Beruhigung |
+| `borderSegment` | `nrOfTimesToHalveBorderSegments` als optionale source-aware Cross-Opening-Durchlaeufe fuer lange duenne Auslaeufer |
 | `facetReduce` | `removeFacetsSmallerThanImageRatio` als Mindestflaechen-Floor, `maximumNumberOfFacets` |
 
 Nicht alle Stufen haben aktuell editierbare Produktparameter. `facetBuild`, `borderTrace`, `labelPlacement` und `svgRender` zeigen daher vor allem Metriken und Snapshots. `kMeansMinDeltaDifference`, `nearIdenticalPaletteMergeLabDistance` und `mergeSimilarAdjacentRegions` bleiben derzeit Legacy-/Raster-Parameter.
@@ -800,6 +815,8 @@ Die Gewichtung im Fresh-Pfad:
 | borderTrace | 4% |
 | labelPlacement | 1% |
 | svgRender | 7% |
+
+Die Detailbeschreibungen in 7.1 bis 7.10 dokumentieren primaer den bisherigen Legacy-/Raster-Pfad, sofern ein Absatz nicht ausdruecklich Fresh nennt. Die abweichende aktive Fresh-Region-First-Semantik, insbesondere Tokenisierung, Geometrie-Merge und Paintability-Postcondition, steht gesammelt in 7.11.
 
 ### 7.1 Decode und Prepare
 
@@ -1143,7 +1160,7 @@ Aktuelle Varianten:
 | `coloredEdges` | Farbige Kanten | weisse Vorlage mit farbigen Grenzen |
 | `coloredEdgesWithDots` | Farbige Kanten + Punkte | weisse Vorlage mit farbigen Grenzen und Farbpunkten |
 | `circlesOnly` | Nur Farbpunkte | weisse Vorlage mit schwarzen Grenzen und Farbpunkten |
-| `numbers` | Nur Zahlen | weisse Vorlage mit schwarzen Grenzen und Zahlen |
+| `numbers` | Zahlen / Farbfallback | weisse Vorlage mit schwarzen Grenzen; passende Zahlen oder kleine Punkte in der Palettenfarbe |
 | `classic` | Klassisch farbig | posterisiertes Farbbild mit schwarzen Grenzen |
 | `debugUnlabeled` | Debug-Regionen | Region-IDs sichtbar eingefaerbt, keine Marker |
 
@@ -1172,7 +1189,7 @@ Im Fresh-Pipeline-Port haengt `App/App.tsx` im normalen Resultat nach den Genera
 
 Diese Vergleichsvarianten werden als PNG persistiert. Wenn die UI fuer eine dieser Varianten SVG speichern soll, nutzt sie den bestehenden `shareResultSvgFromPng`-Fallback und schreibt einen SVG-Container mit eingebettetem PNG. Im Debug Mode werden die Vergleichsvarianten weiterhin nicht angehaengt, weil die Stage-Snapshots dort die Pipeline-Diagnose uebernehmen und die Bridge-Payload kleiner bleiben soll.
 
-### 7.11 Experimentelle Region-First-Parallelpipeline
+### 7.11 Fresh Region-First-Pipeline
 
 Branch-Experiment vom 2026-07-07:
 
@@ -1195,34 +1212,116 @@ Der Ansatz startet bewusst nicht mit der produktiven Pixel-K-Means-Pipeline. Sta
 2. Im Python-Lab mit OpenCV `pyrMeanShiftFiltering` und Median-Filter Farbrauschen und weiche Uebergaenge kantenbewusst glaetten. Im App-Port wird dieser Schritt durch eine schnelle lokale kantenbewusste Glaettung ersetzt, weil OpenCV in der Expo-JS-Laufzeit nicht verfuegbar ist.
 3. Das geglaettete Bild in eine uebersegmentierte Farb-Tokenkarte aufteilen. Im Python-Lab passiert das per K-Means-Tokenkarte. Der App-Port quantisiert eine schnelle RGB-abgeleitete Helligkeitsachse und zwei Chroma-Achsen. Easy nutzt `10 x 5 x 5`, Medium `14 x 7 x 7` und Expert `18 x 9 x 9` Token-Bins. So bleiben auch niedrig kontrastierende, aber grossflaechige KI-Facets getrennte Startregionen.
 4. Per Connected Components aus den Tokenkarten zusammenhaengende Regionen bauen.
-5. Pro Region die mittlere Farbe berechnen und darauf eine gewichtete 24-Farb-Palette lernen. Die Gewichtung nutzt `area^0.78`, damit grosse Flaechen stabil bleiben, kleine Detailregionen aber nicht komplett gegen grosse Hintergruende verlieren.
+5. Pro Region die mittlere Farbe berechnen und darauf eine auf `kMeansNrOfClusters` begrenzte Zielpalette lernen, im Produkt also 8, 12 oder 24 Farben. Die Gewichtung nutzt `area^0.78`, damit grosse Flaechen stabil bleiben, kleine Detailregionen aber nicht komplett gegen grosse Hintergruende verlieren.
 6. Das Ziel-Farb-Labelbild mit einem source-aware Mehrheitsfilter stabilisieren. Ein Pixel darf nur zur lokalen Mehrheitsfarbe wechseln, wenn diese Zielpalette fuer die lokale KI-Quellfarbe nicht deutlich schlechter passt. Im App-Port laufen zwei feste Basisdurchlaeufe; `narrowPixelStripCleanupRuns` kann weitere Durchlaeufe addieren.
-7. Vor dem Region-Build kann `nrOfTimesToHalveBorderSegments` als optionaler weiterer source-aware Beruhigungsdurchlauf angewendet werden. Der aktuelle UI-Default ist `0`.
-8. Sehr kleine Restregionen source-aware mergen. Bewertet wird nicht nur Palette-zu-Palette, sondern die LAB-Distanz zwischen der lokalen KI-Quellfarbe der Region und dem moeglichen Ziel. Merge-Batches sperren jede Zielregion fuer den aktuellen Pass; dadurch koennen zwei kleine Nachbarn ihre Labels nicht mehr gegenseitig tauschen oder zwischen Durchlaeufen oszillieren.
-9. Wenn kein farblich plausibler Nachbar existiert, darf eine relevante kleine Region auf die naechstpassende globale Zielpalettenfarbe wechseln. Dieser Fallback ist auf Detailschutzgroesse oder kontrastreiche Speckles ab `18 px` begrenzt, damit Hintergrundtextur nicht als tausende Mikrokonturen stehen bleibt.
-10. Leere K-Means-Cluster werden waehrend des Palettenlernens deterministisch mit einer weit entfernten gewichteten Quellregion neu initialisiert. Fehlende Zielpalettenfarben werden vor der finalen Palette-Neuberechnung nur dann reaktiviert, wenn die fehlende Farbe absolut innerhalb des LAB-Limits liegt, die Quellregion gegenueber ihrem aktuellen Label messbar verbessert und keine andere Farbe komplett geleert wird. Kann diese Qualitaetsbedingung nicht erfuellt werden, darf die Ausgabe bewusst weniger als die angeforderte Farbanzahl nutzen.
-11. Echte Speckles unter `48 px` werden in einem finalen Cleanup bevorzugt entfernt; kontrastreiche Details koennen ab `18 px` geschuetzt bleiben.
-12. Easy prueft danach hoechstens zwoelf kompakte, umschlossene Hochkontrast-Landmarks aus der urspruenglichen Tokenkarte. Im Cleanup verlorene Kandidaten werden mit der naechsten bereits vorhandenen 8er-Palettenfarbe restauriert; es wird keine neue Farbe erzeugt.
-13. Wenn `maximumNumberOfFacets` groesser als `0` ist, erzwingt der Fresh-Port danach dasselbe Flaechenbudget mit stabilen, kostenbewerteten Merge-Batches. Die Debug-Metriken zeigen Budget-Merges, restaurierte Landmark-Anzahl/-Pixel und Budgetstatus explizit.
-14. Markerpositionen werden per lokaler Distance Transform am breitesten Innenpunkt jeder finalen Region bestimmt. Der Kreisradius wird sowohl von der Regionflaeche als auch vom gemessenen Innenabstand begrenzt, damit Marker bei duennen oder konkaven Formen nicht in Nachbarregionen ragen.
-15. PNG-Ausgaben werden aus dem gecachten globalen Boundary-Mask-Layer gerendert. Zwischen teuren Stufen, Merge-Paessen und Varianten gibt der Kern die JS-Event-Loop frei und prueft, ob der Lauf durch einen neueren Request abgeloest wurde.
-16. Jede Fresh-Variante erhaelt zusaetzlich ein echtes SVG aus Vektor-Fuellpfaden, zusammengefassten horizontalen/vertikalen Boundary-Pfaden und optionalen `<circle>`-Markern. Fresh-SVGs enthalten kein eingebettetes Base64-PNG mehr.
+7. Vor dem Region-Build kann die Pipeline source-aware Radius-1-Cross-Openings ausfuehren. Kandidaten werden gleichzeitig und richtungsweisend aus stabilen Nachbarpixeln aufgefuellt; nach hoechstens 24 Refill-Runden endet ein Durchlauf. `nrOfTimesToHalveBorderSegments` addiert optionale Runs zum jeweiligen Profil. Der UI-Default ist `0`, `classic-production` aktiviert fuer Expert trotzdem genau einen fruehen Run im Modus `unrestricted`. Anders als das alte globale Palette-Mask-Opening erzwingt dieser Run keine Aenderung gegen den Source-Fit.
+8. Jeder Connected-Component-Aufbau berechnet zugleich Perimeter, Cross-Core, Bounding Box und hydraulischen Durchmesser. Eine Region ist hard-unpaintable, wenn sie keinen Pixel mit vier direkten gleichfarbigen Nachbarn besitzt und zusaetzlich (`area / max(bboxWidth, bboxHeight) <= 2.5` oder `4A/P <= 5`) gilt. Diese Kandidaten ignorieren Flaechen-/Kontrastschutz und muessen in ein benachbartes Label mergen. Soft-thin gilt nur fuer `area <= 2 * referenceArea`, Bounding-Box-Dicke `<= 5.5` und `4A/P <= 11`; Expert verwendet als `referenceArea` bewusst den niedrigen Fresh-Basiswert und nicht den produktiven `0.0003`-Merge-Floor. Ausserhalb des bestehenden Force-Merges fuer echte Speckles unter `48 px` bleibt der Source-Fit-Guard aktiv.
+9. Fuer Geometriekandidaten werden gemeinsame Grenzlaengen pro Ziellabel aggregiert. Der Kern bewertet den festen Paletten-Fit nach dem Scale-Set-aehnlichen Inkrement `A * (d_target^2 - d_current^2) / (2 * sharedBoundary)` und bevorzugt bei aehnlichem Fit viel gemeinsame Grenze. Wenn das rechnerisch beste Nachbarziel einen Guard verletzt, werden die weiteren sortierten Nachbarziele geprueft, statt die Region sofort unveraendert zu lassen. Geometriekandidaten duerfen nie nur global auf ein nicht benachbartes Label wechseln, weil das ihre Form nicht entfernen wuerde. Dieser globale Fallback bleibt auf kompakte relevante Detailkandidaten begrenzt. Merge-Batches sperren Ziele gegen gegenseitigen Labeltausch und Oszillation.
+10. `classic-production` erkennt zusaetzlich duenne Gradienten-Zwischenbaender. Ein Kandidat muss bei Referenzgroesse hoechstens `10 px` mittlere Bounding-Box-Dicke oder `20 px` hydraulischen Durchmesser, mindestens `24 px` Laengsspanne, Elongation `>= 4` und hoechstens `0.8 %` Bildflaeche besitzen. Die Pixelgrenzen skalieren mit der Arbeitsaufloesung. Entweder liegt die reale mittlere Quellfarbe nahe an einem dominanten Nachbarn, oder zwei ausreichend lange Boundary-Kontakte muessen geometrisch auf gegenueberliegenden Seiten liegen und die Quellfarbe muss nahe auf der LAB-Verbindungslinie der beiden Nachbarn liegen. Der Merge darf den Source-Fit maximal um `12 LAB` verschlechtern. So kann ein vom KI-Gradienten erzeugtes Zwischenband verschwinden, waehrend eine kontrastreiche semantische Linie erhalten bleibt.
+11. Echte Speckles unter `48 px` werden bevorzugt entfernt; kontrastreiche kompakte Details koennen ab `18 px` geschuetzt bleiben. Easy prueft danach hoechstens zwoelf kompakte, umschlossene Hochkontrast-Landmarks aus der urspruenglichen Tokenkarte. Hard-unpaintable Quellformen sind ausgeschlossen; gueltige verlorene Kandidaten werden nur mit einer vorhandenen 8er-Palettenfarbe restauriert.
+12. `classic-production` besitzt eine separate, streng begrenzte Expert-Detailrestauration aus der urspruenglichen Tokenkarte. Kandidaten muessen kompakt, ausreichend gefuellt und umschlossen, kontrastreich sowie nicht hard-unpaintable sein. Hoechstens sechs verlorene Whole-Source-Components und insgesamt hoechstens `1.5 %` der Bildpixel duerfen mit einer vorhandenen Palettenfarbe restauriert werden, die an der Zielstelle noch nicht angrenzt und sowohl zur Quelle als auch zum aktuellen Output ausreichend differenziert ist. Danach entfernt ein Merge mit Flaechenfloor `0` ausschliesslich neu entstandene hard-unpaintable Reste. Das Verfahren ist form- und kontrastbewusst, aber nicht semantisch; deshalb ist der bedeutungsgewichtete Expert-KI-Prompt der primaere Schutz fuer Kopf, Gesicht, Mund und andere Identitaetsmerkmale.
+13. Wenn `maximumNumberOfFacets` groesser als `0` ist, erzwingt der Fresh-Port das Flaechenbudget mit stabilen, kostenbewerteten Merge-Batches. Im Expert-Profil laufen die sichere Gradientenband-Erkennung und die normalen Region-Merges in zwei getrennten Phasen mit je hoechstens einem Band-Pass; dazwischen liegt ein source-aware Majority-Schritt. Das Budget wird nach einer Expert-Detailrestauration bei Bedarf erneut geprueft. Ein mehrfach kaskadierendes oder terminal erzwungenes Opening ist dort deaktiviert, weil die aggressiveren Kandidaten im Korpus zwar noch ruhigere Bilder, aber unvertretbar viel semantische Quellkante entfernten. Whole-Region-Merges, die harte Facet-Grenze sowie die abschliessenden Assertions fuer null hard-unpaintable Regionen und exakte Palettennutzung bleiben aktiv. Easy und Medium behalten die bisherige terminale attached-opening-Stabilitaetspruefung. Debug-Metriken zeigen Profil, Geometrie-/Gradientenband-Merges, Expert-Detailkandidaten/-restauration/-reparatur, hard-/soft-thin Reste, Opening-Aenderungen, erzwungene Paletten-Reaktivierungen, Budget-Merges und Budgetstatus.
+14. Leere K-Means-Cluster werden waehrend des Palettenlernens deterministisch mit einer weit entfernten gewichteten Quellregion neu initialisiert. Nach allen Geometrieaenderungen stellt `ensureTargetPaletteUsage()` die Zielpalettennutzung zweistufig wieder her: zuerst nur bei streng plausiblem LAB-Gewinn, danach bei Bedarf mit einem deterministischen kapazitaetsbewussten Fallback. Auch der Fallback labelt ausschliesslich eine vollstaendige bereits existierende, malbare Komponente um und splittet keine Pixelgeometrie. Gefordert werden `min(learnedPaletteCount, finalComponentCount)` genutzte Farben; im normalen Expert-Korpus sind das exakt 24. Eine Assertion prueft diese Invariante auch bei Cache-Wiederverwendung.
+15. Marker- und Nummernpositionen werden per lokaler Distance Transform am breitesten Innenpunkt jeder finalen Region bestimmt. Die anschliessende Kreisgroesse uebernimmt die bewaehrte Logik der bisherigen Pipeline und wird gemeinsam von Regionflaeche, gemessenem Innenabstand und Laenge der Farbnummer begrenzt, damit Marker und Zahlen bei duennen oder konkaven Formen nicht in Nachbarregionen ragen.
+16. PNG-Ausgaben werden aus dem gecachten globalen Boundary-Mask-Layer gerendert. Horizontale und vertikale Nachbarschaftstests markieren ihre Grenzpixel unabhaengig; dadurch erzeugt eine nur rechts oder nur unten liegende Grenze keine zusaetzliche orthogonale „Ghost“-Linie mehr. Zwischen teuren Stufen, Merge-Paessen und Varianten gibt der Kern die JS-Event-Loop frei und prueft, ob der Lauf durch einen neueren Request abgeloest wurde.
+17. Jede Fresh-Variante erhaelt zusaetzlich ein echtes SVG aus Vektor-Fuellpfaden, zusammengefassten horizontalen/vertikalen Boundary-Pfaden und optionalen `<circle>`-/`<text>`-Markern. Fresh-SVGs enthalten kein eingebettetes Base64-PNG mehr. `numbers` schreibt Text nur dann, wenn er sicher in die Region passt, und nutzt andernfalls einen kleinen Punkt in der Palettenfarbe. `brightColorCircles` und `colorCircles` behalten stattdessen ihren normal skalierten Farbkreis und lassen bei zu kleiner Innenflaeche nur die Zahl weg.
+
+Fuer die Qualitaetsentscheidung ist seit 2026-07-15 `classic` die primaere visuelle Zielvariante: Erst die schwarzen gemeinsamen Grenzen zeigen, ob eine Farbregion wirklich klar zugeordnet und praktisch ausmalbar ist oder ob ein schmaler Gradient als doppelte Kontur erscheint. `cleanColor` bleibt wichtig, aber nur als Diagnose fuer Motivnaehe, Palette und Flaechenfuellung. Eine Verbesserung gilt nicht mehr allein deshalb als produktreif, weil Fresh Clean dem KI-Bild pixelnah folgt.
 
 Aktuelle App-Ausgabevarianten des TypeScript-Ports:
 
-- `cleanColor`: Fresh Clean, farbige Region-First-Ausgabe ohne Grenzen oder Marker. Diese Variante ist der Default im normalen Fresh-Port.
+- `brightColorCircles`: helle Farbflächen mit schwarzen Grenzen und Farbpunkten; Farbnummern werden innerhalb ausreichend grosser Marker geschrieben. Diese aus der bisherigen Pipeline uebernommene Produktbelegung ist die Default-Variante des Fresh-Ports.
+- `colorCircles`: originale Farbflächen mit schwarzen Grenzen und Farbpunkten; Farbnummern innerhalb ausreichend grosser Marker.
+- `cleanColor`: Fresh Clean, farbige Region-First-Ausgabe ohne Grenzen oder Marker.
 - `coloredEdges`: weisse Vorlage mit farbigen Regionenkanten.
 - `coloredEdgesWithDots`: weisse Vorlage mit farbigen Regionenkanten und Farbpunkten pro finaler Region.
 - `circlesOnly`: weisse Vorlage mit schwarzen Regionenkanten und Farbkreisen pro finaler Region.
+- `numbers`: weisse Vorlage mit schwarzen Regionenkanten; eine Farbnummer, wenn sie sicher passt, sonst ein kleiner Punkt in der Palettenfarbe.
+- `classic`: farbige Region-First-Ausgabe mit schwarzen Grenzen.
+- `debugUnlabeled`: deterministisch unterscheidbar eingefaerbte finale Regionen mit schwarzen Grenzen und ohne Marker.
 
-Fuer Debug-Reruns bleibt `classic` als interne Variante verfuegbar, wenn `variantIds: ['classic']` angefordert wird. Sie wird im normalen Output nicht mehr angeboten.
+Jede dieser neun Fresh-Generatorvarianten liefert `pngBase64` und ein echtes Vektor-`svg`. Farbfuellungen werden als zeilenweise zusammengefasste Vektorpfade geschrieben, gemeinsame Grenzen als eindeutige horizontale/vertikale Pfade, Farbpunkte als `<circle>` und Nummern als `<text>`. Dadurch wird kein Base64-PNG doppelt im SVG gehalten und der Export bleibt frei skalierbar. Die Raster-PNGs zeichnen Zahlen mit einer eingebetteten deterministischen 5-x-7-Glyphe, damit sie nicht von Plattformfonts abhaengen.
 
-Jede dieser vier Fresh-Generatorvarianten liefert `pngBase64` und ein echtes Vektor-`svg`. Farbfuellungen werden als zeilenweise zusammengefasste Vektorpfade geschrieben, gemeinsame Grenzen als eindeutige horizontale/vertikale Pfade und Farbpunkte als `<circle>`. Dadurch wird kein Base64-PNG doppelt im SVG gehalten und der Export bleibt frei skalierbar. Nummern, echte Textlabels und die vollstaendige alte Variantenliste sind im TypeScript-Port weiterhin nicht implementiert.
+Die Wahl der Render-Variante veraendert die zuvor berechnete Fresh-Segmentierung nicht. Ein verbleibender Renderunterschied ist bewusst dokumentiert: Die bisherige Pipeline traced und glaettet gemeinsame Grenzen und rendert PNGs supersampled; Fresh schreibt weiterhin zeilenweise Raster-Fuellpfade und horizontale/vertikale Boundary-Segmente. Fresh liefert damit echte skalierbare Vektoren und vollstaendige Produktvarianten, erreicht bei schraegen oder stark gekruemmten Konturen aber noch nicht dieselbe visuelle Kantenglaette wie der bisherige Renderer.
 
-Der wichtigste Unterschied zur produktiven Pipeline:
+Baseline-Vergleich Fresh gegen bisherige Pipeline vom 2026-07-14, noch vor der finalen Geometrie-/Protrusion-Haertung:
 
-- Produktiv: Pixel zuerst auf Zielpalette per LAB-K-Means reduzieren, danach Facets bauen und bereinigen.
-- Experiment: Regionen zuerst als Formtraeger erzeugen, danach die Zielpalette auf Regionsebene lernen und lokale Restinseln bereinigen.
+- reproduzierbare Suite: `pipeline-lab/suites/2026-07-14-fresh-vs-legacy-final.json`
+- Ergebnislauf nach Wiederherstellung des Expert-Paintability-Floors: `pipeline-lab/runs/2026-07-14T20-13-11-265Z_2026-07-14-fresh-vs-legacy-final/`
+- 11 KI-Bilder je Schwierigkeitsgrad, jeweils Fresh und Legacy, damit 66 Generatorlaeufe
+- identische Arbeitskante von maximal 1400 px; verglichen wurde `cleanColor`, um Segmentierung und Palette ohne Kontur-/Markerunterschiede zu beurteilen
+
+| Preset | Pipeline | Mittel Laufzeit | Mittel Regionen | Regionenbereich | Palettenbereich | mittlere RGB-MAE zum vorbereiteten KI-Bild |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| Easy 8 | Fresh | 533 ms | 66,6 | 29-184 | 8-8 | 4,160 |
+| Easy 8 | Legacy | 713 ms | 68,3 | 28-192 | 8-8 | 6,158 |
+| Medium 12 | Fresh | 558 ms | 184,6 | 71-359 | 12-12 | 4,641 |
+| Medium 12 | Legacy | 784 ms | 186,4 | 50-358 | 10-12 | 7,210 |
+| Expert 24 | Fresh | 813 ms | 864,1 | 231-1866 | 24-24 | 7,476 |
+| Expert 24 | Legacy | 1158 ms | 1408,3 | 459-2560 | 15-24 | 9,207 |
+
+Historischer Clean-orientierter Zwischenstand vom 2026-07-14 gegen genau diese Fresh-Baseline:
+
+- damaliger `cleanColor`-Nachweis der terminalen Fixpunktfassung: `pipeline-lab/runs/2026-07-14T21-51-52-494Z_2026-07-14-fresh-vs-legacy-final/`
+- [damaliger vollstaendiger Easy-/Medium-/Expert-Neun-Varianten-Kontaktbogen](../pipeline-lab/runs/2026-07-14T22-07-09-834Z_2026-07-14-fresh-vs-legacy-final/contact-sheet.html)
+- Analyse: `App/scripts/analyze-pipeline-paintability.mjs`
+- die Paintability-Metriken sind reproduzierbare Proxies aus 4-zusammenhaengenden Regionen mit exakt gleicher 8-Bit-RGB-Farbe; `2A/P` ist die effektive Perimeterbreite und `weak px` zaehlt lokal sehr schwach angebundene Auslaeuferpixel
+
+| Preset | Regionen vorher -> final | ohne Cross-Core vorher -> final | `2A/P <= 2.5` vorher -> final | `weak px` vorher -> final | RGB-MAE vorher -> final | finale Palette |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Easy 8 | 66,6 -> 62,9 | 11 -> 0 | 64 -> 49 | 1353 -> 1155 | 4,160 -> 4,175 | exakt 8 |
+| Medium 12 | 184,6 -> 170,4 | 13 -> 0 | 173 -> 86 | 3567 -> 3100 | 4,641 -> 4,685 | exakt 12 |
+| Expert 24 | 864,1 -> 813,6 | 31 -> 0 | 493 -> 308 | 17676 -> 15046 | 7,476 -> 7,636 | exakt 24 |
+
+In diesem damaligen Zwischenstand blieben ueber alle 33 Easy-/Medium-/Expert-Ausgaben null Regionen ohne malbaren Cross-Core; die damalige Runtime-Postcondition pruefte zusaetzlich, dass keine vom begrenzten Opening weiter entfernbare attached protrusion uebrig blieb. Medium reduzierte den strengen Duennheits-Proxy um `50 %`, Expert um `38 %`; bei Expert sanken zusaetzlich Regionen mit Bounding-Box-Dicke `<= 5.5` von 1095 auf 647 (`-41 %`). Gegenueber dem verworfenen 18-Pixel-Expert-Floor fiel die mittlere Regionenzahl von 1504,7 auf 813,6 (`-46 %`). Der RGB-MAE-Anstieg blieb bei Easy unter `0,4 %`, bei Medium unter `1 %` und bei Expert rund `2,1 %` gegenueber der wiederhergestellten 72-Pixel-Baseline. Alle 33 Zielpaletten blieben exakt bei 8/12/24 Farben. Die spaetere `classic`-Pruefung zeigte jedoch, dass diese Cross-Core-/Clean-Proxies zu viele duenne und doppelt konturierte Expert-Flaechen durchliessen.
+
+Der mit diesem `cleanColor`-Nachweis pixelidentische Timing-Wiederholungslauf `pipeline-lab/runs/2026-07-14T21-56-14-540Z_2026-07-14-fresh-vs-legacy-final/` benoetigte im gleichen Lab im Mittel rund `870 ms` (Easy), `902 ms` (Medium) und `1230 ms` (Expert). Diese Werte dokumentieren den historischen Zustand und sind keine aktuelle Laufzeitmessung von `classic-production`.
+
+Produktionsentscheidung vom 2026-07-15 mit `classic` als Ziel:
+
+- Richtungsreferenz war der Nachmittagsstand `pipeline-lab/runs/2026-07-14T20-30-19-659Z_2026-07-14-fresh-vs-legacy-final/` mit einem fruehen Opening, aber noch ohne ausreichende Classic-Beruhigung.
+- Reproduzierbare Finalisten-Suite: `pipeline-lab/suites/2026-07-15-expert-classic-safe-finalists.json`
+- Der erste sichere Produktionsstand `0.0008` liegt historisch unter `pipeline-lab/runs/2026-07-15T20-07-45-167Z_2026-07-15-expert-classic-safe-finalists/`. Er war gut malbar, wurde nach Nutzervergleich aber als zu stark vereinfacht bewertet.
+- Reproduzierbarer historischer Direktvergleich des bisherigen `0.0006`-Stands gegen `0.0005` ohne Restaurierung und den damaligen produktiven `0.0005`-Default mit begrenzter Expert-Detailrestaurierung: `pipeline-lab/suites/2026-07-15-expert-semantic-detail-restoration.json`
+- [aktueller Drei-Spalten-Vergleich mit allen 11 Classic-Ausgaben](../pipeline-lab/runs/2026-07-15T21-04-24-347Z_2026-07-15-expert-semantic-detail-restoration/index.html)
+- [Classic-/Clean-Kontaktbogen](../pipeline-lab/runs/2026-07-15T21-04-24-347Z_2026-07-15-expert-semantic-detail-restoration/contact-sheet.html)
+- Analyse: `App/scripts/analyze-classic-paintability.mjs`; vollstaendiger Report: `pipeline-lab/runs/2026-07-15T21-04-24-347Z_2026-07-15-expert-semantic-detail-restoration/classic-paintability.json`
+- Der damalige Expert-Default lag bei `0.0005` und restaurierte danach hoechstens sechs verlorene kompakte Expert-Quellformen mit bereits vorhandenen Palettenfarben.
+
+| Classic-Metrik, 11 Expert-Bilder | vorheriger Fresh-Stand | `classic-production` | Aenderung |
+| --- | ---: | ---: | ---: |
+| Regionen gesamt | 8950 | 3157 | `-64,7 %` |
+| mittlere Regionen pro Bild | 813,64 | 287,00 | `-64,7 %` |
+| Boundary-Dichte | `8,61 %` | `5,50 %` | `-36,1 %` |
+| sichtbarer Classic-Grenz-Footprint | `27,19 %` | `18,12 %` | `-33,4 %` |
+| gewichteter schwarzer Ink-Anteil | `13,46 %` | `8,77 %` | `-34,8 %` |
+| Regionen mit weniger als 50 % erhaltener Farbfuellung | 5573 | 859 | `-84,6 %` |
+| R5-coreless, niedrig kontrastierend | 1015 | 22 | `-97,8 %` |
+| niedrig kontrastierende Doppelkontur-Laenge | `20,76 %` | `5,04 %` | `-75,7 %` |
+| Output-Grenzen ohne Quellunterstuetzung unter `8 LAB` | `49,07 %` | `41,19 %` | `-16,1 %` relativ |
+| Recall starker Quellkanten ab `12 LAB` | `84,37 %` | `73,62 %` | `-10,75 pp` |
+| Recall starker Quellkanten ab `16 LAB` | `86,71 %` | `79,51 %` | `-7,20 pp` |
+| genutzte Farben | 24 in allen 11 | 24 in allen 11 | stabil |
+
+Das Fokusbild `img-1644` faellt gegenueber dem alten komplexen Fresh-Stand von 1789 auf 399 Regionen; sein sichtbarer Classic-Grenz-Footprint sinkt von `49,64 %` auf `26,73 %`, die Zahl niedrig kontrastierender R5-coreless Regionen von 315 auf 4 und der Doppelkontur-Anteil von `32,53 %` auf `8,67 %`. Gegenueber dem zwischenzeitlichen `0.0008`-Default behaelt die Revision ueber alle Bilder `14,0 %` mehr Regionen und gewinnt `1,79` beziehungsweise `1,41` Prozentpunkte Recall starker Quellkanten; der niedrig kontrastierende Doppelkontur-Anteil steigt moderat von `3,68 %` auf `5,04 %`, bleibt aber weit unter den alten `20,76 %`. Visuell gewinnt `0.0006` bei etwa sieben bis acht der elf Motive sinnvolles Motiv- oder Schattierungsdetail. `img-1681` gewinnt vor allem Grasstruktur und `img-1852` mehr schmale Fellbaender; diese zwei bleiben die bewusst dokumentierten Vorsichtsmotive. Alle 11 Motive wurden erneut im direkten Classic-Vergleich geprueft.
+
+Die anschliessende Detailrevision senkt den Expert-Floor auf `0.0005` und ergaenzt eine auf sechs Whole-Source-Components beziehungsweise `1.5 %` Bildflaeche begrenzte Detailrestaurierung. Gegenueber `0.0006` steigt die Gesamtzahl ueber elf Bilder von 3157 auf 3492 (`+10,6 %`), der Classic-Grenz-Footprint nur von `18,12 %` auf `18,66 %` und der Ink-Anteil von `8,77 %` auf `9,04 %`. Der Recall starker Quellkanten steigt von `73,62 %` auf `74,90 %` ab `12 LAB` und von `79,51 %` auf `80,55 %` ab `16 LAB`. Der reine `0.0005`-Kontrolllauf besitzt 3403 Regionen; die Restaurierung selbst fuegt damit nur `2,6 %` hinzu und ist kein allgemeiner Textur-Rueckbau. Alle 11 Ausgaben bleiben bei exakt 24 Farben.
+
+Produktionsrevision vom 2026-07-16 fuer die detailreicheren Expert-KI-Bilder:
+
+- Der Nutzervergleich zeigte, dass der erneuerte Expert-Prompt die KI-Zwischenbilder passend detailliert erzeugt, `facetReduce` mit dem damaligen `0.0005`-Floor davon im Classic aber weiterhin zu viel zusammenfasste.
+- Die isolierte Fuenf-Wege-Suite pruefte `0.0005`, `0.0004`, `0.00035`, `0.0003` und `0.00025` auf denselben elf neuen Expert-KI-Bildern. `0.0003` war visuell der beste Mittelweg: erkennbare Laub-, Geaest-, Fell- und Bodenstrukturen kehren zurueck; `0.00025` fuegt danach ueberwiegend kleinteilige Kontur und Malaufwand hinzu.
+- Der aktuelle Default liegt deshalb bei `0.0003`; Gradient-Band-Guards, Soft-thin-Basis, 24-Farben-Ziel, Facet-Budget und die begrenzte Expert-Detailrestaurierung bleiben unveraendert.
+- Gegenueber dem vorherigen produktiven `0.0005`-Stand auf genau diesen elf Bildern steigt die Regionenzahl von 3005 auf 3782 (`+25,9 %`). Der sichtbare Classic-Grenz-Footprint steigt moderat von `17,06 %` auf `18,23 %`, der schwarze Ink-Anteil von `8,24 %` auf `8,82 %`. Gleichzeitig sinkt RGB-MAE zum KI-Bild von `7,912` auf `7,510`; der Recall starker Quellkanten steigt von `78,20 %` auf `81,15 %` ab `12 LAB` und von `83,47 %` auf `85,47 %` ab `16 LAB`.
+- Alle elf finalen Ergebnisse verwenden exakt 24 Farben und besitzen null finale Regionen ohne malbaren Cross-Core. Die reine `0.0003`-Geometrie hatte 3698 Regionen; die weiterhin begrenzte Detailrestaurierung fuegt 84 Regionen beziehungsweise `2,3 %` hinzu.
+- Kandidatenvergleich: `pipeline-lab/runs/2026-07-16T19-12-47-549Z_2026-07-16-expert-new-prompt-detail-retention/`; finaler Produktionsnachweis: `pipeline-lab/runs/2026-07-16T19-18-33-470Z_2026-07-16-expert-new-prompt-detail-retention-final/`.
+
+Damit ist Fresh fuer die aktuelle Produktbasis die bessere Segmentierungs-/Palettenpipeline: Easy und Medium behalten den validierten bisherigen Fresh-Pfad; Expert verwendet die neue Classic-first-Policy und liegt im aktuellen Korpus weit unter Legacy- und altem Fresh-Regionenniveau, bei stabilen 24 Farben. Legacy bleibt beim finalen Rendering durch getracete/geglaettete Grenzen und supersampled PNGs sichtbar staerker. Aus Legacy wurden Variantenbelegung, Nummernsemantik mit Farbfallback, deterministische Rasterziffern und die flaechen-/innenabstandsabhaengige Markergroesse uebernommen. Vom alten/Python-Cleanup wurden die Ideen eines echten morphologischen Openings, ganzer duenn bewerteter Regionen und der Praeferenz fuer viel gemeinsame Nachbargrenze adaptiert. Das alte globale Palette-Mask-Protrusion-Pruning und ein aggressiver terminaler Fixpunkt wurden nicht wortgetreu uebernommen, weil sie semantische duenne Strukturen loeschen. Die produktive Fassung kombiniert diese Ideen stattdessen mit Quellfarben-Guards, echter Gegenueber-Geometrie, begrenzten Passzahlen, Whole-Component-Palettenrestauration und harten Postconditions.
+
+Der wichtigste algorithmische Unterschied zur bisherigen Legacy-Pipeline:
+
+- Legacy: Pixel zuerst auf Zielpalette per LAB-K-Means reduzieren, danach Facets bauen und bereinigen.
+- Fresh: Regionen zuerst als Formtraeger erzeugen, danach die Zielpalette auf Regionsebene lernen und lokale Restinseln bereinigen.
 
 Der urspruengliche Basis-Referenzlauf nutzt die vier Expert-Testbilder aus `prompt-lab/runs/2026-07-07T12-27-30-697Z_2026-07-07-test-images-current-expert-paint-map/`. Ergebnis:
 
@@ -1244,7 +1343,7 @@ Der source-aware Vergleichslauf vom 2026-07-07 nutzt dieselben vier Expert-KI-Bi
 | `img-1704` | 24 | 2868 | 25 px | 15.28 | 14.50 |
 | `img-1998` | 24 | 1514 | 4 px | 6.10 | 5.89 |
 
-Wichtige Interpretation: `cleanColor` bleibt messbar naeher am KI-Bild und die Ziel-Farbanzahl wird in den vier Lab-Referenzen eingehalten. Der Specht-Fall (`img-1704`) nutzt jetzt wieder 24/24 Farben statt 23/24. Der Preis ist eine hoehere Regionenzahl, vor allem in detailreichen Naturhintergruenden. Im App-Port greift fuer Expert danach `maximumNumberOfFacets = 2600`, sodass solche Ausreisser weiter source-aware budgetiert werden. Edge-/Classic-Ausgaben koennen bei stark texturierten Motiven weiterhin viele kleine Konturen zeigen; das bleibt ein bekanntes Parity-/Paintability-Risiko.
+Historische Interpretation dieses 2026-07-07-Laufs: `cleanColor` blieb messbar naeher am KI-Bild und die Ziel-Farbanzahl wurde in den vier Lab-Referenzen eingehalten. Der Specht-Fall (`img-1704`) nutzte 24/24 Farben statt 23/24. Der Preis war eine hoehere Regionenzahl, vor allem in detailreichen Naturhintergruenden. Die aktuelle Expert-Produktion bewertet solche Ergebnisse zusaetzlich im `classic`-Render und reduziert niedrig kontrastierende Texturkonturen wesentlich staerker.
 
 ### 7.12 Fresh-TypeScript-Regression und Pipeline-Lab
 
@@ -1256,12 +1355,21 @@ Schnelle synthetische Regression:
 - prueft Einfarbbild ohne erfundene Palettenfarben
 - prueft den frueher moeglichen Zwei-Regionen-Labeltausch
 - prueft vier niedrig kontrastierende, im alten RGB-Raster kollidierende Grossfacets und die harte 24-Farben-Grenze
+- prueft auf einem kontrastreichen `6 x 6 px`-Expert-Mikromosaik, dass kleine Facets konsolidiert werden; der verworfene `18 px`-Floor liess dort alle 1120 Facets bestehen, der wiederhergestellte Floor muss unter 500 bleiben
+- prueft, dass lange isolierte 1- und 2-Pixel-Streifen auch oberhalb des Expert-Flaechenfloors nicht als eigene unmalbare Regionen ueberleben
+- prueft den Opening-Kern direkt mit einem 2-Pixel-Auslaeufer an einer malbaren Hauptflaeche: Der Auslaeufer muss verschwinden, der Cross-Core erhalten bleiben
+- prueft, dass ein duennes Isthmus zwischen zwei erhaltenen Cores nicht getrennt wird und dass der terminale Opening-Endzustand idempotent ist
+- prueft die Konvergenzgrenze explizit: sechs veraendernde Runden sind erlaubt, danach muss die nur lesende Pruefung stabil sein; eine notwendige siebte Mutation wird abgelehnt
 - prueft ein nur `3 x 3 px` grosses Easy-Auge, das nach dem normalen Cleanup mit einer vorhandenen Palettenfarbe restauriert werden muss, ohne eine neunte Farbe zu erzeugen
 - prueft das harte Flaechenbudget auf einem Checkerboard-Worst-Case
 - prueft monotone Fortschrittswerte und deterministische Ergebnis-Hashes
 - prueft einen Marker pro finaler Region
+- prueft, dass die `numbers`-SVG-Variante jede finale Region entweder mit passendem `<text>` oder mit einem kleinen Punkt in der Palettenfarbe abdeckt
 - prueft, dass Fresh-SVGs Vektorgeometrie statt eingebetteter PNGs enthalten
 - prueft, dass ein inkompatibler Debug-Cache-Rerun dasselbe Ergebnis wie ein kompletter sauberer Lauf liefert
+- prueft die exakte PNG-Boundary-Maske mit unabhaengigen horizontalen und vertikalen Nachbarschaftstests gegen die fruehere orthogonale Ghost-Line-Regression
+- prueft die zweistufige exakte Palettenrestauration direkt: eine vollstaendige Komponente wird umgelabelt, ohne die Boundary-Maske zu veraendern
+- prueft bei 512 und 1024 px Arbeitsbreite, dass ein niedrig kontrastierendes Gradienten-Sandwich kollabiert, eine kontrastreiche semantische Linie aber erhalten bleibt
 
 Stufendiagnose fuer ein bereits vorbereitetes PNG:
 
@@ -1277,7 +1385,11 @@ Realer Korpuslauf ueber den vorhandenen Pipeline-Lab-Runner:
 - `App/scripts/pipeline-lab-runtime.ts` routet pro Config ueber `pipeline: "fresh"` oder `pipeline: "legacy"`.
 - Fresh-Configs werden vor der Bildvorbereitung auf die echte Arbeitskante von `1400 px` begrenzt.
 - Der Report persistiert PNG und echte SVG-Ausgaben des TypeScript-Kerns, Facet-/Palettenmetriken und Stage-Timings.
-- Der Detailerhalt-Vergleich vom 2026-07-09 ist in `pipeline-lab/2026-07-09-fresh-perceptual-token-detail-preservation.md` dokumentiert. Der komplette neue 33er-Lauf liegt lokal unter `pipeline-lab/runs/2026-07-09T21-11-26-123Z_current-fresh-typescript-presets/`. Alle Presets halten 8/12/24 Farben exakt ein; bei Expert sinkt der mittlere RGB-Abstand zum KI-Bild ueber alle elf Motive von `8.81` auf `7.48`.
+- `node ./App/scripts/analyze-pipeline-paintability.mjs <manifest.json> --config-id <id> --json <report.json>` analysiert exakte 4-Connected-`cleanColor`-Regionen, Flaechenpercentile, Cross-Core, Bounding-Box-/Perimeterbreite, schwache Auslaeuferpixel, Palettenzahl und RGB-MAE zum vorbereiteten Quellbild.
+- `node ./App/scripts/analyze-classic-paintability.mjs <manifest.json> --config-id <id> --json <report.json>` bewertet `classic` und `cleanColor` gemeinsam: Grenzdichte/-Footprint/-Ink, Fuellretention, Interior-Cores, Boundary-Kontrast, schmale Sandwich-Baender, Quellunterstuetzung und Recall starker Quellkanten.
+- Der Detailerhalt-Vergleich vom 2026-07-09 ist in `pipeline-lab/2026-07-09-fresh-perceptual-token-detail-preservation.md` dokumentiert. Der Clean-/Cross-Core-Nachweis vom 2026-07-14 liegt historisch unter `pipeline-lab/runs/2026-07-14T21-51-52-494Z_2026-07-14-fresh-vs-legacy-final/`. Der historische Expert-Classic-Direktvergleich `0.0006` gegen `0.0005` ohne und mit Detailrestaurierung liegt unter `pipeline-lab/runs/2026-07-15T21-04-24-347Z_2026-07-15-expert-semantic-detail-restoration/` und ist in `pipeline-lab/2026-07-15-expert-classic-paintability.md` zusammengefasst. Die aktuelle `0.0003`-Revision fuer den erneuerten Expert-Prompt ist in `pipeline-lab/2026-07-16-expert-new-prompt-detail-retention.md` und im finalen Lauf `pipeline-lab/runs/2026-07-16T19-18-33-470Z_2026-07-16-expert-new-prompt-detail-retention-final/` dokumentiert.
+- Der Prompt-End-to-End-Lauf der unmittelbar vorherigen, staerker hintergrundvereinfachenden Fassung fuer alle elf Fotos in Easy, Medium und Expert liegt unter `prompt-lab/runs/2026-07-15T21-19-40-783Z_2026-07-15-all-11-current-prompts-easy-medium-expert/`. Der zugehoerige Fresh-Lauf mit allen neun Varianten fuer alle 33 KI-Bilder liegt unter `pipeline-lab/runs/2026-07-15T21-22-50-150Z_2026-07-15-all-33-new-prompts-fresh-final/`. Die Geometrieanalyse bestaetigt 33 erfolgreiche Ausgaben, null Regionen ohne Cross-Core und exakte Palettennutzung von 8/12/24 Farben fuer jeweils 11/11 Bilder. Aggregiert entstehen 728 Easy-, 1924 Medium- und 2385 Expert-Regionen; die Expert-Classic-Ausgaben besitzen einen Grenz-Footprint von `14,03 %` und einen niedrig kontrastierenden Doppelkontur-Anteil von `4,55 %`. Diese Werte sind eine historische Referenz und noch keine Validierung der am 2026-07-16 korrigierten Expert-Fassung.
+- Der aktuelle Korrekturlauf fuer die elf Expert-Bilder liegt unter `prompt-lab/runs/2026-07-16T06-49-35-428Z_2026-07-16-expert-background-detail-restoration/`; der zugehoerige Fresh-Lauf liegt unter `pipeline-lab/runs/2026-07-16T06-50-36-361Z_2026-07-15-all-33-new-prompts-fresh-final/`. Direkter visueller Alt/Neu-Vergleich und Messbericht liegen gemeinsam unter `prompt-lab/comparisons/2026-07-16-expert-background-detail-restoration/`.
 - Die Easy-Augenregel und lokale Landmark-Restaurierung sind in `prompt-lab/2026-07-10-easy-eye-landmarks.md` dokumentiert. Die reproduzierbare Prompt-Suite liegt in `prompt-lab/suites/2026-07-10-ki-testbilder-easy8-eye-landmarks.json`; der zugehoerige Fresh-Lauf nutzt `pipeline-lab/suites/2026-07-10-easy8-eye-landmarks.json`.
 - Die fuenf Easy-Neuinterpretationsvarianten vom 2026-07-10 sind in `prompt-lab/2026-07-10-easy-childlike-composition-iterations.md` dokumentiert. Die zugehoerigen Prompt- und Pipeline-Suites erzeugen 15 direkt vergleichbare See-, Hirsch- und Friesenwall-Ausgaben. Die ausgewaehlte produktive Variante kombiniert die Bilderbuch-Basis aus Iteration 3, die Formfreiheit aus Iteration 4 und die Kompositions-Guardrails aus Iteration 5.
 - Die erste 3/4/5-Basisvalidierung liegt in `prompt-lab/runs/2026-07-10T07-03-31-879Z_2026-07-10-easy-childlike-selected-345/` und `pipeline-lab/runs/2026-07-10T07-04-06-852Z_2026-07-10-easy-childlike-selected-345/`. Die auf Nutzerwunsch spielerischer nachgeschaerfte Produktionsfassung wurde danach ueber `prompt-lab/runs/2026-07-10T07-12-16-721Z_2026-07-10-easy-childlike-selected-345-playful/` und `pipeline-lab/runs/2026-07-10T07-13-29-155Z_2026-07-10-easy-childlike-selected-345-playful/` validiert. See, Hirsch und Friesenwall enden mit 60, 38 und 120 Fresh-Flaechen bei jeweils acht Farben. Der Friesenwall bleibt eine dokumentierte Modellgrenze; das offene Hirschauge bleibt nach der Nachschaerfung erhalten, wird aber sichtbar illustrativer interpretiert.
@@ -1314,7 +1426,7 @@ Fuer das Teilen nutzt die Shell `expo-sharing`.
 
 Wenn die UI ein SVG aus einer PNG-Variante anfordert, erzeugt die Shell ein SVG, das das PNG als Base64-Image einbettet. Das ist kein echtes Vektor-SVG der Regionen, aber ein kompatibler SVG-Container fuer die PNG-Ausgabe.
 
-Im Fresh-Pipeline-Port liefern die vier Generatorvarianten selbst bereits je ein PNG und ein SVG. `persistResultAssets()` schreibt deshalb pro Generatorvariante beide Dateien, zum Beispiel `happy-numbers-cleanColor-<timestamp>.png` und `happy-numbers-cleanColor-<timestamp>.svg`. Der normale Fresh-Output umfasst aktuell zuerst `cleanColor`, `coloredEdges`, `coloredEdgesWithDots` und `circlesOnly`; danach folgen die Vergleichsvarianten `inputImage` und `aiPosterizedImage`.
+Im Fresh-Pipeline-Port liefern die neun Generatorvarianten selbst bereits je ein PNG und ein SVG. `persistResultAssets()` schreibt deshalb pro Generatorvariante beide Dateien, zum Beispiel `happy-numbers-brightColorCircles-<timestamp>.png` und `happy-numbers-brightColorCircles-<timestamp>.svg`. Der normale Fresh-Output umfasst `brightColorCircles`, `colorCircles`, `cleanColor`, `coloredEdges`, `coloredEdgesWithDots`, `circlesOnly`, `numbers`, `classic` und `debugUnlabeled`; danach folgen die Vergleichsvarianten `inputImage` und `aiPosterizedImage`.
 
 ## 9. Debugdaten im Result-Screen
 
@@ -1398,9 +1510,9 @@ Die Browser-Vorschau kann UI und Layout zeigen, aber nicht den vollstaendigen na
 
 Die lokale Pipeline ist kein semantischer Segmentierer. Sie arbeitet pixel-, farb- und regionenbasiert. Ohne KI-Vereinfachung waeren Fotos mit natuerlicher Textur deutlich schwerer in saubere Malvorlagen umzuwandeln.
 
-### 11.3 Narrow Cleanup und Auslaeufer-Cleanup sind aktuell deaktiviert
+### 11.3 Optionale Cleanup-Runs bleiben auf `0`, profilgesteuerte Fresh-Paintability ist trotzdem aktiv
 
-Die Codepfade existieren, aber die UI-Settings setzen die Durchlaufzahlen auf `0`. Wenn kuenftig mehr algorithmische Bereinigung gewuenscht ist, sind diese Settings ein naheliegender Hebel.
+Die UI-Settings setzen `narrowPixelStripCleanupRuns` und `nrOfTimesToHalveBorderSegments` weiterhin auf `0`; damit sind nur die zusaetzlichen manuell konfigurierbaren Durchlaeufe deaktiviert. Fresh fuehrt unabhaengig davon zwei source-aware Majority-Basisdurchlaeufe und Whole-Region-Geometrie-Merges aus. Easy/Medium nutzen weiterhin das attached-protrusion Post-/Terminal-Opening ihrer `current`-Policy. Expert aktiviert ueber `classic-production` ein fruehes source-aware Cross-Opening sowie zwei sichere Gradientenband-Phasen, aber kein Post-/Terminal-Opening. Legacy bleibt bei Settings `0` ohne seine optionalen Narrow-/Endpoint-Peel-Runs.
 
 ### 11.4 Python bleibt Referenz fuer Paritaetsfragen
 

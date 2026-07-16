@@ -1,0 +1,20 @@
+{
+  "name": "2026-07-16-expert-new-prompt-detail-retention-final",
+  "sourceRun": "../../prompt-lab/runs/2026-07-16T06-49-35-428Z_2026-07-16-expert-background-detail-restoration",
+  "sourceCases": ["expert-24-background-detail-restoration-2026-07-16"],
+  "variants": ["classic", "cleanColor", "debugUnlabeled"],
+  "configs": [
+    {
+      "id": "expert-production-300-final",
+      "label": "Expert production / 0.00030 + bounded detail restoration",
+      "description": "Final Expert production policy selected after the five-way detail-retention comparison on all eleven renewed Expert KI images.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "settings": {
+        "resizeImageWidth": 1400,
+        "resizeImageHeight": 1400
+      }
+    }
+  ]
+}

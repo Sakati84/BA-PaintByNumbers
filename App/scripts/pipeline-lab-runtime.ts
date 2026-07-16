@@ -15,7 +15,10 @@ import {
   mergeRedundantPaletteColors,
 } from '../src/features/generator/pipelineCore';
 import { buildRasterPaintByNumbers } from '../src/features/generator/rasterPaintByNumbers';
-import { generatePaintByNumbersFreshFromPreparedInput } from '../src/features/generator/fresh/generatePaintByNumbersFresh';
+import {
+  generatePaintByNumbersFreshFromPreparedInput,
+  type FreshPaintabilityProfileId,
+} from '../src/features/generator/fresh/generatePaintByNumbersFresh';
 import {
   DEFAULT_SETTINGS,
   settingsForColorCount,
@@ -31,6 +34,7 @@ export type PipelineLabConfigInput = {
   difficulty?: 'easy' | 'medium' | 'expert' | 'simple' | 'detailed';
   settings?: Partial<GeneratorSettings>;
   pipeline?: 'fresh' | 'legacy';
+  freshPaintabilityProfile?: FreshPaintabilityProfileId;
 };
 
 export type PipelineLabResolvedConfig = {
@@ -41,6 +45,7 @@ export type PipelineLabResolvedConfig = {
   difficulty: string | null;
   settings: GeneratorSettings;
   pipeline: 'fresh' | 'legacy';
+  freshPaintabilityProfile?: FreshPaintabilityProfileId;
 };
 
 export type PipelineLabPreparedImage = {
@@ -59,6 +64,7 @@ export type PipelineLabRunResult = Omit<GeneratorResult, 'preparedImage'> & {
 export type PipelineLabRunOptions = {
   variantIds?: readonly GeneratorOutputVariantId[];
   pipeline?: 'fresh' | 'legacy';
+  freshPaintabilityProfile?: FreshPaintabilityProfileId;
 };
 
 function nowMs(): number {
@@ -123,6 +129,7 @@ export function resolvePipelineLabConfig(input: PipelineLabConfigInput): Pipelin
     difficulty: difficulty ?? null,
     settings,
     pipeline,
+    freshPaintabilityProfile: input.freshPaintabilityProfile,
   };
 }
 
@@ -146,7 +153,10 @@ export async function runPipelineLabImage(
       },
       settings,
       undefined,
-      { variantIds: options.variantIds },
+      {
+        variantIds: options.variantIds,
+        paintabilityProfile: options.freshPaintabilityProfile,
+      },
     );
     return {
       ...freshResult,

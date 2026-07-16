@@ -1,0 +1,34 @@
+{
+  "name": "2026-07-15-expert-more-detail-vs-current",
+  "sourceRun": "../../prompt-lab/runs/2026-07-07T17-46-16-266Z_2026-07-07-ki-testbilder-easy8-medium12-expert24",
+  "sourceCases": ["expert-24-current"],
+  "variants": ["classic", "cleanColor"],
+  "configs": [
+    {
+      "id": "expert-current-floor-800",
+      "label": "01 Current / merge threshold 0.00080",
+      "description": "The previous production state, pinned explicitly for a stable side-by-side comparison.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "classic-safe",
+      "settings": {
+        "resizeImageWidth": 1400,
+        "resizeImageHeight": 1400,
+        "removeFacetsSmallerThanImageRatio": 0.0008
+      }
+    },
+    {
+      "id": "expert-more-detail-production-default",
+      "label": "02 New more detail / default 0.00060",
+      "description": "The actual revised Expert app default with moderately more retained detail and unchanged safe Classic cleanup.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "settings": {
+        "resizeImageWidth": 1400,
+        "resizeImageHeight": 1400
+      }
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "name": "2026-07-16-expert-new-prompt-detail-retention",
+  "sourceRun": "../../prompt-lab/runs/2026-07-16T06-49-35-428Z_2026-07-16-expert-background-detail-restoration",
+  "sourceCases": ["expert-24-background-detail-restoration-2026-07-16"],
+  "variants": ["classic", "cleanColor", "debugUnlabeled"],
+  "configs": [
+    {
+      "id": "expert-production-500",
+      "label": "01 Previous production / 0.00050 + restoration",
+      "description": "Pinned previous Expert production control with bounded detail restoration.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "settings": {
+        "resizeImageWidth": 1400,
+        "resizeImageHeight": 1400,
+        "removeFacetsSmallerThanImageRatio": 0.0005
+      }
+    },
+    {
+      "id": "expert-safe-400",
+      "label": "02 Detail candidate / 0.00040",
+      "description": "Same safe opening and gradient-band policy with a lower merge-candidate threshold; restoration disabled to isolate the floor.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "classic-safe",
+      "settings": {
+        "resizeImageWidth": 1400,
+        "resizeImageHeight": 1400,
+        "removeFacetsSmallerThanImageRatio": 0.0004
+      }
+    },
+    {
+      "id": "expert-safe-350",
+      "label": "03 Detail candidate / 0.00035",
+      "description": "Intermediate detail candidate with the safe paintability policy.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "classic-safe",
+      "settings": {
+        "resizeImageWidth": 1400,
+        "resizeImageHeight": 1400,
+        "removeFacetsSmallerThanImageRatio": 0.00035
+      }
+    },
+    {
+      "id": "expert-safe-300",
+      "label": "04 Detail candidate / 0.00030",
+      "description": "Stronger detail-retention candidate with the safe paintability policy.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "classic-safe",
+      "settings": {
+        "resizeImageWidth": 1400,
+        "resizeImageHeight": 1400,
+        "removeFacetsSmallerThanImageRatio": 0.0003
+      }
+    },
+    {
+      "id": "expert-safe-250",
+      "label": "05 Detail upper bound / 0.00025",
+      "description": "Detail-retention upper bound for deciding whether lower floors become too dense.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "classic-safe",
+      "settings": {
+        "resizeImageWidth": 1400,
+        "resizeImageHeight": 1400,
+        "removeFacetsSmallerThanImageRatio": 0.00025
+      }
+    }
+  ]
+}

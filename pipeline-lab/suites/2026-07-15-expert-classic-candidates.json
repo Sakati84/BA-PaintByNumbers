@@ -1,0 +1,76 @@
+{
+  "name": "2026-07-15-expert-classic-candidates",
+  "sourceRun": "../../prompt-lab/runs/2026-07-07T17-46-16-266Z_2026-07-07-ki-testbilder-easy8-medium12-expert24",
+  "sourceCases": ["expert-24-current"],
+  "variants": ["classic", "cleanColor", "debugUnlabeled"],
+  "configs": [
+    {
+      "id": "expert-current-render-fixed",
+      "label": "01 Current Fresh + corrected Classic renderer",
+      "description": "Current Fresh segmentation as control; only the incorrect orthogonal PNG boundary marking is corrected.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "current",
+      "settings": {
+        "resizeImageWidth": 1400,
+        "resizeImageHeight": 1400
+      }
+    },
+    {
+      "id": "expert-opening-v1",
+      "label": "02 Yesterday-afternoon opening-v1 direction",
+      "description": "Recovered preferred checkpoint direction: one unrestricted opening, geometry-first merge, no terminal cleanup loop.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "opening-v1",
+      "settings": {
+        "resizeImageWidth": 1400,
+        "resizeImageHeight": 1400
+      }
+    },
+    {
+      "id": "expert-classic-strong-floor-250",
+      "label": "03 Classic candidate / floor 0.00025",
+      "description": "Strong low-contrast ribbon suppression with the most detail-preserving paintable Expert floor.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "classic-strong",
+      "settings": {
+        "resizeImageWidth": 1400,
+        "resizeImageHeight": 1400,
+        "removeFacetsSmallerThanImageRatio": 0.00025
+      }
+    },
+    {
+      "id": "expert-classic-strong-floor-325",
+      "label": "04 Classic candidate / floor 0.000325",
+      "description": "Intermediate Expert floor balancing clear fill areas and retained motif structure.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "classic-strong",
+      "settings": {
+        "resizeImageWidth": 1400,
+        "resizeImageHeight": 1400,
+        "removeFacetsSmallerThanImageRatio": 0.000325
+      }
+    },
+    {
+      "id": "expert-classic-strong-floor-400",
+      "label": "05 Classic candidate / floor 0.00040",
+      "description": "Calmest Expert candidate with a roughly 441 px region floor on img-1644.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "classic-strong",
+      "settings": {
+        "resizeImageWidth": 1400,
+        "resizeImageHeight": 1400,
+        "removeFacetsSmallerThanImageRatio": 0.0004
+      }
+    }
+  ]
+}

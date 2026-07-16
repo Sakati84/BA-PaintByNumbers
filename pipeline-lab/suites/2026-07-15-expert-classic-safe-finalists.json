@@ -1,0 +1,75 @@
+{
+  "name": "2026-07-15-expert-classic-safe-finalists",
+  "sourceRun": "../../prompt-lab/runs/2026-07-07T17-46-16-266Z_2026-07-07-ki-testbilder-easy8-medium12-expert24",
+  "sourceCases": ["expert-24-current"],
+  "variants": ["classic", "cleanColor", "debugUnlabeled"],
+  "configs": [
+    {
+      "id": "expert-classic-safe-floor-600",
+      "label": "01 Safe Classic / merge threshold 0.00060",
+      "description": "Higher-detail finalist selected as the revised production default after direct comparison with the calmer 0.00080 state.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "classic-safe",
+      "settings": {
+        "resizeImageWidth": 1400,
+        "resizeImageHeight": 1400,
+        "removeFacetsSmallerThanImageRatio": 0.0006
+      }
+    },
+    {
+      "id": "expert-classic-safe-floor-800",
+      "label": "02 Safe Classic / former production threshold 0.00080",
+      "description": "Former calmer production state retained as the direct comparison reference.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "classic-safe",
+      "settings": {
+        "resizeImageWidth": 1400,
+        "resizeImageHeight": 1400,
+        "removeFacetsSmallerThanImageRatio": 0.0008
+      }
+    },
+    {
+      "id": "expert-classic-safe-floor-1000",
+      "label": "03 Safe Classic / merge threshold 0.00100",
+      "description": "Calmest guarded finalist, retained as an upper bound for motif simplification.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "classic-safe",
+      "settings": {
+        "resizeImageWidth": 1400,
+        "resizeImageHeight": 1400,
+        "removeFacetsSmallerThanImageRatio": 0.001
+      }
+    },
+    {
+      "id": "expert-classic-production-default",
+      "label": "04 Final Expert default",
+      "description": "Actual app path: no experimental profile override; Expert automatically resolves to the revised safe 0.00060 policy.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "settings": {
+        "resizeImageWidth": 1400,
+        "resizeImageHeight": 1400
+      }
+    },
+    {
+      "id": "expert-classic-production-explicit",
+      "label": "05 Explicit production parity control",
+      "description": "Explicit classic-production profile; must be byte-identical to the actual default Expert path.",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "freshPaintabilityProfile": "classic-production",
+      "settings": {
+        "resizeImageWidth": 1400,
+        "resizeImageHeight": 1400
+      }
+    }
+  ]
+}

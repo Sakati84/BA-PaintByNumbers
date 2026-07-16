@@ -1,0 +1,39 @@
+{
+  "name": "2026-07-15-all-33-new-prompts-fresh-final",
+  "sourceRun": "../../prompt-lab/runs/2026-07-15T21-19-40-783Z_2026-07-15-all-11-current-prompts-easy-medium-expert",
+  "variants": [
+    "brightColorCircles",
+    "colorCircles",
+    "cleanColor",
+    "coloredEdges",
+    "coloredEdgesWithDots",
+    "circlesOnly",
+    "numbers",
+    "classic",
+    "debugUnlabeled"
+  ],
+  "matchSourceDifficulty": true,
+  "configs": [
+    {
+      "id": "fresh-easy-8-final",
+      "label": "Fresh Easy 8 Final",
+      "pipeline": "fresh",
+      "difficulty": "easy",
+      "colorCount": 8
+    },
+    {
+      "id": "fresh-medium-12-final",
+      "label": "Fresh Medium 12 Final",
+      "pipeline": "fresh",
+      "difficulty": "medium",
+      "colorCount": 12
+    },
+    {
+      "id": "fresh-expert-24-final",
+      "label": "Fresh Expert 24 Final / 0.0003 + Detail Restoration",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24
+    }
+  ]
+}

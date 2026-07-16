@@ -1,0 +1,56 @@
+{
+  "name": "2026-07-14-fresh-vs-legacy-final",
+  "sourceRun": "../../prompt-lab/runs/2026-07-07T17-46-16-266Z_2026-07-07-ki-testbilder-easy8-medium12-expert24",
+  "variants": ["cleanColor"],
+  "matchSourceDifficulty": true,
+  "configs": [
+    {
+      "id": "fresh-easy-8",
+      "label": "Fresh Easy 8",
+      "pipeline": "fresh",
+      "difficulty": "easy",
+      "colorCount": 8,
+      "settings": { "resizeImageWidth": 1400, "resizeImageHeight": 1400 }
+    },
+    {
+      "id": "legacy-easy-8-1400",
+      "label": "Legacy Easy 8 at 1400",
+      "pipeline": "legacy",
+      "difficulty": "easy",
+      "colorCount": 8,
+      "settings": { "resizeImageWidth": 1400, "resizeImageHeight": 1400 }
+    },
+    {
+      "id": "fresh-medium-12",
+      "label": "Fresh Medium 12",
+      "pipeline": "fresh",
+      "difficulty": "medium",
+      "colorCount": 12,
+      "settings": { "resizeImageWidth": 1400, "resizeImageHeight": 1400 }
+    },
+    {
+      "id": "legacy-medium-12-1400",
+      "label": "Legacy Medium 12 at 1400",
+      "pipeline": "legacy",
+      "difficulty": "medium",
+      "colorCount": 12,
+      "settings": { "resizeImageWidth": 1400, "resizeImageHeight": 1400 }
+    },
+    {
+      "id": "fresh-expert-24",
+      "label": "Fresh Expert 24",
+      "pipeline": "fresh",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "settings": { "resizeImageWidth": 1400, "resizeImageHeight": 1400 }
+    },
+    {
+      "id": "legacy-expert-24-1400",
+      "label": "Legacy Expert 24 at 1400",
+      "pipeline": "legacy",
+      "difficulty": "expert",
+      "colorCount": 24,
+      "settings": { "resizeImageWidth": 1400, "resizeImageHeight": 1400 }
+    }
+  ]
+}
